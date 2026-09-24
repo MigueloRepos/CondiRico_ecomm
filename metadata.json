@@ -1,0 +1,6 @@
+{
+  "name": "CondiRico",
+  "description": "Tu supermercado de confianza, ahora más cerca. Compra alimentos, productos del hogar y esenciales con entrega rápida.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
