@@ -35,6 +35,8 @@ import {
   AdvancedFilterDrawer,
   FilterState,
 } from "@/components/AdvancedFilterDrawer";
+import { VoiceSearchButton } from "@/components/VoiceSearchButton";
+import { VoiceSearchModal } from "@/components/VoiceSearchModal";
 
 interface StorePageProps {
   initialCategory?: CategoryId | null;
@@ -94,6 +96,7 @@ export const StorePage: React.FC<StorePageProps> = ({
 
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
   const sectionRefs = {
     alimentos: useRef<HTMLElement>(null),
@@ -226,9 +229,9 @@ export const StorePage: React.FC<StorePageProps> = ({
     <div className="relative pb-28 md:pb-20 overflow-hidden">
       {/* Volumetric Lighting Layers (Ambient Orbs behind glass) */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-32 left-1/4 h-[520px] w-[520px] rounded-full bg-emerald-300/20 blur-[130px] animate-float-slow" />
-        <div className="absolute top-1/3 -right-28 h-[580px] w-[580px] rounded-full bg-amber-200/25 blur-[140px] animate-float-reverse" />
-        <div className="absolute top-2/3 left-10 h-[480px] w-[480px] rounded-full bg-teal-200/20 blur-[120px] animate-float-slow" />
+        <div className="absolute -top-32 left-1/4 h-[600px] w-[600px] rounded-full bg-gradient-to-br from-emerald-400/35 via-teal-300/25 to-transparent blur-[125px] animate-float-slow" />
+        <div className="absolute top-1/3 -right-28 h-[620px] w-[620px] rounded-full bg-gradient-to-bl from-amber-300/35 via-orange-200/25 to-transparent blur-[135px] animate-float-reverse" />
+        <div className="absolute top-2/3 left-10 h-[560px] w-[560px] rounded-full bg-gradient-to-tr from-teal-300/30 via-lime-200/25 to-transparent blur-[120px] animate-float-center" />
       </div>
 
       {/* Tienda Hero Header: Apple Liquid Glass Banner */}
@@ -276,18 +279,24 @@ export const StorePage: React.FC<StorePageProps> = ({
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Buscar arroz, aceite de oliva, detergente, café..."
                     aria-label="Buscar en la tienda"
-                    className="h-13 w-full rounded-full border border-white/80 bg-white/75 pl-12 pr-12 text-sm outline-none backdrop-blur-xl shadow-[0_8px_25px_-5px_rgba(0,0,0,0.05)] transition-all focus:bg-white focus:ring-4 focus:ring-primary/15 focus:border-primary/40"
+                    className="h-13 w-full rounded-full border border-white/80 bg-white/75 pl-12 pr-20 text-sm outline-none backdrop-blur-xl shadow-[0_8px_25px_-5px_rgba(0,0,0,0.05)] transition-all focus:bg-white focus:ring-4 focus:ring-primary/15 focus:border-primary/40"
                   />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 grid size-7 place-items-center rounded-full bg-muted/80 text-muted-foreground hover:text-foreground active:scale-90"
-                      aria-label="Borrar búsqueda"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  )}
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {searchQuery ? (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="grid size-7 place-items-center rounded-full bg-muted/80 text-muted-foreground hover:text-foreground active:scale-90"
+                        aria-label="Borrar búsqueda"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    ) : null}
+                    <VoiceSearchButton
+                      onClick={() => setIsVoiceModalOpen(true)}
+                      ariaLabel="Buscar productos por voz"
+                    />
+                  </div>
                 </div>
 
                 {/* Filter Drawer Trigger Button */}
@@ -812,6 +821,22 @@ export const StorePage: React.FC<StorePageProps> = ({
         absoluteMinPrice={absoluteMinPrice}
         absoluteMaxPrice={absoluteMaxPrice}
         hasFavorites={favorites.size > 0}
+      />
+
+      {/* Voice Search Modal */}
+      <VoiceSearchModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        onSearchQuery={(query) => {
+          setSearchQuery(query);
+          setSelectedFilter("todas");
+        }}
+        onNavigateToCategory={(catId) => {
+          scrollToSection(catId);
+        }}
+        onNavigateToOffers={() => {
+          setFilters((prev) => ({ ...prev, onlyOffers: true }));
+        }}
       />
     </div>
   );

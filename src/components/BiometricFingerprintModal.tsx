@@ -20,17 +20,27 @@ export const BiometricFingerprintModal: React.FC<BiometricFingerprintModalProps>
 }) => {
   const [scanState, setScanState] = useState<"idle" | "scanning" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const autoScanTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const scanTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const successTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const clearAllTimers = () => {
+    if (autoScanTimerRef.current) clearTimeout(autoScanTimerRef.current);
+    if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+  };
 
   useEffect(() => {
     if (isOpen) {
       setScanState("idle");
       setErrorMessage("");
-      // Automatically initiate fingerprint capture after modal appears
-      const timer = setTimeout(() => {
+      autoScanTimerRef.current = setTimeout(() => {
         handleTriggerScan();
-      }, 600);
-      return () => clearTimeout(timer);
+      }, 500);
     }
+    return () => {
+      clearAllTimers();
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -40,20 +50,12 @@ export const BiometricFingerprintModal: React.FC<BiometricFingerprintModalProps>
     setScanState("scanning");
     setErrorMessage("");
 
-    // Simulate authentic biometrics sensory interaction (works with hardware prompt or visual simulation)
-    setTimeout(() => {
-      // 95% success rate for natural biometric confirmation
-      const isOk = true;
-      if (isOk) {
-        setScanState("success");
-        setTimeout(() => {
-          onSuccess();
-        }, 1100);
-      } else {
-        setScanState("error");
-        setErrorMessage("Lectura fallida. Por favor, asegúrate de colocar bien el dedo sobre el sensor.");
-      }
-    }, 1400);
+    scanTimerRef.current = setTimeout(() => {
+      setScanState("success");
+      successTimerRef.current = setTimeout(() => {
+        onSuccess();
+      }, 900);
+    }, 1200);
   };
 
   return (

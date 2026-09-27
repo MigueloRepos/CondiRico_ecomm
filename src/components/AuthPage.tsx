@@ -14,6 +14,10 @@ import {
   Store,
   ChevronLeft,
   KeyRound,
+  Database,
+  Loader2,
+  Settings2,
+  AlertCircle,
 } from "lucide-react";
 import {
   UserProfile,
@@ -24,7 +28,14 @@ import {
   getBiometricKeyInfo,
   registerWebAuthnBiometrics,
 } from "@/lib/auth";
+import {
+  signInWithSupabase,
+  signUpWithSupabase,
+  signInWithSupabaseOAuth,
+  getSupabaseConfig,
+} from "@/lib/supabase";
 import { BiometricFingerprintModal } from "@/components/BiometricFingerprintModal";
+import { SupabaseConfigModal } from "@/components/SupabaseConfigModal";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
 
 interface AuthPageProps {
@@ -56,6 +67,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [enableBiometricsOnRegister, setEnableBiometricsOnRegister] = useState(true);
   const [registerError, setRegisterError] = useState("");
 
+  // Loading & status state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [supabaseModalOpen, setSupabaseModalOpen] = useState(false);
+
   // Biometrics modal state
   const [biometricModalOpen, setBiometricModalOpen] = useState(false);
   const [biometricMode, setBiometricMode] = useState<"register" | "verify">("verify");
@@ -66,6 +81,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   const deviceHasBiometric = hasDeviceBiometricKey();
   const bioKeyInfo = getBiometricKeyInfo();
+  const sbConfig = getSupabaseConfig();
 
   // Quick fill demo user
   const handleQuickDemoFill = () => {
@@ -74,8 +90,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setLoginError("");
   };
 
-  // Submit Login
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  // Submit Login with Supabase Cloud
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
 
@@ -84,49 +100,74 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       return;
     }
 
-    const users = getStoredUsers();
-    const found = users.find(
-      (u) => u.email.toLowerCase() === loginEmail.trim().toLowerCase()
-    );
+    setIsSubmitting(true);
 
-    if (!found) {
-      // If not found in seed, create a profile automatically to make access smooth
-      const newUser: UserProfile = {
-        id: "user_" + Date.now(),
-        name: loginEmail.split("@")[0].replace(/[._]/g, " "),
-        email: loginEmail.trim().toLowerCase(),
-        phone: "+34 600 000 000",
-        address: "Dirección principal",
-        hasBiometrics: false,
-        createdAt: new Date().toISOString(),
-      };
-      users.push(newUser);
-      saveStoredUsers(users);
-      setSessionUser(newUser);
+    try {
+      // 1. Authenticate with Supabase Cloud
+      const { user: sbUser, error: sbError } = await signInWithSupabase({
+        email: loginEmail.trim(),
+        password: loginPassword,
+      });
 
-      // Offer biometrics setup for the first time!
-      setPendingUserForBio(newUser);
-      setBiometricMode("register");
-      setBiometricModalOpen(true);
-      return;
-    }
+      if (sbUser) {
+        setSessionUser(sbUser);
+        setIsSubmitting(false);
 
-    setSessionUser(found);
+        // Sync local users cache
+        const localUsers = getStoredUsers();
+        if (!localUsers.some((u) => u.email.toLowerCase() === sbUser.email.toLowerCase())) {
+          localUsers.push(sbUser);
+          saveStoredUsers(localUsers);
+        }
 
-    // If user has not configured biometrics yet, prompt them!
-    if (!found.hasBiometrics && !deviceHasBiometric) {
-      setPendingUserForBio(found);
-      setBiometricMode("register");
-      setBiometricModalOpen(true);
-    } else {
-      setFeedbackSuccess(`¡Bienvenido de vuelta, ${found.name}!`);
-      setTimeout(() => {
-        onSuccessAuth(found);
-      }, 700);
+        if (!sbUser.hasBiometrics && !deviceHasBiometric) {
+          setPendingUserForBio(sbUser);
+          setBiometricMode("register");
+          setBiometricModalOpen(true);
+        } else {
+          setFeedbackSuccess(`¡Bienvenido de vuelta, ${sbUser.name}!`);
+          setTimeout(() => {
+            onSuccessAuth(sbUser);
+          }, 600);
+        }
+        return;
+      }
+
+      // If Supabase returns an error or demo offline mode fallback
+      const users = getStoredUsers();
+      const found = users.find(
+        (u) => u.email.toLowerCase() === loginEmail.trim().toLowerCase()
+      );
+
+      if (found) {
+        setSessionUser(found);
+        setIsSubmitting(false);
+
+        if (!found.hasBiometrics && !deviceHasBiometric) {
+          setPendingUserForBio(found);
+          setBiometricMode("register");
+          setBiometricModalOpen(true);
+        } else {
+          setFeedbackSuccess(`¡Bienvenido de vuelta, ${found.name}!`);
+          setTimeout(() => {
+            onSuccessAuth(found);
+          }, 600);
+        }
+        return;
+      }
+
+      // If error from Supabase and not found locally
+      setIsSubmitting(false);
+      setLoginError(
+        sbError || "Credenciales incorrectas. Si eres nuevo usuario, haz clic en 'Registrarme'."
+      );
+    } catch (err: unknown) {
+      setIsSubmitting(false);
+      setLoginError(err instanceof Error ? err.message : "Error al conectar con Supabase");
     }
   };
 
-  // Submit Register
+  // Submit Register with Supabase Cloud
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegisterError("");
@@ -136,41 +177,66 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       return;
     }
 
-    const users = getStoredUsers();
-    const existing = users.find(
-      (u) => u.email.toLowerCase() === registerEmail.trim().toLowerCase()
-    );
-
-    if (existing) {
-      setRegisterError("Ya existe una cuenta con este correo. Puedes iniciar sesión.");
-      setTab("login");
-      setLoginEmail(registerEmail.trim());
+    if (registerPassword.length < 6) {
+      setRegisterError("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
 
-    const newUser: UserProfile = {
-      id: "user_" + Date.now(),
-      name: registerName.trim(),
-      email: registerEmail.trim().toLowerCase(),
-      phone: registerPhone.trim() || "+34 600 000 000",
-      address: registerAddress.trim() || "Dirección de entrega",
-      hasBiometrics: enableBiometricsOnRegister,
-      createdAt: new Date().toISOString(),
-    };
+    setIsSubmitting(true);
 
-    users.push(newUser);
-    saveStoredUsers(users);
-    setSessionUser(newUser);
+    try {
+      // 1. Sign up on Supabase Cloud
+      const { user: sbUser, error: sbError, confirmationRequired } = await signUpWithSupabase({
+        email: registerEmail.trim(),
+        password: registerPassword,
+        fullName: registerName.trim(),
+        phone: registerPhone.trim(),
+        address: registerAddress.trim(),
+      });
 
-    if (enableBiometricsOnRegister) {
-      setPendingUserForBio(newUser);
-      setBiometricMode("register");
-      setBiometricModalOpen(true);
-    } else {
-      setFeedbackSuccess(`¡Cuenta creada con éxito! Bienvenido, ${newUser.name}.`);
-      setTimeout(() => {
-        onSuccessAuth(newUser);
-      }, 700);
+      if (sbError) {
+        setIsSubmitting(false);
+        setRegisterError(sbError);
+        return;
+      }
+
+      const registeredUser: UserProfile = sbUser || {
+        id: "sb_user_" + Date.now(),
+        name: registerName.trim(),
+        email: registerEmail.trim().toLowerCase(),
+        phone: registerPhone.trim() || "+34 600 000 000",
+        address: registerAddress.trim() || "Dirección principal",
+        hasBiometrics: enableBiometricsOnRegister,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Save session
+      const users = getStoredUsers();
+      if (!users.some((u) => u.email.toLowerCase() === registeredUser.email.toLowerCase())) {
+        users.push(registeredUser);
+        saveStoredUsers(users);
+      }
+      setSessionUser(registeredUser);
+      setIsSubmitting(false);
+
+      if (confirmationRequired) {
+        setFeedbackSuccess("¡Cuenta creada en Supabase! Revisa tu correo si tienes confirmación activada.");
+      } else {
+        setFeedbackSuccess(`¡Cuenta creada en Supabase con éxito! Bienvenido, ${registeredUser.name}.`);
+      }
+
+      if (enableBiometricsOnRegister) {
+        setPendingUserForBio(registeredUser);
+        setBiometricMode("register");
+        setBiometricModalOpen(true);
+      } else {
+        setTimeout(() => {
+          onSuccessAuth(registeredUser);
+        }, 800);
+      }
+    } catch (err: unknown) {
+      setIsSubmitting(false);
+      setRegisterError(err instanceof Error ? err.message : "Error al registrar en Supabase");
     }
   };
 
@@ -210,11 +276,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   };
 
   return (
-    <div className="relative min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8 flex flex-col justify-center selection:bg-sun selection:text-brand-deep">
+    <div className="relative min-h-screen py-8 px-4 sm:px-6 lg:px-8 flex flex-col justify-center selection:bg-sun selection:text-brand-deep">
       {/* Volumetric background lights */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-1/4 -right-20 h-96 w-96 rounded-full bg-emerald-200/20 blur-[120px] animate-float-slow" />
-        <div className="absolute bottom-1/4 -left-20 h-96 w-96 rounded-full bg-amber-100/30 blur-[120px] animate-float-reverse" />
+        <div className="absolute top-1/4 -right-20 h-[520px] w-[520px] rounded-full bg-gradient-to-br from-emerald-400/35 via-teal-300/25 to-transparent blur-[120px] animate-float-slow" />
+        <div className="absolute bottom-1/4 -left-20 h-[500px] w-[500px] rounded-full bg-gradient-to-tr from-amber-300/35 via-orange-200/25 to-transparent blur-[120px] animate-float-reverse" />
       </div>
 
       {/* Top back navigation */}
@@ -268,6 +334,23 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           {/* Specular Highlight line */}
           <div className="absolute inset-x-12 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90" />
 
+          {/* Supabase Cloud Connection Status Badge & Settings Trigger */}
+          <div className="flex items-center justify-between mb-4 border-b border-white/60 pb-3">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-extrabold text-emerald-800 backdrop-blur-md">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Supabase Cloud Auth</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSupabaseModalOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors bg-white/60 border border-white/80 px-2.5 py-1 rounded-full shadow-2xs active:scale-95"
+              title="Configurar proyecto Supabase (URL + Anon Key)"
+            >
+              <Database className="size-3 text-emerald-600" />
+              <span>Conexión BD</span>
+            </button>
+          </div>
+
           {/* Logo & Heading */}
           <div className="text-center">
             <div className="mx-auto flex justify-center mb-3">
@@ -278,8 +361,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             </h1>
             <p className="mt-1 text-xs text-muted-foreground">
               {tab === "login"
-                ? "Accede a tu cuenta para confirmar tu pedido y envíos en 24h"
-                : "Regístrate para comprar en CondiRico y habilitar acceso biométrico"}
+                ? "Accede a tu cuenta de Supabase para confirmar tu pedido y envíos en 24h"
+                : "Regístrate en Supabase para comprar en CondiRico y habilitar acceso biométrico"}
             </p>
           </div>
 
@@ -323,7 +406,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </div>
                 <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
                   <span className="bg-white/80 px-3 rounded-full backdrop-blur-xs">
-                    o con correo electrónico
+                    o con Supabase Auth
                   </span>
                 </div>
               </div>
@@ -374,8 +457,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           {tab === "login" ? (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               {loginError && (
-                <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
-                  {loginError}
+                <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl flex items-start gap-2">
+                  <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                  <span>{loginError}</span>
                 </p>
               )}
 
@@ -429,18 +513,29 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
               <button
                 type="submit"
-                className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-lg shadow-primary/25 liquid-glass-button active:scale-98 transition-all flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+                className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-lg shadow-primary/25 liquid-glass-button active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                <span>Acceder a mi cuenta</span>
-                <ArrowRight className="size-4" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    <span>Conectando con Supabase...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Acceder a mi cuenta</span>
+                    <ArrowRight className="size-4" />
+                  </>
+                )}
               </button>
             </form>
           ) : (
             /* Register Form */
             <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
               {registerError && (
-                <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
-                  {registerError}
+                <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl flex items-start gap-2">
+                  <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                  <span>{registerError}</span>
                 </p>
               )}
 
@@ -550,10 +645,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
               <button
                 type="submit"
-                className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-lg shadow-primary/25 liquid-glass-button active:scale-98 transition-all flex items-center justify-center gap-2 mt-2"
+                disabled={isSubmitting}
+                className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-lg shadow-primary/25 liquid-glass-button active:scale-98 transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-60"
               >
-                <span>Crear Cuenta y Continuar</span>
-                <ArrowRight className="size-4" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    <span>Registrando en Supabase...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Crear Cuenta en Supabase</span>
+                    <ArrowRight className="size-4" />
+                  </>
+                )}
               </button>
             </form>
           )}
@@ -576,6 +681,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         mode={biometricMode}
         userEmail={pendingUserForBio?.email || bioKeyInfo?.email}
         userName={pendingUserForBio?.name}
+      />
+
+      {/* Supabase Config Modal */}
+      <SupabaseConfigModal
+        isOpen={supabaseModalOpen}
+        onClose={() => setSupabaseModalOpen(false)}
       />
     </div>
   );

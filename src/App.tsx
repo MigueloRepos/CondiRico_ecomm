@@ -3,6 +3,8 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CircleUserRound,
   Clock,
   Clock3,
@@ -17,7 +19,9 @@ import {
   MessageSquare,
   Minus,
   PackageCheck,
+  Pause,
   Phone,
+  Play,
   Plus,
   Quote,
   Search,
@@ -45,6 +49,8 @@ import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { WhatsAppOrderModal } from "@/components/WhatsAppOrderModal";
 import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
 import { AuthPage } from "@/components/AuthPage";
+import { VoiceSearchButton } from "@/components/VoiceSearchButton";
+import { VoiceSearchModal } from "@/components/VoiceSearchModal";
 import { UserProfile, getCurrentSessionUser, setSessionUser } from "@/lib/auth";
 import {
   Fingerprint,
@@ -105,7 +111,6 @@ function Brand({
 export default function App() {
   const [currentPage, setCurrentPage] = useState<"inicio" | "tienda" | "auth">("inicio");
   const [targetCategory, setTargetCategory] = useState<CategoryId | null>(null);
-  const [categoryViewMode, setCategoryViewMode] = useState<"cards" | "icons">("cards");
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
@@ -115,6 +120,7 @@ export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentSessionUser());
   const [intendedAuthNotice, setIntendedAuthNotice] = useState<string>("");
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -130,6 +136,9 @@ export default function App() {
   const productRail = useRef<HTMLDivElement>(null);
   const testimonialRail = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
+  const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
+  const [isCarouselAutoPlay, setIsCarouselAutoPlay] = useState(true);
+  const [isCarouselHovered, setIsCarouselHovered] = useState(false);
 
   const { scrollYProgress: heroScrollProgress } = useScroll({
     target: heroRef,
@@ -177,6 +186,81 @@ export default function App() {
         .includes(query.toLowerCase())
     );
   }, [query]);
+
+  // Smooth scroll to product index
+  const scrollToProductIndex = (index: number) => {
+    if (!productRail.current || featuredProducts.length === 0) return;
+    const clampedIndex = Math.max(0, Math.min(index, featuredProducts.length - 1));
+    setActiveCarouselIndex(clampedIndex);
+    const container = productRail.current;
+    const cardEl = container.querySelector("article");
+    const cardWidth = cardEl ? cardEl.getBoundingClientRect().width : 280;
+    const gap = 20;
+    container.scrollTo({
+      left: clampedIndex * (cardWidth + gap),
+      behavior: "smooth",
+    });
+  };
+
+  const handlePrevProduct = () => {
+    const prev = activeCarouselIndex === 0 ? featuredProducts.length - 1 : activeCarouselIndex - 1;
+    scrollToProductIndex(prev);
+  };
+
+  const handleNextProduct = () => {
+    const next = (activeCarouselIndex + 1) % featuredProducts.length;
+    scrollToProductIndex(next);
+  };
+
+  // Autoplay timer with pause on hover
+  useEffect(() => {
+    if (!isCarouselAutoPlay || isCarouselHovered || featuredProducts.length <= 1) return;
+    const timer = setInterval(() => {
+      setActiveCarouselIndex((curr) => {
+        const next = (curr + 1) % featuredProducts.length;
+        if (productRail.current) {
+          const container = productRail.current;
+          const cardEl = container.querySelector("article");
+          const cardWidth = cardEl ? cardEl.getBoundingClientRect().width : 280;
+          const gap = 20;
+          container.scrollTo({
+            left: next * (cardWidth + gap),
+            behavior: "smooth",
+          });
+        }
+        return next;
+      });
+    }, 3800);
+
+    return () => clearInterval(timer);
+  }, [isCarouselAutoPlay, isCarouselHovered, featuredProducts.length]);
+
+  // Sync active carousel index on manual scroll/touch swipe
+  useEffect(() => {
+    const container = productRail.current;
+    if (!container) return;
+
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const handleScroll = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        const cardEl = container.querySelector("article");
+        const cardWidth = cardEl ? cardEl.getBoundingClientRect().width : 280;
+        const gap = 20;
+        const scrollLeft = container.scrollLeft;
+        const newIndex = Math.round(scrollLeft / (cardWidth + gap));
+        if (newIndex >= 0 && newIndex < featuredProducts.length) {
+          setActiveCarouselIndex(newIndex);
+        }
+      }, 120);
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+      clearTimeout(timeoutId);
+    };
+  }, [featuredProducts.length]);
 
   const scroll = (ref: React.RefObject<HTMLDivElement | null>, direction: number) =>
     ref.current?.scrollBy({ left: direction * 340, behavior: "smooth" });
@@ -247,12 +331,19 @@ export default function App() {
   };
 
   return (
-    <div id="inicio" className="relative min-h-screen bg-background text-foreground flex flex-col selection:bg-sun selection:text-brand-deep">
-      {/* Volumetric Ambient Lighting Layers */}
+    <div id="inicio" className="relative min-h-screen text-foreground flex flex-col selection:bg-sun selection:text-brand-deep">
+      {/* Volumetric Ambient Mesh Lighting Layers for Glassmorphism */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-40 right-1/4 h-[550px] w-[550px] rounded-full bg-emerald-200/20 blur-[130px] animate-float-slow" />
-        <div className="absolute top-1/2 -left-32 h-[500px] w-[500px] rounded-full bg-amber-100/30 blur-[120px] animate-float-reverse" />
-        <div className="absolute bottom-10 right-10 h-[480px] w-[480px] rounded-full bg-teal-100/25 blur-[140px] animate-float-slow" />
+        {/* Top-Right Emerald Aurora */}
+        <div className="absolute -top-32 right-10 h-[620px] w-[620px] rounded-full bg-gradient-to-br from-emerald-400/35 via-teal-300/25 to-transparent blur-[120px] animate-float-slow" />
+        {/* Top-Left Amber Gold Sun */}
+        <div className="absolute -top-20 -left-20 h-[580px] w-[580px] rounded-full bg-gradient-to-tr from-amber-300/35 via-orange-200/25 to-transparent blur-[130px] animate-float-reverse" />
+        {/* Center Mint Lime Prism */}
+        <div className="absolute top-1/3 left-1/4 h-[550px] w-[550px] rounded-full bg-gradient-to-r from-lime-300/30 via-emerald-200/25 to-teal-200/25 blur-[140px] animate-float-center" />
+        {/* Mid-Right Turquoise Glow */}
+        <div className="absolute top-1/2 -right-32 h-[600px] w-[600px] rounded-full bg-gradient-to-bl from-teal-300/35 via-cyan-200/25 to-transparent blur-[130px] animate-float-slow" />
+        {/* Bottom Emerald Radiance */}
+        <div className="absolute bottom-0 left-10 h-[650px] w-[650px] rounded-full bg-gradient-to-tr from-emerald-300/35 via-amber-200/25 to-transparent blur-[140px] animate-float-reverse" />
       </div>
 
       {/* Top Banner (Apple Liquid Pill) */}
@@ -445,16 +536,22 @@ export default function App() {
           {/* Header Action Tools */}
           <div className="flex items-center justify-end gap-2">
             {/* Desktop quick search with liquid glass styling */}
-            <label className="relative hidden xl:block">
+            <div className="relative hidden xl:flex items-center">
               <span className="sr-only">Buscar productos</span>
               <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Buscar productos..."
-                className="h-10 w-56 rounded-full border border-white/80 bg-white/60 pl-9 pr-3 text-xs outline-none backdrop-blur-md transition-all shadow-inner focus:w-64 focus:bg-white focus:ring-2 focus:ring-primary/20"
+                className="h-10 w-56 rounded-full border border-white/80 bg-white/60 pl-9 pr-9 text-xs outline-none backdrop-blur-md transition-all shadow-inner focus:w-64 focus:bg-white focus:ring-2 focus:ring-primary/20"
               />
-            </label>
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                <VoiceSearchButton
+                  onClick={() => setVoiceModalOpen(true)}
+                  ariaLabel="Buscar por voz"
+                />
+              </div>
+            </div>
 
             {/* Direct switch to Tienda on desktop */}
             <button
@@ -906,7 +1003,7 @@ export default function App() {
               </div>
             </motion.section>
 
-            {/* Categories Showcase: Apple Liquid Glass Cards */}
+            {/* Categories Showcase: Apple Liquid Glass Category Icons */}
             <motion.section
               id="categorias"
               initial={{ opacity: 0, y: 35 }}
@@ -917,40 +1014,15 @@ export default function App() {
             >
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
                 <SectionTitle
-                  eyebrow="Encuentra lo que buscas"
+                  eyebrow="Explora nuestro catálogo"
                   title="Compra por categoría"
                   align="left"
                 />
-                <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
-                  {/* Selector de Vista: Tarjetas vs Solo Iconos */}
-                  <div className="inline-flex items-center rounded-full border border-white/80 bg-white/70 p-1 shadow-2xs backdrop-blur-md">
-                    <button
-                      type="button"
-                      onClick={() => setCategoryViewMode("cards")}
-                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all duration-300 ${
-                        categoryViewMode === "cards"
-                          ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                          : "text-muted-foreground hover:text-foreground hover:bg-white/50"
-                      }`}
-                      aria-label="Ver tarjetas completas"
-                    >
-                      <LayoutGrid className="size-3.5" />
-                      <span>Tarjetas</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCategoryViewMode("icons")}
-                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all duration-300 ${
-                        categoryViewMode === "icons"
-                          ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                          : "text-muted-foreground hover:text-foreground hover:bg-white/50"
-                      }`}
-                      aria-label="Mostrar solamente los iconos"
-                    >
-                      <Sparkles className="size-3.5" />
-                      <span>Solo Iconos</span>
-                    </button>
-                  </div>
+                <div className="flex items-center gap-3 self-start sm:self-auto">
+                  <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3.5 py-1.5 text-xs font-bold text-muted-foreground backdrop-blur-md shadow-2xs">
+                    <Sparkles className="size-3.5 text-offer" />
+                    <span>{CATEGORIES.length} categorías disponibles</span>
+                  </span>
 
                   <button
                     type="button"
@@ -958,93 +1030,56 @@ export default function App() {
                     className="rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-bold text-primary shadow-xs backdrop-blur-md transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95 flex items-center gap-2"
                   >
                     <StoreIcon className="size-3.5" />
-                    <span>Ver todas</span>
+                    <span>Ver tienda completa</span>
                     <ArrowRight className="size-3.5" />
                   </button>
                 </div>
               </div>
 
-              {categoryViewMode === "cards" ? (
-                /* Vista Completa: Tarjetas Detalladas */
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-                  {CATEGORIES.map((category, idx) => {
-                    const Icon = categoryIconMap[category.id];
-                    return (
-                      <motion.button
-                        key={category.id}
-                        type="button"
-                        initial={{ opacity: 0, y: 25 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.5, delay: idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                        whileHover={{ y: -6, scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => navigateTo("tienda", category.id)}
-                        className="group relative flex flex-col justify-between rounded-[32px] liquid-glass-card liquid-reflection p-7 text-left"
-                      >
-                        <div>
-                          <div
-                            className={`grid size-14 place-items-center rounded-2xl border shadow-sm transition-transform duration-500 group-hover:scale-110 ${category.accent}`}
-                          >
-                            <Icon className="size-7" />
-                          </div>
-                          <span className="mt-5 inline-block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                            {category.count}
-                          </span>
-                          <h3 className="mt-1 text-xl font-extrabold leading-snug text-brand-deep transition-colors group-hover:text-primary">
-                            {category.name}
-                          </h3>
-                          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                            {category.description}
-                          </p>
-                        </div>
+              {/* Grid de Iconos de Categorías Disponibles */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6">
+                {CATEGORIES.map((category, idx) => {
+                  const Icon = categoryIconMap[category.id];
+                  return (
+                    <motion.button
+                      key={category.id}
+                      type="button"
+                      initial={{ opacity: 0, scale: 0.92, y: 20 }}
+                      whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.45, delay: idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                      whileHover={{ y: -6, scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => navigateTo("tienda", category.id)}
+                      className="group relative flex flex-col items-center justify-center rounded-[32px] liquid-glass-card liquid-reflection p-6 sm:p-8 text-center shadow-xs transition-shadow hover:shadow-xl overflow-hidden"
+                    >
+                      {/* Top Specular Edge */}
+                      <div className="absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
 
-                        <div className="mt-7 flex items-center justify-between border-t border-white/60 pt-4 text-xs font-bold text-primary">
-                          <span>Explorar en Tienda</span>
-                          <div className="grid size-7 place-items-center rounded-full bg-white/80 shadow-2xs group-hover:translate-x-1 transition-transform">
-                            <ArrowRight className="size-3.5" />
-                          </div>
-                        </div>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              ) : (
-                /* Vista Alternativa: Solo Iconos de la Categoría */
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6">
-                  {CATEGORIES.map((category, idx) => {
-                    const Icon = categoryIconMap[category.id];
-                    return (
-                      <motion.button
-                        key={category.id}
-                        type="button"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.4, delay: idx * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                        whileHover={{ y: -6, scale: 1.04 }}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => navigateTo("tienda", category.id)}
-                        className="group relative flex flex-col items-center justify-center rounded-[32px] liquid-glass-card liquid-reflection p-6 sm:p-8 text-center shadow-xs transition-shadow hover:shadow-lg"
+                      <div
+                        className={`grid size-20 sm:size-24 place-items-center rounded-3xl border shadow-sm transition-transform duration-500 group-hover:scale-115 group-hover:rotate-2 ${category.accent}`}
                       >
-                        <div
-                          className={`grid size-20 sm:size-24 place-items-center rounded-3xl border shadow-sm transition-transform duration-500 group-hover:scale-115 group-hover:rotate-2 ${category.accent}`}
-                        >
-                          <Icon className="size-10 sm:size-12" />
-                        </div>
-                        <h3 className="mt-4 text-base sm:text-lg font-black text-brand-deep group-hover:text-primary transition-colors">
-                          {category.name}
-                        </h3>
-                        <span className="mt-1.5 inline-block text-[11px] font-bold text-muted-foreground bg-white/80 border border-white/90 px-3 py-0.5 rounded-full shadow-2xs">
-                          {category.count}
-                        </span>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              )}
+                        <Icon className="size-10 sm:size-12" />
+                      </div>
+
+                      <h3 className="mt-4 text-base sm:text-lg font-black text-brand-deep group-hover:text-primary transition-colors">
+                        {category.name}
+                      </h3>
+
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-1 max-w-[200px] hidden sm:block">
+                        {category.description}
+                      </p>
+
+                      <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground bg-white/80 border border-white/90 px-3 py-0.5 rounded-full shadow-2xs group-hover:border-primary/30 group-hover:text-primary transition-colors">
+                        <span>{category.count}</span>
+                      </span>
+                    </motion.button>
+                  );
+                })}
+              </div>
             </motion.section>
 
-            {/* Featured Products Rail with Frosted Glass Cards */}
+            {/* Featured Products Carousel: Apple Liquid Glass */}
             <motion.section
               id="destacados"
               initial={{ opacity: 0, y: 35 }}
@@ -1054,154 +1089,286 @@ export default function App() {
               className="relative py-16 lg:py-24"
             >
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
+                {/* Carousel Header & Controls */}
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
                   <SectionTitle
                     eyebrow="Elegidos para ti"
                     title="Productos destacados"
                     align="left"
                   />
-                  <div className="flex gap-2">
+
+                  {/* Carousel Control Dock */}
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    {/* Active Slide Counter Badge */}
+                    <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3.5 py-2 text-xs font-black text-brand-deep shadow-2xs backdrop-blur-md">
+                      <span className="text-primary font-black">
+                        {String(activeCarouselIndex + 1).padStart(2, "0")}
+                      </span>
+                      <span className="text-muted-foreground/60">/</span>
+                      <span className="text-muted-foreground">
+                        {String(featuredProducts.length).padStart(2, "0")}
+                      </span>
+                    </span>
+
+                    {/* Autoplay Toggle Button */}
                     <button
                       type="button"
-                      className="grid size-10 place-items-center rounded-full border border-white/80 bg-white/70 text-foreground shadow-xs active:scale-90 hover:bg-white"
-                      onClick={() => scroll(productRail, -1)}
-                      aria-label="Productos anteriores"
+                      onClick={() => setIsCarouselAutoPlay(!isCarouselAutoPlay)}
+                      title={isCarouselAutoPlay ? "Pausar carrusel automático" : "Reanudar carrusel automático"}
+                      className={`inline-flex items-center gap-1.5 rounded-full border border-white/80 px-3.5 py-2 text-xs font-bold shadow-2xs backdrop-blur-md transition-all active:scale-95 ${
+                        isCarouselAutoPlay
+                          ? "bg-primary/15 text-primary border-primary/30 hover:bg-primary/20"
+                          : "bg-white/70 text-muted-foreground hover:bg-white hover:text-foreground"
+                      }`}
+                      aria-label="Alternar carrusel automático"
                     >
-                      <ArrowLeft className="size-4" />
+                      {isCarouselAutoPlay ? (
+                        <>
+                          <Pause className="size-3.5 animate-pulse text-primary" />
+                          <span className="hidden md:inline">Auto</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="size-3.5 text-muted-foreground" />
+                          <span className="hidden md:inline">Pausado</span>
+                        </>
+                      )}
                     </button>
-                    <button
-                      type="button"
-                      className="grid size-10 place-items-center rounded-full border border-white/80 bg-white/70 text-foreground shadow-xs active:scale-90 hover:bg-white"
-                      onClick={() => scroll(productRail, 1)}
-                      aria-label="Productos siguientes"
-                    >
-                      <ArrowRight className="size-4" />
-                    </button>
+
+                    {/* Arrow Navigation */}
+                    <div className="flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 p-1 shadow-2xs backdrop-blur-md">
+                      <button
+                        type="button"
+                        className="grid size-9 place-items-center rounded-full text-foreground transition-all duration-300 hover:bg-white hover:scale-105 active:scale-90 hover:text-primary"
+                        onClick={handlePrevProduct}
+                        aria-label="Producto anterior del carrusel"
+                      >
+                        <ChevronLeft className="size-5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="grid size-9 place-items-center rounded-full text-foreground transition-all duration-300 hover:bg-white hover:scale-105 active:scale-90 hover:text-primary"
+                        onClick={handleNextProduct}
+                        aria-label="Producto siguiente del carrusel"
+                      >
+                        <ChevronRight className="size-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
+                {/* Filter Search Bar within Destacados */}
                 <div className="relative mt-6 max-w-md sm:max-w-lg">
-                  <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   <input
                     value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Filtrar destacados..."
-                    aria-label="Buscar productos"
-                    className="h-11 w-full rounded-full border border-white/80 bg-white/70 pl-11 pr-10 text-sm outline-none backdrop-blur-md shadow-inner transition-all focus:bg-white focus:ring-2 focus:ring-primary/20"
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setActiveCarouselIndex(0);
+                    }}
+                    placeholder="Filtrar productos destacados..."
+                    aria-label="Buscar productos destacados"
+                    className="h-11 w-full rounded-full border border-white/80 bg-white/75 pl-11 pr-20 text-sm outline-none backdrop-blur-xl shadow-inner transition-all focus:bg-white focus:ring-4 focus:ring-primary/15 focus:border-primary/40"
                   />
-                  {query && (
-                    <button
-                      type="button"
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 grid size-6 place-items-center rounded-full bg-muted text-muted-foreground"
-                      onClick={() => setQuery("")}
-                      aria-label="Borrar búsqueda"
-                    >
-                      <X className="size-3.5" />
-                    </button>
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {query ? (
+                      <button
+                        type="button"
+                        className="grid size-6 place-items-center rounded-full bg-muted text-muted-foreground hover:text-foreground active:scale-90"
+                        onClick={() => setQuery("")}
+                        aria-label="Borrar búsqueda"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    ) : null}
+                    <VoiceSearchButton
+                      onClick={() => setVoiceModalOpen(true)}
+                      ariaLabel="Buscar destacados por voz"
+                    />
+                  </div>
+                </div>
+
+                {/* Carousel Stage Container with Lateral Gradient Masks and Smooth Drag/Scroll */}
+                <div
+                  className="relative mt-8 group/carousel"
+                  onMouseEnter={() => setIsCarouselHovered(true)}
+                  onMouseLeave={() => setIsCarouselHovered(false)}
+                >
+                  {/* Lateral Glass Fade Gradient Mask (Left) */}
+                  <div className="pointer-events-none absolute left-0 top-0 bottom-6 w-8 sm:w-16 bg-gradient-to-r from-background via-background/40 to-transparent z-10 hidden sm:block rounded-l-[32px]" />
+
+                  {/* Lateral Glass Fade Gradient Mask (Right) */}
+                  <div className="pointer-events-none absolute right-0 top-0 bottom-6 w-8 sm:w-16 bg-gradient-to-l from-background via-background/40 to-transparent z-10 hidden sm:block rounded-r-[32px]" />
+
+                  {/* Floating Edge Navigation Buttons (Desktop) */}
+                  <button
+                    type="button"
+                    onClick={handlePrevProduct}
+                    className="absolute -left-4 sm:left-2 top-1/2 -translate-y-1/2 z-20 hidden sm:grid size-11 place-items-center rounded-full border border-white/90 bg-white/85 text-brand-deep shadow-[0_8px_25px_rgba(0,0,0,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white hover:scale-110 active:scale-95 opacity-0 group-hover/carousel:opacity-100 focus:opacity-100"
+                    aria-label="Anterior en carrusel"
+                  >
+                    <ChevronLeft className="size-5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleNextProduct}
+                    className="absolute -right-4 sm:right-2 top-1/2 -translate-y-1/2 z-20 hidden sm:grid size-11 place-items-center rounded-full border border-white/90 bg-white/85 text-brand-deep shadow-[0_8px_25px_rgba(0,0,0,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white hover:scale-110 active:scale-95 opacity-0 group-hover/carousel:opacity-100 focus:opacity-100"
+                    aria-label="Siguiente en carrusel"
+                  >
+                    <ChevronRight className="size-5" />
+                  </button>
+
+                  {/* Carousel Rail */}
+                  <div
+                    ref={productRail}
+                    className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-6 pt-2 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
+                  >
+                    {featuredProducts.map((product, idx) => {
+                      const inCart = cart[product.id] ?? 0;
+                      const isCurrent = idx === activeCarouselIndex;
+
+                      return (
+                        <motion.article
+                          key={product.id}
+                          whileHover={{ y: -8, scale: 1.02 }}
+                          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                          className={`group/card relative w-[78vw] max-w-[285px] shrink-0 snap-start overflow-hidden rounded-[30px] liquid-glass-card liquid-reflection p-4 text-left transition-all duration-500 ${
+                            isCurrent
+                              ? "ring-2 ring-primary/40 shadow-[0_20px_45px_-12px_rgba(16,185,129,0.22)]"
+                              : "shadow-[0_12px_30px_-10px_rgba(0,0,0,0.06)]"
+                          }`}
+                        >
+                          {/* Specular Top Edge Line */}
+                          <div className="absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-85" />
+
+                          {/* Image Container */}
+                          <div className="relative aspect-square overflow-hidden rounded-2xl bg-white/70 border border-white/90 shadow-inner">
+                            {product.pos ? (
+                              <div
+                                className={`absolute inset-0 bg-cover transition-transform duration-700 group-hover/card:scale-110 ${product.pos}`}
+                                style={{
+                                  backgroundImage: `url(${productsImage})`,
+                                  backgroundSize: "300% 200%",
+                                }}
+                              />
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
+                                <ShoppingBasket className="size-12 text-muted-foreground/60" />
+                              </div>
+                            )}
+
+                            {/* Badge */}
+                            {product.badge && (
+                              <span className="absolute left-3 top-3 rounded-full bg-offer px-2.5 py-0.5 text-[10px] font-black text-offer-foreground shadow-sm">
+                                {product.badge}
+                              </span>
+                            )}
+
+                            {/* Rating Micro Pill */}
+                            <span className="absolute left-3 bottom-3 inline-flex items-center gap-1 rounded-full bg-white/90 border border-white px-2 py-0.5 text-[10px] font-extrabold text-foreground shadow-2xs backdrop-blur-md">
+                              <Star className="size-3 fill-amber-400 text-amber-400" />
+                              <span>{product.rating}</span>
+                            </span>
+
+                            {/* Favorite Button */}
+                            <button
+                              type="button"
+                              className={`absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-white/90 border border-white/90 shadow-sm backdrop-blur-md transition-all duration-300 active:scale-90 hover:scale-110 ${
+                                favorites.has(product.id)
+                                  ? "text-destructive"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                              onClick={() => toggleFavorite(product.id)}
+                              aria-label={
+                                favorites.has(product.id)
+                                  ? "Quitar de favoritos"
+                                  : "Agregar a favoritos"
+                              }
+                            >
+                              <Heart
+                                className={`size-4 ${
+                                  favorites.has(product.id) ? "fill-current" : ""
+                                }`}
+                              />
+                            </button>
+                          </div>
+
+                          {/* Content & Price */}
+                          <div className="p-1.5 pt-3">
+                            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                              {product.unit}
+                            </span>
+                            <h3 className="mt-0.5 font-black text-sm text-brand-deep line-clamp-1 group-hover/card:text-primary transition-colors">
+                              {product.name}
+                            </h3>
+                            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+                              {product.detail}
+                            </p>
+
+                            <div className="mt-4 flex items-end justify-between gap-3 border-t border-white/60 pt-3">
+                              <div>
+                                <strong className="text-xl font-black text-brand-deep">
+                                  ${product.price.toFixed(2)}
+                                </strong>
+                                {product.oldPrice && (
+                                  <span className="ml-2 text-xs text-muted-foreground line-through">
+                                    ${product.oldPrice.toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                className={`grid size-10 place-items-center rounded-full shadow-md active:scale-90 transition-all duration-300 hover:scale-108 ${
+                                  inCart > 0
+                                    ? "bg-offer text-offer-foreground shadow-offer/30"
+                                    : "bg-primary text-primary-foreground shadow-primary/30"
+                                }`}
+                                onClick={() => changeCart(product.id, 1)}
+                                aria-label={`Agregar ${product.name} al carrito`}
+                              >
+                                <Plus className="size-4.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </motion.article>
+                      );
+                    })}
+                  </div>
+
+                  {/* Carousel Interactive Pagination Indicator Dots */}
+                  {featuredProducts.length > 1 && (
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      {featuredProducts.map((_, i) => {
+                        const isActive = i === activeCarouselIndex;
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => scrollToProductIndex(i)}
+                            aria-label={`Ir al producto destacado ${i + 1}`}
+                            className={`h-2.5 rounded-full transition-all duration-500 active:scale-90 ${
+                              isActive
+                                ? "w-8 bg-primary shadow-sm shadow-primary/40 scale-105"
+                                : "w-2.5 bg-foreground/20 hover:bg-foreground/40"
+                            }`}
+                          />
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
 
-                <div
-                  ref={productRail}
-                  className="mt-8 flex snap-x gap-5 overflow-x-auto pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                >
-                  {featuredProducts.map((product) => {
-                    const inCart = cart[product.id] ?? 0;
-                    return (
-                      <motion.article
-                        key={product.id}
-                        whileHover={{ y: -6 }}
-                        transition={{ duration: 0.3 }}
-                        className="group w-[80vw] max-w-[280px] shrink-0 snap-start overflow-hidden rounded-[28px] liquid-glass-card liquid-reflection p-3.5 sm:p-4"
-                      >
-                        <div className="relative aspect-square overflow-hidden rounded-2xl bg-white/60 border border-white/80 shadow-inner">
-                          {product.pos ? (
-                            <div
-                              className={`absolute inset-0 bg-cover transition-transform duration-700 group-hover:scale-108 ${product.pos}`}
-                              style={{
-                                backgroundImage: `url(${productsImage})`,
-                                backgroundSize: "300% 200%",
-                              }}
-                            />
-                          ) : (
-                            <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
-                              <ShoppingBasket className="size-12 text-muted-foreground/60" />
-                            </div>
-                          )}
-
-                          {product.badge && (
-                            <span className="absolute left-3 top-3 rounded-full bg-offer px-2.5 py-0.5 text-[10px] font-black text-offer-foreground shadow-sm">
-                              {product.badge}
-                            </span>
-                          )}
-
-                          <button
-                            type="button"
-                            className={`absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-white/85 border border-white/90 shadow-sm backdrop-blur-md transition-all duration-300 active:scale-90 hover:scale-110 ${
-                              favorites.has(product.id)
-                                ? "text-destructive"
-                                : "text-muted-foreground hover:text-foreground"
-                            }`}
-                            onClick={() => toggleFavorite(product.id)}
-                            aria-label={
-                              favorites.has(product.id)
-                                ? "Quitar de favoritos"
-                                : "Agregar a favoritos"
-                            }
-                          >
-                            <Heart
-                              className={`size-4 ${
-                                favorites.has(product.id) ? "fill-current" : ""
-                              }`}
-                            />
-                          </button>
-                        </div>
-
-                        <div className="p-2 pt-3">
-                          <p className="text-xs text-muted-foreground">
-                            {product.detail}
-                          </p>
-                          <h3 className="mt-1 font-bold text-sm line-clamp-1">
-                            {product.name}
-                          </h3>
-                          <div className="mt-4 flex items-end justify-between gap-3">
-                            <div>
-                              <strong className="text-lg font-black text-primary">
-                                ${product.price.toFixed(2)}
-                              </strong>
-                              {product.oldPrice && (
-                                <span className="ml-2 text-xs text-muted-foreground line-through">
-                                  ${product.oldPrice.toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              className={`grid size-9 place-items-center rounded-full shadow-md active:scale-90 transition-all ${
-                                inCart > 0
-                                  ? "bg-offer text-offer-foreground shadow-offer/30"
-                                  : "bg-primary text-primary-foreground shadow-primary/30"
-                              }`}
-                              onClick={() => changeCart(product.id, 1)}
-                              aria-label={`Agregar ${product.name} al carrito`}
-                            >
-                              <Plus className="size-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </motion.article>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-8 text-center">
+                {/* Bottom Store Link */}
+                <div className="mt-10 text-center">
                   <button
                     type="button"
                     onClick={() => navigateTo("tienda")}
-                    className="rounded-full bg-primary px-8 py-3 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/25 liquid-glass-button active:scale-95 inline-flex items-center gap-2"
+                    className="rounded-full bg-primary px-8 py-3.5 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/25 liquid-glass-button active:scale-95 inline-flex items-center gap-2.5 transition-all hover:scale-105"
                   >
                     <StoreIcon className="size-4" />
-                    <span>Ver todos los productos en la Tienda</span>
+                    <span>Explorar catálogo completo en la Tienda</span>
+                    <ArrowRight className="size-4" />
                   </button>
                 </div>
               </div>
@@ -1939,6 +2106,25 @@ export default function App() {
           </aside>
         </div>
       )}
+
+      {/* Voice Search Modal */}
+      <VoiceSearchModal
+        isOpen={voiceModalOpen}
+        onClose={() => setVoiceModalOpen(false)}
+        onSearchQuery={(voiceQuery) => {
+          setQuery(voiceQuery);
+          navigateTo("tienda");
+        }}
+        onNavigateToCategory={(catId) => {
+          navigateTo("tienda", catId);
+        }}
+        onNavigateToOffers={() => {
+          navigateTo("tienda");
+        }}
+        onNavigateToStore={() => {
+          navigateTo("tienda");
+        }}
+      />
     </div>
   );
 }

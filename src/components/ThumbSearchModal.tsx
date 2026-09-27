@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from "react";
-import { Search, X, Plus, Check, ArrowRight } from "lucide-react";
-import { ALL_PRODUCTS } from "@/data/products";
+import { Search, X, Plus, Check, ArrowRight, Mic, Sparkles } from "lucide-react";
+import { ALL_PRODUCTS, CategoryId } from "@/data/products";
+import { VoiceSearchButton } from "@/components/VoiceSearchButton";
+import { VoiceSearchModal } from "@/components/VoiceSearchModal";
 
 interface ThumbSearchModalProps {
   isOpen: boolean;
@@ -29,6 +31,7 @@ export const ThumbSearchModal: React.FC<ThumbSearchModalProps> = ({
   onNavigateToStore,
 }) => {
   const [query, setQuery] = useState("");
+  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
 
   const searchResults = useMemo(() => {
     if (!query.trim()) return [];
@@ -83,17 +86,24 @@ export const ThumbSearchModal: React.FC<ThumbSearchModalProps> = ({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Escribe arroz, detergente, aceite..."
-            className="h-12 w-full rounded-2xl border border-white/80 bg-white/70 pl-11 pr-11 text-sm outline-none shadow-inner backdrop-blur-md transition-all focus:bg-white focus:ring-2 focus:ring-primary/40 focus:border-primary/50"
+            className="h-12 w-full rounded-2xl border border-white/80 bg-white/70 pl-11 pr-20 text-sm outline-none shadow-inner backdrop-blur-md transition-all focus:bg-white focus:ring-2 focus:ring-primary/40 focus:border-primary/50"
           />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery("")}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 grid size-6 place-items-center rounded-full bg-muted/80 text-muted-foreground hover:text-foreground"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="grid size-6 place-items-center rounded-full bg-muted/80 text-muted-foreground hover:text-foreground active:scale-90"
+                aria-label="Borrar texto"
+              >
+                <X className="size-3.5" />
+              </button>
+            ) : null}
+            <VoiceSearchButton
+              onClick={() => setIsVoiceOpen(true)}
+              ariaLabel="Buscar por voz"
+            />
+          </div>
         </div>
 
         {/* Popular thumb tags */}
@@ -180,6 +190,16 @@ export const ThumbSearchModal: React.FC<ThumbSearchModalProps> = ({
           </div>
         )}
       </div>
+
+      <VoiceSearchModal
+        isOpen={isVoiceOpen}
+        onClose={() => setIsVoiceOpen(false)}
+        onSearchQuery={(q) => setQuery(q)}
+        onNavigateToStore={() => {
+          onClose();
+          onNavigateToStore();
+        }}
+      />
     </div>
   );
 };
