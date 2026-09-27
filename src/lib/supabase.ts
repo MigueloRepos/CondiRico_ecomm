@@ -4,8 +4,12 @@ import { UserProfile } from "@/lib/auth";
 const SUPABASE_CONFIG_STORAGE_KEY = "condirico_supabase_config_v1";
 
 // Default or environment variables
-const ENV_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
-const ENV_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const DEFAULT_SUPABASE_URL = "https://wcgwttjnvyeibxdnhqfl.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndjZ3d0dGpudnllaWJ4ZG5ocWZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0NjA5NTYsImV4cCI6MjEwNjAzNjk1Nn0.iE3Felsr8MQ7GYnMGGGMLexs8358nVTzzKJOgEq70vs";
+
+const ENV_SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) || "";
+const ENV_SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || "";
 
 export interface SupabaseConfig {
   url: string;
@@ -31,12 +35,13 @@ export function getSupabaseConfig(): SupabaseConfig {
     console.warn("Error reading Supabase config from storage:", err);
   }
 
+  const activeUrl = ENV_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  const activeKey = ENV_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+
   return {
-    url: ENV_SUPABASE_URL || "https://dohfegpudvjqumivjtyv.supabase.co", // Demo ready instance
-    anonKey:
-      ENV_SUPABASE_ANON_KEY ||
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvaGZlZ3B1ZHZqcXVtaXZqdHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDgwMDAwMDAsImV4cCI6MjAyMzU3NjAwMH0.sampleAnonTokenForCondiRicoApp",
-    isCustom: Boolean(ENV_SUPABASE_URL && ENV_SUPABASE_ANON_KEY),
+    url: activeUrl,
+    anonKey: activeKey,
+    isCustom: Boolean(activeUrl && activeKey),
   };
 }
 
