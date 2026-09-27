@@ -50,6 +50,7 @@ import { WhatsAppOrderModal } from "@/components/WhatsAppOrderModal";
 import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
 import { AuthPage } from "@/components/AuthPage";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { AdminProtectedRoute } from "@/components/admin/AdminProtectedRoute";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { VoiceSearchModal } from "@/components/VoiceSearchModal";
 import { UserProfile, getCurrentSessionUser, setSessionUser } from "@/lib/auth";
@@ -490,15 +491,24 @@ export default function App() {
 
   if (currentPage === "admin") {
     return (
-      <AdminDashboard
+      <AdminProtectedRoute
         currentUser={currentUser}
         onNavigateHome={() => navigateTo("inicio")}
         onNavigateLogin={() => {
           setIntendedAuthNotice("Inicia sesión para ingresar al panel de administración.");
           navigateTo("auth");
         }}
-        onLogout={handleLogout}
-      />
+      >
+        <AdminDashboard
+          currentUser={currentUser}
+          onNavigateHome={() => navigateTo("inicio")}
+          onNavigateLogin={() => {
+            setIntendedAuthNotice("Inicia sesión para ingresar al panel de administración.");
+            navigateTo("auth");
+          }}
+          onLogout={handleLogout}
+        />
+      </AdminProtectedRoute>
     );
   }
 

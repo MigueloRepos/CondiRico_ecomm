@@ -190,7 +190,7 @@ export async function clearCart(userId: string): Promise<boolean> {
  */
 export async function syncLocalCartToSupabase(
   userId: string,
-  localCart: Record<number, number>
+  localCart: Record<number, number> = {}
 ): Promise<Record<number, number>> {
   if (!userId) return localCart;
 
