@@ -18,6 +18,9 @@ import {
   Truck,
   Sparkle,
   MessageCircle,
+  SlidersHorizontal,
+  RotateCcw,
+  Tag,
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import {
@@ -28,6 +31,10 @@ import {
 } from "@/data/products";
 import { Button } from "@/components/ui/button";
 import productsSprite from "@/assets/condirico-products.jpg";
+import {
+  AdvancedFilterDrawer,
+  FilterState,
+} from "@/components/AdvancedFilterDrawer";
 
 interface StorePageProps {
   initialCategory?: CategoryId | null;
@@ -62,6 +69,32 @@ export const StorePage: React.FC<StorePageProps> = ({
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [addedNotice, setAddedNotice] = useState<string | null>(null);
 
+  // Advanced Filters State
+  const absoluteMinPrice = useMemo(
+    () => Math.floor(Math.min(...ALL_PRODUCTS.map((p) => p.price))),
+    []
+  );
+  const absoluteMaxPrice = useMemo(
+    () => Math.ceil(Math.max(...ALL_PRODUCTS.map((p) => p.price))),
+    []
+  );
+
+  const defaultFilters: FilterState = useMemo(
+    () => ({
+      minPrice: absoluteMinPrice,
+      maxPrice: absoluteMaxPrice,
+      selectedCategories: initialCategory ? [initialCategory] : [],
+      onlyOffers: false,
+      minRating: 0,
+      onlyFavorites: false,
+      sortBy: "default",
+    }),
+    [absoluteMinPrice, absoluteMaxPrice, initialCategory]
+  );
+
+  const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+
   const sectionRefs = {
     alimentos: useRef<HTMLElement>(null),
     "primera-necesidad": useRef<HTMLElement>(null),
@@ -94,16 +127,86 @@ export const StorePage: React.FC<StorePageProps> = ({
     0
   );
 
+  const isPriceFiltered =
+    filters.minPrice > absoluteMinPrice || filters.maxPrice < absoluteMaxPrice;
+  const isCategoriesFiltered =
+    filters.selectedCategories.length > 0 &&
+    filters.selectedCategories.length < CATEGORIES.length;
+  const isSortFiltered = filters.sortBy !== "default";
+
+  const activeFiltersCount =
+    (isPriceFiltered ? 1 : 0) +
+    (isCategoriesFiltered ? 1 : 0) +
+    (filters.onlyOffers ? 1 : 0) +
+    (filters.minRating > 0 ? 1 : 0) +
+    (filters.onlyFavorites ? 1 : 0) +
+    (isSortFiltered ? 1 : 0);
+
   const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return ALL_PRODUCTS;
-    const q = searchQuery.toLowerCase().trim();
-    return ALL_PRODUCTS.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.detail.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q)
+    let list = ALL_PRODUCTS;
+
+    // 1. Text Query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.detail.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q)
+      );
+    }
+
+    // 2. Price Range
+    list = list.filter(
+      (p) => p.price >= filters.minPrice && p.price <= filters.maxPrice
     );
-  }, [searchQuery]);
+
+    // 3. Category Filter
+    if (filters.selectedCategories.length > 0) {
+      list = list.filter((p) => filters.selectedCategories.includes(p.category));
+    }
+
+    // 4. Only Offers
+    if (filters.onlyOffers) {
+      list = list.filter((p) => Boolean(p.badge || p.oldPrice));
+    }
+
+    // 5. Min Rating
+    if (filters.minRating > 0) {
+      list = list.filter((p) => p.rating >= filters.minRating);
+    }
+
+    // 6. Only Favorites
+    if (filters.onlyFavorites) {
+      list = list.filter((p) => favorites.has(p.id));
+    }
+
+    // 7. Sorting
+    if (filters.sortBy === "price-asc") {
+      list = [...list].sort((a, b) => a.price - b.price);
+    } else if (filters.sortBy === "price-desc") {
+      list = [...list].sort((a, b) => b.price - a.price);
+    } else if (filters.sortBy === "rating-desc") {
+      list = [...list].sort((a, b) => b.rating - a.rating);
+    } else if (filters.sortBy === "name-asc") {
+      list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return list;
+  }, [searchQuery, filters, favorites]);
+
+  const handleResetFilters = () => {
+    setFilters({
+      minPrice: absoluteMinPrice,
+      maxPrice: absoluteMaxPrice,
+      selectedCategories: [],
+      onlyOffers: false,
+      minRating: 0,
+      onlyFavorites: false,
+      sortBy: "default",
+    });
+    setSelectedFilter("todas");
+  };
 
   const scrollToSection = (catId: CategoryId) => {
     setSelectedFilter("todas");
@@ -162,29 +265,168 @@ export const StorePage: React.FC<StorePageProps> = ({
               </span>
             </div>
 
-            {/* Liquid Glass Search Bar */}
-            <div className="mt-8 mx-auto max-w-xl">
-              <div className="relative group">
-                <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground pointer-events-none transition-colors group-focus-within:text-primary" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar arroz, aceite de oliva, detergente, café..."
-                  aria-label="Buscar en la tienda"
-                  className="h-13 w-full rounded-full border border-white/80 bg-white/75 pl-12 pr-12 text-sm outline-none backdrop-blur-xl shadow-[0_8px_25px_-5px_rgba(0,0,0,0.05)] transition-all focus:bg-white focus:ring-4 focus:ring-primary/15 focus:border-primary/40"
-                />
-                {searchQuery && (
+            {/* Liquid Glass Search Bar & Advanced Filter Trigger */}
+            <div className="mt-8 mx-auto max-w-2xl">
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1 group">
+                  <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground pointer-events-none transition-colors group-focus-within:text-primary" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscar arroz, aceite de oliva, detergente, café..."
+                    aria-label="Buscar en la tienda"
+                    className="h-13 w-full rounded-full border border-white/80 bg-white/75 pl-12 pr-12 text-sm outline-none backdrop-blur-xl shadow-[0_8px_25px_-5px_rgba(0,0,0,0.05)] transition-all focus:bg-white focus:ring-4 focus:ring-primary/15 focus:border-primary/40"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 grid size-7 place-items-center rounded-full bg-muted/80 text-muted-foreground hover:text-foreground active:scale-90"
+                      aria-label="Borrar búsqueda"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter Drawer Trigger Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsFilterDrawerOpen(true)}
+                  className={`h-13 rounded-full px-5 text-xs font-bold flex items-center gap-2.5 shadow-md backdrop-blur-xl transition-all duration-300 active:scale-95 shrink-0 ${
+                    activeFiltersCount > 0
+                      ? "bg-primary text-primary-foreground shadow-primary/25 border border-primary scale-[1.02]"
+                      : "border border-white/80 bg-white/80 text-brand-deep hover:bg-white hover:border-primary/30"
+                  }`}
+                  aria-label="Abrir panel desplegable de filtros avanzados"
+                >
+                  <SlidersHorizontal className="size-4" />
+                  <span className="font-extrabold">Filtros</span>
+                  {activeFiltersCount > 0 && (
+                    <span className="grid size-5 place-items-center rounded-full bg-offer text-offer-foreground text-[10px] font-black shadow-xs">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Active Filter Chips */}
+              {(activeFiltersCount > 0 || searchQuery) && (
+                <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2 animate-in fade-in duration-300">
+                  <span className="text-[11px] font-bold text-muted-foreground mr-1">
+                    Filtros activos:
+                  </span>
+
+                  {searchQuery && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 border border-white px-3 py-1 text-xs font-semibold text-brand-deep shadow-2xs">
+                      <span>"{searchQuery}"</span>
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="hover:text-destructive"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  )}
+
+                  {isPriceFiltered && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-bold text-primary shadow-2xs">
+                      <span>${filters.minPrice.toFixed(2)} - ${filters.maxPrice.toFixed(2)}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFilters({
+                            ...filters,
+                            minPrice: absoluteMinPrice,
+                            maxPrice: absoluteMaxPrice,
+                          })
+                        }
+                        className="hover:text-destructive"
+                        title="Quitar filtro de precio"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  )}
+
+                  {filters.selectedCategories.map((catId) => {
+                    const catObj = CATEGORIES.find((c) => c.id === catId);
+                    return (
+                      <span
+                        key={catId}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white/80 border border-white px-3 py-1 text-xs font-bold text-brand-deep shadow-2xs"
+                      >
+                        <span>{catObj?.shortName || catId}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = filters.selectedCategories.filter(
+                              (id) => id !== catId
+                            );
+                            setFilters({ ...filters, selectedCategories: updated });
+                          }}
+                          className="hover:text-destructive"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+
+                  {filters.onlyOffers && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-offer/15 border border-offer/30 px-3 py-1 text-xs font-bold text-offer shadow-2xs">
+                      <Tag className="size-3" />
+                      <span>Solo ofertas</span>
+                      <button
+                        type="button"
+                        onClick={() => setFilters({ ...filters, onlyOffers: false })}
+                        className="hover:text-destructive"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  )}
+
+                  {filters.minRating > 0 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-700 shadow-2xs">
+                      <Star className="size-3 fill-current" />
+                      <span>4.8★+</span>
+                      <button
+                        type="button"
+                        onClick={() => setFilters({ ...filters, minRating: 0 })}
+                        className="hover:text-destructive"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  )}
+
+                  {filters.onlyFavorites && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 border border-rose-200 px-3 py-1 text-xs font-bold text-rose-700 shadow-2xs">
+                      <Heart className="size-3 fill-current" />
+                      <span>Favoritos</span>
+                      <button
+                        type="button"
+                        onClick={() => setFilters({ ...filters, onlyFavorites: false })}
+                        className="hover:text-destructive"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  )}
+
                   <button
                     type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 grid size-7 place-items-center rounded-full bg-muted/80 text-muted-foreground hover:text-foreground active:scale-90"
-                    aria-label="Borrar búsqueda"
+                    onClick={handleResetFilters}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground hover:underline ml-1"
                   >
-                    <X className="size-4" />
+                    <RotateCcw className="size-3" />
+                    <span>Limpiar todo</span>
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -245,6 +487,26 @@ export const StorePage: React.FC<StorePageProps> = ({
                 </button>
               );
             })}
+
+            {/* Quick Filtros Button inside category dock */}
+            <button
+              type="button"
+              onClick={() => setIsFilterDrawerOpen(true)}
+              className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all duration-300 active:scale-95 border ${
+                activeFiltersCount > 0
+                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                  : "bg-white/60 text-foreground border-white/80 hover:bg-white"
+              }`}
+              aria-label="Abrir panel de filtros avanzados"
+            >
+              <SlidersHorizontal className="size-3.5" />
+              <span>Filtros</span>
+              {activeFiltersCount > 0 && (
+                <span className="grid size-4 place-items-center rounded-full bg-offer text-offer-foreground text-[9px] font-black">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
           </div>
 
           {/* Quick Cart Pill & WhatsApp on Desktop dock */}
@@ -279,6 +541,12 @@ export const StorePage: React.FC<StorePageProps> = ({
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-16">
         {CATEGORIES.map((cat) => {
           if (selectedFilter !== "todas" && selectedFilter !== cat.id) {
+            return null;
+          }
+          if (
+            filters.selectedCategories.length > 0 &&
+            !filters.selectedCategories.includes(cat.id)
+          ) {
             return null;
           }
 
@@ -476,21 +744,36 @@ export const StorePage: React.FC<StorePageProps> = ({
         })}
 
         {filteredProducts.length === 0 && (
-          <div className="rounded-[36px] liquid-glass p-14 text-center">
-            <Search className="mx-auto size-12 text-muted-foreground/60" />
-            <h3 className="mt-4 text-xl font-bold text-foreground">
-              No encontramos resultados para "{searchQuery}"
+          <div className="rounded-[36px] liquid-glass p-12 sm:p-16 text-center max-w-2xl mx-auto shadow-lg">
+            <div className="mx-auto grid size-16 place-items-center rounded-3xl bg-muted/60 text-muted-foreground mb-4">
+              <Search className="size-8 text-muted-foreground/80" />
+            </div>
+            <h3 className="text-2xl font-black text-brand-deep tracking-tight">
+              No encontramos productos que coincidan
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Prueba con términos como arroz, leche, atún o detergente.
+            <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+              {searchQuery
+                ? `No hay resultados para "${searchQuery}" con los filtros seleccionados.`
+                : "No hay productos en este rango de precios o con los filtros activos."}
             </p>
-            <Button
-              variant="outline"
-              onClick={() => setSearchQuery("")}
-              className="mt-6 rounded-full border-white bg-white/70"
-            >
-              Ver todos los productos
-            </Button>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <Button
+                variant="default"
+                onClick={handleResetFilters}
+                className="rounded-full bg-primary text-primary-foreground text-xs font-bold px-6 shadow-md"
+              >
+                <RotateCcw className="size-3.5 mr-1.5" />
+                Restablecer todos los filtros
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsFilterDrawerOpen(true)}
+                className="rounded-full border-border bg-white/80 text-xs font-bold px-5"
+              >
+                <SlidersHorizontal className="size-3.5 mr-1.5" />
+                Ajustar filtros
+              </Button>
+            </div>
           </div>
         )}
       </main>
@@ -516,6 +799,20 @@ export const StorePage: React.FC<StorePageProps> = ({
           <ArrowUp className="size-5" />
         </button>
       )}
+
+      {/* Advanced Filter Drawer (Slide-over Lateral Panel) */}
+      <AdvancedFilterDrawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        filters={filters}
+        onFiltersChange={setFilters}
+        onResetFilters={handleResetFilters}
+        totalAvailable={ALL_PRODUCTS.length}
+        matchedCount={filteredProducts.length}
+        absoluteMinPrice={absoluteMinPrice}
+        absoluteMaxPrice={absoluteMaxPrice}
+        hasFavorites={favorites.size > 0}
+      />
     </div>
   );
 };

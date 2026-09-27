@@ -11,15 +11,19 @@ import {
   ShoppingBasket,
   Sparkles,
   Home as HomeIcon,
+  User,
+  Fingerprint,
 } from "lucide-react";
 import { CATEGORIES, CategoryId } from "@/data/products";
 
 interface ThumbBottomNavProps {
-  currentPage: "inicio" | "tienda";
-  onNavigate: (page: "inicio" | "tienda", categoryId?: CategoryId) => void;
+  currentPage: "inicio" | "tienda" | "auth";
+  onNavigate: (page: "inicio" | "tienda" | "auth", categoryId?: CategoryId) => void;
   cartCount: number;
   onOpenCart: () => void;
   onOpenSearch: () => void;
+  currentUser?: { name: string; email: string; hasBiometrics?: boolean } | null;
+  onOpenAuth?: () => void;
 }
 
 const categoryIcons = {
@@ -35,6 +39,8 @@ export const ThumbBottomNav: React.FC<ThumbBottomNavProps> = ({
   cartCount,
   onOpenCart,
   onOpenSearch,
+  currentUser,
+  onOpenAuth,
 }) => {
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
 
@@ -184,6 +190,47 @@ export const ThumbBottomNav: React.FC<ThumbBottomNavProps> = ({
                 aria-label="Cerrar panel"
               >
                 <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Mobile User Account Quick Tile */}
+            <div className="mt-3.5 p-3.5 rounded-2xl liquid-glass-card border border-white/80 flex items-center justify-between shadow-2xs">
+              <div className="flex items-center gap-3">
+                <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary font-black text-sm">
+                  {currentUser ? (
+                    currentUser.name.charAt(0).toUpperCase()
+                  ) : (
+                    <User className="size-5 text-primary" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-black text-foreground">
+                      {currentUser ? currentUser.name : "Iniciar Sesión"}
+                    </p>
+                    {currentUser?.hasBiometrics && (
+                      <span className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                        <Fingerprint className="size-2.5" />
+                        Huella
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {currentUser ? currentUser.email : "Requerido para comprar en la tienda"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCategorySheetOpen(false);
+                  if (onOpenAuth) onOpenAuth();
+                  else onNavigate("auth");
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-[11px] font-bold shadow-xs active:scale-95 transition-all"
+              >
+                {currentUser ? "Gestionar" : "Acceder"}
               </button>
             </div>
 

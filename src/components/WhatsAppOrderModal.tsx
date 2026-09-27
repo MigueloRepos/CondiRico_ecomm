@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { ALL_PRODUCTS } from "@/data/products";
+import { UserProfile } from "@/lib/auth";
+import { Lock, LogIn, Fingerprint, ShieldCheck } from "lucide-react";
 
 interface WhatsAppOrderModalProps {
   isOpen: boolean;
@@ -20,6 +22,8 @@ interface WhatsAppOrderModalProps {
   cart: Record<number, number>;
   onClearCart?: () => void;
   phoneNumber?: string; // e.g. "34600123456" or "18002663474"
+  currentUser?: UserProfile | null;
+  onRequireLogin?: () => void;
 }
 
 export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
@@ -28,14 +32,25 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
   cart,
   onClearCart,
   phoneNumber = "34600123456",
+  currentUser,
+  onRequireLogin,
 }) => {
-  const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
-  const [phone, setPhone] = useState("");
+  const [name, setName] = useState(currentUser?.name || "");
+  const [address, setAddress] = useState(currentUser?.address || "");
+  const [phone, setPhone] = useState(currentUser?.phone || "");
   const [paymentMethod, setPaymentMethod] = useState("Efectivo contra entrega");
   const [notes, setNotes] = useState("");
   const [copied, setCopied] = useState(false);
   const [sentOrder, setSentOrder] = useState(false);
+
+  // Sync with currentUser if it changes
+  React.useEffect(() => {
+    if (currentUser) {
+      if (!name) setName(currentUser.name);
+      if (!phone && currentUser.phone) setPhone(currentUser.phone);
+      if (!address && currentUser.address) setAddress(currentUser.address);
+    }
+  }, [currentUser]);
 
   // Filter items in cart
   const cartItems = useMemo(() => {
@@ -141,7 +156,45 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
           </div>
         </div>
 
-        {sentOrder ? (
+        {/* Enforce authentication requirement */}
+        {!currentUser ? (
+          <div className="py-8 text-center animate-in fade-in">
+            <div className="mx-auto grid size-16 place-items-center rounded-3xl bg-amber-100 text-amber-900 border border-amber-300 shadow-md">
+              <Lock className="size-8 text-amber-800" />
+            </div>
+            <h3 className="mt-4 text-2xl font-black text-brand-deep">
+              Inicia sesión para comprar
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+              Por motivos de seguridad, seguimiento y garantía de entrega rápida en 24h, <strong>solamente los clientes registrados</strong> pueden tramitar pedidos en CondiRico.
+            </p>
+            <div className="mt-4 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+              <Fingerprint className="size-4 text-emerald-600" />
+              <span>Podrás acceder con tu huella dactilar una vez registrado</span>
+            </div>
+
+            <div className="mt-7 flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  if (onRequireLogin) onRequireLogin();
+                }}
+                className="h-12 rounded-full bg-primary px-7 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/25 liquid-glass-button active:scale-95 flex items-center gap-2"
+              >
+                <LogIn className="size-4" />
+                <span>Iniciar Sesión / Registrarme para Comprar</span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-12 rounded-full border border-white/80 bg-white/80 px-6 text-xs font-bold text-foreground shadow-xs hover:bg-white"
+              >
+                Seguir explorando
+              </button>
+            </div>
+          </div>
+        ) : sentOrder ? (
           /* Confirmation State after clicking Send */
           <div className="py-8 text-center animate-in fade-in">
             <div className="mx-auto grid size-16 place-items-center rounded-3xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/30">
@@ -176,6 +229,24 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
           </div>
         ) : (
           <div className="mt-5 space-y-6">
+            {/* Authenticated Customer Pill */}
+            {currentUser && (
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-xs shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
+                  <span className="text-emerald-950 font-bold">
+                    Comprador verificado: <strong className="underline">{currentUser.name}</strong> ({currentUser.email})
+                  </span>
+                </div>
+                {currentUser.hasBiometrics && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-800 bg-emerald-200/70 px-2 py-0.5 rounded-full">
+                    <Fingerprint className="size-3 text-emerald-700" />
+                    Huella activa
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* 1. Resumen de compra */}
             <div className="rounded-2xl liquid-glass-card p-4">
               <div className="flex items-center justify-between border-b border-white/60 pb-2.5 text-xs font-bold text-muted-foreground">

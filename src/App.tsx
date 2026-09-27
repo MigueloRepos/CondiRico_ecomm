@@ -9,6 +9,7 @@ import {
   Heart,
   Home,
   Instagram,
+  LayoutGrid,
   Leaf,
   Mail,
   MapPin,
@@ -43,6 +44,15 @@ import { StorePage } from "@/components/StorePage";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { WhatsAppOrderModal } from "@/components/WhatsAppOrderModal";
 import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
+import { AuthPage } from "@/components/AuthPage";
+import { UserProfile, getCurrentSessionUser, setSessionUser } from "@/lib/auth";
+import {
+  Fingerprint,
+  LogIn,
+  LogOut,
+  User as UserIcon,
+  ShieldAlert,
+} from "lucide-react";
 import {
   CATEGORIES,
   ALL_PRODUCTS,
@@ -93,8 +103,9 @@ function Brand({
 }
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<"inicio" | "tienda">("inicio");
+  const [currentPage, setCurrentPage] = useState<"inicio" | "tienda" | "auth">("inicio");
   const [targetCategory, setTargetCategory] = useState<CategoryId | null>(null);
+  const [categoryViewMode, setCategoryViewMode] = useState<"cards" | "icons">("cards");
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
@@ -104,6 +115,9 @@ export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentSessionUser());
+  const [intendedAuthNotice, setIntendedAuthNotice] = useState<string>("");
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
   const [contactForm, setContactForm] = useState({
@@ -137,6 +151,8 @@ export default function App() {
         else if (hash.includes("necesidad")) setTargetCategory("primera-necesidad");
         else if (hash.includes("limpieza")) setTargetCategory("limpieza");
         else if (hash.includes("utiles")) setTargetCategory("utiles");
+      } else if (hash === "#auth") {
+        setCurrentPage("auth");
       } else if (hash === "#inicio" || hash === "") {
         setCurrentPage("inicio");
       }
@@ -184,17 +200,50 @@ export default function App() {
       return updated;
     });
 
-  const navigateTo = (page: "inicio" | "tienda", categoryId?: CategoryId) => {
+  const navigateTo = (page: "inicio" | "tienda" | "auth", categoryId?: CategoryId) => {
     setCurrentPage(page);
     setMenuOpen(false);
+    setUserDropdownOpen(false);
     if (page === "tienda") {
       setTargetCategory(categoryId || null);
       window.location.hash = categoryId ? `#tienda-${categoryId}` : "#tienda";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (page === "auth") {
+      window.location.hash = "#auth";
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       window.location.hash = "#inicio";
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+  };
+
+  const handleLogout = () => {
+    setSessionUser(null);
+    setCurrentUser(null);
+    setUserDropdownOpen(false);
+  };
+
+  const handleSuccessAuth = (user: UserProfile) => {
+    setCurrentUser(user);
+    if (intendedAuthNotice) {
+      setIntendedAuthNotice("");
+      setCartOpen(false);
+      setWhatsAppModalOpen(true);
+      navigateTo("tienda");
+    } else {
+      navigateTo("tienda");
+    }
+  };
+
+  const handleProceedToCheckout = () => {
+    if (!currentUser) {
+      setIntendedAuthNotice("Para comprar y finalizar tu pedido necesitas iniciar sesión o registrarte.");
+      setCartOpen(false);
+      navigateTo("auth");
+      return;
+    }
+    setCartOpen(false);
+    setWhatsAppModalOpen(true);
   };
 
   return (
@@ -431,6 +480,76 @@ export default function App() {
               )}
             </button>
 
+            {/* User Account / Biometrics Status */}
+            {currentUser ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setUserDropdownOpen((o) => !o)}
+                  className="flex items-center gap-2 rounded-full border border-emerald-300/80 bg-emerald-50/90 pl-1.5 pr-2.5 sm:pr-3 py-1 text-xs font-bold text-emerald-950 shadow-xs backdrop-blur-md transition-all hover:bg-emerald-100/90 active:scale-95"
+                  aria-label="Abrir menú de usuario"
+                >
+                  <div className="grid size-7 place-items-center rounded-full bg-emerald-600 text-white font-black text-xs shadow-xs">
+                    {currentUser.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="hidden sm:inline max-w-[85px] truncate">{currentUser.name}</span>
+                  {currentUser.hasBiometrics && (
+                    <Fingerprint className="size-3.5 text-emerald-600 shrink-0" />
+                  )}
+                </button>
+
+                {userDropdownOpen && (
+                  <div
+                    className="absolute right-0 mt-2 w-56 rounded-2xl liquid-glass-dock p-3 shadow-2xl border border-white/80 animate-in fade-in zoom-in-95 z-50 text-left"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="px-2 py-1.5 border-b border-white/60 mb-2">
+                      <p className="text-xs font-black text-foreground truncate">{currentUser.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{currentUser.email}</p>
+                      {currentUser.hasBiometrics ? (
+                        <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-700">
+                          <Fingerprint className="size-3" />
+                          <span>Huella dactilar activa</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserDropdownOpen(false);
+                            navigateTo("auth");
+                          }}
+                          className="mt-1 text-[10px] font-bold text-primary hover:underline flex items-center gap-1"
+                        >
+                          <Fingerprint className="size-3" />
+                          <span>Activar huella biométrica</span>
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50/80 transition-colors"
+                    >
+                      <LogOut className="size-3.5" />
+                      <span>Cerrar sesión</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setIntendedAuthNotice("");
+                  navigateTo("auth");
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3 sm:px-3.5 py-2 text-xs font-bold text-foreground shadow-xs backdrop-blur-md transition-all duration-300 hover:bg-white hover:text-primary active:scale-95"
+              >
+                <UserIcon className="size-3.5 text-primary" />
+                <span className="hidden sm:inline">Iniciar Sesión</span>
+              </button>
+            )}
+
             <button
               type="button"
               className="grid size-10 place-items-center rounded-full border border-white/80 bg-white/70 text-foreground lg:hidden shadow-xs backdrop-blur-md active:scale-90"
@@ -446,6 +565,47 @@ export default function App() {
         {menuOpen && (
           <nav className="border-t border-white/60 bg-white/85 px-4 py-5 backdrop-blur-2xl lg:hidden animate-in slide-in-from-top-2 shadow-2xl">
             <div className="mx-auto grid max-w-7xl gap-2">
+              {/* Account Quick Card */}
+              <div className="p-3.5 rounded-2xl liquid-glass-card border border-white/80 flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="grid size-10 place-items-center rounded-xl bg-emerald-100 text-emerald-800 font-bold text-sm">
+                    {currentUser ? currentUser.name.charAt(0).toUpperCase() : <UserIcon className="size-5" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-foreground truncate max-w-[150px]">
+                      {currentUser ? currentUser.name : "Tu Cuenta CondiRico"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {currentUser ? (currentUser.hasBiometrics ? "Huella dactilar activa" : currentUser.email) : "Acceso seguro para comprar"}
+                    </p>
+                  </div>
+                </div>
+                {currentUser ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="px-2.5 py-1 text-[11px] font-bold text-rose-600 bg-rose-50 rounded-lg hover:bg-rose-100"
+                  >
+                    Salir
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setIntendedAuthNotice("");
+                      navigateTo("auth");
+                    }}
+                    className="px-3.5 py-1.5 text-xs font-bold text-primary-foreground bg-primary rounded-xl shadow-xs"
+                  >
+                    Acceder
+                  </button>
+                )}
+              </div>
+
               <button
                 type="button"
                 onClick={() => navigateTo("inicio")}
@@ -573,7 +733,14 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1">
-        {currentPage === "tienda" ? (
+        {currentPage === "auth" ? (
+          <AuthPage
+            onSuccessAuth={handleSuccessAuth}
+            onNavigate={navigateTo}
+            intendedActionNotice={intendedAuthNotice}
+            cartCount={cartCount}
+          />
+        ) : currentPage === "tienda" ? (
           <StorePage
             initialCategory={targetCategory}
             cart={cart}
@@ -581,7 +748,14 @@ export default function App() {
             favorites={favorites}
             onToggleFavorite={toggleFavorite}
             onOpenCart={() => setCartOpen(true)}
-            onOpenWhatsAppOrder={() => setWhatsAppModalOpen(true)}
+            onOpenWhatsAppOrder={() => {
+              if (!currentUser) {
+                setIntendedAuthNotice("Para realizar tu pedido y comprar debes iniciar sesión o registrarte.");
+                navigateTo("auth");
+              } else {
+                setWhatsAppModalOpen(true);
+              }
+            }}
           />
         ) : (
           <div>
@@ -747,60 +921,127 @@ export default function App() {
                   title="Compra por categoría"
                   align="left"
                 />
-                <button
-                  type="button"
-                  onClick={() => navigateTo("tienda")}
-                  className="rounded-full border border-white/80 bg-white/70 px-5 py-2 text-xs font-bold text-primary shadow-xs backdrop-blur-md transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95 self-start sm:self-auto flex items-center gap-2"
-                >
-                  <StoreIcon className="size-3.5" />
-                  <span>Ver todas en la Tienda</span>
-                  <ArrowRight className="size-3.5" />
-                </button>
+                <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+                  {/* Selector de Vista: Tarjetas vs Solo Iconos */}
+                  <div className="inline-flex items-center rounded-full border border-white/80 bg-white/70 p-1 shadow-2xs backdrop-blur-md">
+                    <button
+                      type="button"
+                      onClick={() => setCategoryViewMode("cards")}
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all duration-300 ${
+                        categoryViewMode === "cards"
+                          ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                          : "text-muted-foreground hover:text-foreground hover:bg-white/50"
+                      }`}
+                      aria-label="Ver tarjetas completas"
+                    >
+                      <LayoutGrid className="size-3.5" />
+                      <span>Tarjetas</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCategoryViewMode("icons")}
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all duration-300 ${
+                        categoryViewMode === "icons"
+                          ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                          : "text-muted-foreground hover:text-foreground hover:bg-white/50"
+                      }`}
+                      aria-label="Mostrar solamente los iconos"
+                    >
+                      <Sparkles className="size-3.5" />
+                      <span>Solo Iconos</span>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => navigateTo("tienda")}
+                    className="rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-bold text-primary shadow-xs backdrop-blur-md transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95 flex items-center gap-2"
+                  >
+                    <StoreIcon className="size-3.5" />
+                    <span>Ver todas</span>
+                    <ArrowRight className="size-3.5" />
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-                {CATEGORIES.map((category, idx) => {
-                  const Icon = categoryIconMap[category.id];
-                  return (
-                    <motion.button
-                      key={category.id}
-                      type="button"
-                      initial={{ opacity: 0, y: 25 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.5, delay: idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                      whileHover={{ y: -6, scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => navigateTo("tienda", category.id)}
-                      className="group relative flex flex-col justify-between rounded-[32px] liquid-glass-card liquid-reflection p-7 text-left"
-                    >
-                      <div>
-                        <div
-                          className={`grid size-14 place-items-center rounded-2xl border shadow-sm transition-transform duration-500 group-hover:scale-110 ${category.accent}`}
-                        >
-                          <Icon className="size-7" />
+              {categoryViewMode === "cards" ? (
+                /* Vista Completa: Tarjetas Detalladas */
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+                  {CATEGORIES.map((category, idx) => {
+                    const Icon = categoryIconMap[category.id];
+                    return (
+                      <motion.button
+                        key={category.id}
+                        type="button"
+                        initial={{ opacity: 0, y: 25 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                        whileHover={{ y: -6, scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => navigateTo("tienda", category.id)}
+                        className="group relative flex flex-col justify-between rounded-[32px] liquid-glass-card liquid-reflection p-7 text-left"
+                      >
+                        <div>
+                          <div
+                            className={`grid size-14 place-items-center rounded-2xl border shadow-sm transition-transform duration-500 group-hover:scale-110 ${category.accent}`}
+                          >
+                            <Icon className="size-7" />
+                          </div>
+                          <span className="mt-5 inline-block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                            {category.count}
+                          </span>
+                          <h3 className="mt-1 text-xl font-extrabold leading-snug text-brand-deep transition-colors group-hover:text-primary">
+                            {category.name}
+                          </h3>
+                          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                            {category.description}
+                          </p>
                         </div>
-                        <span className="mt-5 inline-block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                          {category.count}
-                        </span>
-                        <h3 className="mt-1 text-xl font-extrabold leading-snug text-brand-deep transition-colors group-hover:text-primary">
+
+                        <div className="mt-7 flex items-center justify-between border-t border-white/60 pt-4 text-xs font-bold text-primary">
+                          <span>Explorar en Tienda</span>
+                          <div className="grid size-7 place-items-center rounded-full bg-white/80 shadow-2xs group-hover:translate-x-1 transition-transform">
+                            <ArrowRight className="size-3.5" />
+                          </div>
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Vista Alternativa: Solo Iconos de la Categoría */
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6">
+                  {CATEGORIES.map((category, idx) => {
+                    const Icon = categoryIconMap[category.id];
+                    return (
+                      <motion.button
+                        key={category.id}
+                        type="button"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.4, delay: idx * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                        whileHover={{ y: -6, scale: 1.04 }}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => navigateTo("tienda", category.id)}
+                        className="group relative flex flex-col items-center justify-center rounded-[32px] liquid-glass-card liquid-reflection p-6 sm:p-8 text-center shadow-xs transition-shadow hover:shadow-lg"
+                      >
+                        <div
+                          className={`grid size-20 sm:size-24 place-items-center rounded-3xl border shadow-sm transition-transform duration-500 group-hover:scale-115 group-hover:rotate-2 ${category.accent}`}
+                        >
+                          <Icon className="size-10 sm:size-12" />
+                        </div>
+                        <h3 className="mt-4 text-base sm:text-lg font-black text-brand-deep group-hover:text-primary transition-colors">
                           {category.name}
                         </h3>
-                        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                          {category.description}
-                        </p>
-                      </div>
-
-                      <div className="mt-7 flex items-center justify-between border-t border-white/60 pt-4 text-xs font-bold text-primary">
-                        <span>Explorar en Tienda</span>
-                        <div className="grid size-7 place-items-center rounded-full bg-white/80 shadow-2xs group-hover:translate-x-1 transition-transform">
-                          <ArrowRight className="size-3.5" />
-                        </div>
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </div>
+                        <span className="mt-1.5 inline-block text-[11px] font-bold text-muted-foreground bg-white/80 border border-white/90 px-3 py-0.5 rounded-full shadow-2xs">
+                          {category.count}
+                        </span>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              )}
             </motion.section>
 
             {/* Featured Products Rail with Frosted Glass Cards */}
@@ -1490,6 +1731,11 @@ export default function App() {
         cartCount={cartCount}
         onOpenCart={() => setCartOpen(true)}
         onOpenSearch={() => setSearchModalOpen(true)}
+        currentUser={currentUser}
+        onOpenAuth={() => {
+          setIntendedAuthNotice("");
+          navigateTo("auth");
+        }}
       />
 
       {/* Thumb Search Modal */}
@@ -1506,7 +1752,14 @@ export default function App() {
 
       {/* Floating WhatsApp Button */}
       <FloatingWhatsAppButton
-        onClick={() => setWhatsAppModalOpen(true)}
+        onClick={() => {
+          if (!currentUser) {
+            setIntendedAuthNotice("Para comprar y tramitar tu pedido por WhatsApp debes iniciar sesión.");
+            navigateTo("auth");
+          } else {
+            setWhatsAppModalOpen(true);
+          }
+        }}
         cartCount={cartCount}
       />
 
@@ -1516,6 +1769,11 @@ export default function App() {
         onClose={() => setWhatsAppModalOpen(false)}
         cart={cart}
         onClearCart={() => setCart({})}
+        currentUser={currentUser}
+        onRequireLogin={() => {
+          setIntendedAuthNotice("Para tramitar tu pedido por WhatsApp debes iniciar sesión o registrarte.");
+          navigateTo("auth");
+        }}
       />
 
       {/* Shopping Cart Drawer: Apple Frosted Glass Layer */}
@@ -1641,16 +1899,29 @@ export default function App() {
                     {cartTotal >= 35 ? "Gratis" : "$3.50 (Gratis desde $35)"}
                   </span>
                 </div>
+                {!currentUser && (
+                  <div className="mt-3 p-3 rounded-2xl bg-amber-50/90 border border-amber-200 text-xs text-amber-950 flex items-start gap-2 shadow-2xs">
+                    <ShieldAlert className="size-4 text-amber-700 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Acceso requerido para comprar</p>
+                      <p className="text-[11px] text-amber-800/90 mt-0.5">
+                        Inicia sesión o regístrate para tramitar tu compra y envíos en 24h.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => {
-                    setCartOpen(false);
-                    setWhatsAppModalOpen(true);
-                  }}
-                  className="mt-4 h-13 w-full rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/30 liquid-glass-button active:scale-95"
+                  onClick={handleProceedToCheckout}
+                  className="mt-3.5 h-13 w-full rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/30 liquid-glass-button active:scale-95"
                 >
                   <WhatsAppIcon className="size-5" />
-                  <span>Pedir por WhatsApp (${(cartTotal >= 35 ? cartTotal : cartTotal + 3.5).toFixed(2)})</span>
+                  <span>
+                    {currentUser
+                      ? `Confirmar y Pedir (${(cartTotal >= 35 ? cartTotal : cartTotal + 3.5).toFixed(2)}$)`
+                      : "Iniciar Sesión para Comprar"}
+                  </span>
                 </button>
 
                 <button
