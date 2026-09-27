@@ -82,6 +82,8 @@ let supabaseInstance: SupabaseClient = (() => {
   });
 })();
 
+export const supabase = supabaseInstance;
+
 export function getSupabase(): SupabaseClient {
   return supabaseInstance;
 }
@@ -296,6 +298,26 @@ export async function updateSupabaseUserProfile(params: {
     }
 
     if (data.user) {
+      // Also sync public.profiles table
+      try {
+        await supabase.from("profiles").upsert({
+          id: data.user.id,
+          full_name: params.fullName.trim(),
+          phone: params.phone.trim(),
+          address: params.address.trim(),
+          city: params.city?.trim() || null,
+          postal_code: params.postalCode?.trim() || null,
+          delivery_instructions: params.deliveryInstructions?.trim() || null,
+          offers_newsletter: params.offersNewsletter ?? true,
+          whatsapp_updates: params.whatsappUpdates ?? true,
+          preferred_invoice_type: params.preferredInvoiceType || "boleta",
+          has_biometrics: params.hasBiometrics ?? false,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (profileErr) {
+        console.warn("[updateSupabaseUserProfile] profiles table sync warning:", profileErr);
+      }
+
       const updatedProfile = mapSupabaseUserToProfile(data.user);
       return { user: updatedProfile, error: null };
     }

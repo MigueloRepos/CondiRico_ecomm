@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Search, X, Plus, Check, ArrowRight, Mic, Sparkles } from "lucide-react";
-import { ALL_PRODUCTS, CategoryId } from "@/data/products";
+import { ALL_PRODUCTS, CategoryId, ProductItem } from "@/data/products";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { VoiceSearchModal } from "@/components/VoiceSearchModal";
 
@@ -10,6 +10,7 @@ interface ThumbSearchModalProps {
   onAddToCart: (id: number, amount: number) => void;
   cart: Record<number, number>;
   onNavigateToStore: () => void;
+  productsList?: ProductItem[];
 }
 
 const POPULAR_SEARCHES = [
@@ -29,6 +30,7 @@ export const ThumbSearchModal: React.FC<ThumbSearchModalProps> = ({
   onAddToCart,
   cart,
   onNavigateToStore,
+  productsList = ALL_PRODUCTS,
 }) => {
   const [query, setQuery] = useState("");
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
@@ -36,13 +38,13 @@ export const ThumbSearchModal: React.FC<ThumbSearchModalProps> = ({
   const searchResults = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase().trim();
-    return ALL_PRODUCTS.filter(
+    return productsList.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.detail.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q)
     ).slice(0, 6);
-  }, [query]);
+  }, [query, productsList]);
 
   if (!isOpen) return null;
 

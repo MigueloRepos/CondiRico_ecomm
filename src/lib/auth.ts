@@ -18,6 +18,7 @@ export interface UserProfile {
   biometricCredentialId?: string;
   createdAt: string;
   preferences?: UserPreferences;
+  role?: "customer" | "admin" | string;
 }
 
 const USERS_STORAGE_KEY = "condirico_users_v1";

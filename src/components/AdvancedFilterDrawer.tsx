@@ -13,7 +13,7 @@ import {
   Home as HomeIcon,
   ArrowUpDown,
 } from "lucide-react";
-import { CATEGORIES, CategoryId } from "@/data/products";
+import { CATEGORIES, CategoryId, CategoryInfo } from "@/data/products";
 
 export type SortOption =
   | "default"
@@ -43,6 +43,7 @@ interface AdvancedFilterDrawerProps {
   absoluteMinPrice: number;
   absoluteMaxPrice: number;
   hasFavorites: boolean;
+  categoriesList?: CategoryInfo[];
 }
 
 const CATEGORY_ICONS: Record<CategoryId, React.ElementType> = {
@@ -62,6 +63,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
   absoluteMinPrice,
   absoluteMaxPrice,
   hasFavorites,
+  categoriesList = CATEGORIES,
 }) => {
   if (!isOpen) return null;
 
@@ -77,12 +79,12 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
   };
 
   const handleSelectAllCategories = () => {
-    if (filters.selectedCategories.length === CATEGORIES.length) {
+    if (filters.selectedCategories.length === categoriesList.length) {
       onFiltersChange({ ...filters, selectedCategories: [] });
     } else {
       onFiltersChange({
         ...filters,
-        selectedCategories: CATEGORIES.map((c) => c.id),
+        selectedCategories: categoriesList.map((c) => c.id),
       });
     }
   };
@@ -188,15 +190,15 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
                 onClick={handleSelectAllCategories}
                 className="text-xs font-bold text-primary hover:underline"
               >
-                {filters.selectedCategories.length === CATEGORIES.length
+                {filters.selectedCategories.length === categoriesList.length
                   ? "Deseleccionar todas"
                   : "Todas las categorías"}
               </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {CATEGORIES.map((cat) => {
-                const Icon = CATEGORY_ICONS[cat.id];
+              {categoriesList.map((cat) => {
+                const Icon = (CATEGORY_ICONS as Record<string, React.ElementType>)[cat.id] || UtensilsCrossed;
                 const isSelected =
                   filters.selectedCategories.length === 0 ||
                   filters.selectedCategories.includes(cat.id);

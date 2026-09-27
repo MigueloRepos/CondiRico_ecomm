@@ -14,7 +14,7 @@ import {
   User,
   Fingerprint,
 } from "lucide-react";
-import { CATEGORIES, CategoryId } from "@/data/products";
+import { CATEGORIES, CategoryId, CategoryInfo } from "@/data/products";
 
 interface ThumbBottomNavProps {
   currentPage: "inicio" | "tienda" | "auth";
@@ -24,6 +24,7 @@ interface ThumbBottomNavProps {
   onOpenSearch: () => void;
   currentUser?: { name: string; email: string; hasBiometrics?: boolean } | null;
   onOpenAuth?: () => void;
+  categoriesList?: CategoryInfo[];
 }
 
 const categoryIcons = {
@@ -41,6 +42,7 @@ export const ThumbBottomNav: React.FC<ThumbBottomNavProps> = ({
   onOpenSearch,
   currentUser,
   onOpenAuth,
+  categoriesList = CATEGORIES,
 }) => {
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
 
@@ -235,8 +237,8 @@ export const ThumbBottomNav: React.FC<ThumbBottomNavProps> = ({
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-3">
-              {CATEGORIES.map((cat) => {
-                const Icon = categoryIcons[cat.id];
+              {categoriesList.map((cat) => {
+                const Icon = (categoryIcons as Record<string, React.ElementType>)[cat.id] || UtensilsCrossed;
                 return (
                   <button
                     key={cat.id}

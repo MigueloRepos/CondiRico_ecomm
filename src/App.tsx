@@ -49,6 +49,7 @@ import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { WhatsAppOrderModal } from "@/components/WhatsAppOrderModal";
 import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
 import { AuthPage } from "@/components/AuthPage";
+import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { VoiceSearchModal } from "@/components/VoiceSearchModal";
 import { UserProfile, getCurrentSessionUser, setSessionUser } from "@/lib/auth";
@@ -58,18 +59,33 @@ import {
   LogOut,
   User as UserIcon,
   ShieldAlert,
+  ShieldCheck as ShieldCheckIcon,
 } from "lucide-react";
 import {
-  CATEGORIES,
-  ALL_PRODUCTS,
   CategoryId,
   ProductItem,
+  CategoryInfo,
 } from "@/data/products";
+import {
+  getProductItems,
+  getCategories,
+  mapCategoryFromDatabase,
+  getCart as getDbCart,
+  updateCartItem as updateDbCart,
+  removeFromCart as removeDbCart,
+  clearCart as clearDbCart,
+  syncLocalCartToSupabase,
+  getFavorites as getDbFavorites,
+  addFavorite as addDbFavorite,
+  removeFavorite as removeDbFavorite,
+  subscribeNewsletter,
+  sendContactMessage,
+} from "@/services";
 import heroImage from "@/assets/condirico-hero.jpg";
 import productsImage from "@/assets/condirico-products.jpg";
 import promoImage from "@/assets/condirico-promo.jpg";
 
-const categoryIconMap = {
+const categoryIconMap: Record<string, React.ElementType> = {
   alimentos: UtensilsCrossed,
   "primera-necesidad": ShoppingBasket,
   limpieza: Sparkles,
@@ -109,14 +125,19 @@ function Brand({
 }
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<"inicio" | "tienda" | "auth">("inicio");
+  const [currentPage, setCurrentPage] = useState<"inicio" | "tienda" | "auth" | "admin">("inicio");
   const [targetCategory, setTargetCategory] = useState<CategoryId | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
+  
+  // Real Dynamic Data from Supabase - Zero simulation
+  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [categories, setCategories] = useState<CategoryInfo[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
+
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
-  const [cart, setCart] = useState<Record<number, number>>({
-    1: 1, // Pre-seeded with 1 item for interactive showcase
-  });
+  const [cart, setCart] = useState<Record<number, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -125,7 +146,11 @@ export default function App() {
   const [intendedAuthNotice, setIntendedAuthNotice] = useState<string>("");
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterNotice, setNewsletterNotice] = useState<string | null>(null);
   const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [contactNotice, setContactNotice] = useState<string | null>(null);
+  const [isSendingContact, setIsSendingContact] = useState(false);
   const [contactForm, setContactForm] = useState({
     name: "",
     email: "",
@@ -139,6 +164,62 @@ export default function App() {
   const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
   const [isCarouselAutoPlay, setIsCarouselAutoPlay] = useState(true);
   const [isCarouselHovered, setIsCarouselHovered] = useState(false);
+
+  // 1. Fetch real dynamic products & categories directly from Supabase
+  const fetchCatalogData = async () => {
+    setIsLoadingProducts(true);
+    setProductsError(null);
+    try {
+      const [fetchedProds, fetchedCats] = await Promise.all([
+        getProductItems(),
+        getCategories(),
+      ]);
+
+      setProducts(fetchedProds || []);
+
+      if (fetchedCats && fetchedCats.length > 0) {
+        const mappedCats = fetchedCats.map((c) => {
+          const count = (fetchedProds || []).filter((p) => p.category === c.id).length;
+          return mapCategoryFromDatabase(c, count);
+        });
+        setCategories(mappedCats);
+      } else {
+        setCategories([]);
+      }
+    } catch (err) {
+      console.error("[App] Failed to fetch catalog from Supabase:", err);
+      setProductsError("No pudimos conectar con Supabase para cargar el catálogo.");
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCatalogData();
+  }, []);
+
+  // 2. Synchronize authenticated user's cart and favorites with Supabase
+  useEffect(() => {
+    if (currentUser?.id) {
+      // Sync Cart
+      getDbCart(currentUser.id).then((remoteCart) => {
+        if (remoteCart && Object.keys(remoteCart).length > 0) {
+          setCart(remoteCart);
+        } else if (Object.keys(cart).length > 0) {
+          syncLocalCartToSupabase(currentUser.id, cart).then((merged) => {
+            setCart(merged);
+          });
+        }
+      });
+
+      // Sync Favorites
+      getDbFavorites(currentUser.id).then((favIds) => {
+        if (favIds && favIds.length > 0) {
+          setFavorites(new Set(favIds));
+        }
+      });
+    }
+  }, [currentUser?.id]);
 
   const { scrollYProgress: heroScrollProgress } = useScroll({
     target: heroRef,
@@ -154,7 +235,10 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
-      if (hash.startsWith("#tienda")) {
+      const path = window.location.pathname;
+      if (hash.startsWith("#admin") || path.startsWith("/admin")) {
+        setCurrentPage("admin");
+      } else if (hash.startsWith("#tienda")) {
         setCurrentPage("tienda");
         if (hash.includes("alimentos")) setTargetCategory("alimentos");
         else if (hash.includes("necesidad")) setTargetCategory("primera-necesidad");
@@ -172,20 +256,22 @@ export default function App() {
   }, []);
 
   const cartCount = Object.values(cart).reduce((sum, amount) => sum + amount, 0);
-  const cartTotal = ALL_PRODUCTS.reduce(
+  const cartTotal = products.reduce(
     (sum, product) => sum + product.price * (cart[product.id] ?? 0),
     0
   );
 
   const featuredProducts = useMemo(() => {
-    const base = ALL_PRODUCTS.filter((p) => p.isPopular || p.pos);
-    if (!query) return base;
-    return ALL_PRODUCTS.filter((product) =>
+    // Dynamic Supabase filter: products marked is_featured = true or is_popular = true
+    const base = products.filter((p) => p.isFeatured || p.isPopular);
+    const list = base.length > 0 ? base : products;
+    if (!query) return list;
+    return list.filter((product) =>
       `${product.name} ${product.detail} ${product.category}`
         .toLowerCase()
         .includes(query.toLowerCase())
     );
-  }, [query]);
+  }, [products, query]);
 
   // Smooth scroll to product index
   const scrollToProductIndex = (index: number) => {
@@ -268,10 +354,17 @@ export default function App() {
   const toggleFavorite = (id: number) =>
     setFavorites((current) => {
       const next = new Set(current);
-      if (next.has(id)) {
+      const isFav = next.has(id);
+      if (isFav) {
         next.delete(id);
+        if (currentUser?.id) {
+          removeDbFavorite(currentUser.id, id).catch(console.warn);
+        }
       } else {
         next.add(id);
+        if (currentUser?.id) {
+          addDbFavorite(currentUser.id, id).catch(console.warn);
+        }
       }
       return next;
     });
@@ -281,14 +374,34 @@ export default function App() {
       const next = Math.max(0, (current[id] ?? 0) + amount);
       const updated = { ...current, [id]: next };
       if (!next) delete updated[id];
+
+      // Sync with Supabase cart_items in background if authenticated
+      if (currentUser?.id) {
+        if (next > 0) {
+          updateDbCart(currentUser.id, id, next).catch(console.warn);
+        } else {
+          removeDbCart(currentUser.id, id).catch(console.warn);
+        }
+      }
+
       return updated;
     });
 
-  const navigateTo = (page: "inicio" | "tienda" | "auth", categoryId?: CategoryId) => {
+  const handleClearCart = () => {
+    setCart({});
+    if (currentUser?.id) {
+      clearDbCart(currentUser.id).catch(console.warn);
+    }
+  };
+
+  const navigateTo = (page: "inicio" | "tienda" | "auth" | "admin", categoryId?: CategoryId) => {
     setCurrentPage(page);
     setMenuOpen(false);
     setUserDropdownOpen(false);
-    if (page === "tienda") {
+    if (page === "admin") {
+      window.location.hash = "#admin";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (page === "tienda") {
       setTargetCategory(categoryId || null);
       window.location.hash = categoryId ? `#tienda-${categoryId}` : "#tienda";
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -305,6 +418,8 @@ export default function App() {
     setSessionUser(null);
     setCurrentUser(null);
     setUserDropdownOpen(false);
+    setCart({});
+    setFavorites(new Set());
   };
 
   const handleSuccessAuth = (user: UserProfile) => {
@@ -329,6 +444,63 @@ export default function App() {
     setCartOpen(false);
     setWhatsAppModalOpen(true);
   };
+
+  // Newsletter Submission Handler connected with Supabase public.newsletter_subscribers
+  const handleNewsletterSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!newsletterEmail.trim()) return;
+
+    const res = await subscribeNewsletter(newsletterEmail);
+    setNewsletterNotice(res.message);
+    if (res.success) {
+      setSubscribed(true);
+      setNewsletterEmail("");
+    }
+  };
+
+  // Contact Form Submission Handler connected with Supabase public.contact_messages
+  const handleContactSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setIsSendingContact(true);
+    setContactNotice(null);
+
+    const res = await sendContactMessage({
+      name: contactForm.name,
+      email: contactForm.email,
+      phone: contactForm.phone,
+      topic: contactForm.topic,
+      message: contactForm.message,
+    });
+
+    setIsSendingContact(false);
+    if (res.success) {
+      setContactSubmitted(true);
+      setContactNotice(res.message);
+      setContactForm({
+        name: "",
+        email: "",
+        phone: "",
+        topic: "Consulta sobre un pedido",
+        message: "",
+      });
+    } else {
+      setContactNotice(res.message);
+    }
+  };
+
+  if (currentPage === "admin") {
+    return (
+      <AdminDashboard
+        currentUser={currentUser}
+        onNavigateHome={() => navigateTo("inicio")}
+        onNavigateLogin={() => {
+          setIntendedAuthNotice("Inicia sesión para ingresar al panel de administración.");
+          navigateTo("auth");
+        }}
+        onLogout={handleLogout}
+      />
+    );
+  }
 
   return (
     <div id="inicio" className="relative min-h-screen text-foreground flex flex-col selection:bg-sun selection:text-brand-deep">
@@ -614,6 +786,17 @@ export default function App() {
                         <UserIcon className="size-3.5 text-primary" />
                         <span>Mi Perfil & Preferencias</span>
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          navigateTo("admin");
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-500/15 hover:bg-emerald-500/25 transition-colors mb-1"
+                      >
+                        <ShieldCheckIcon className="size-3.5 text-emerald-600" />
+                        <span>Panel Administrativo</span>
+                      </button>
                       {currentUser.hasBiometrics ? (
                         <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-700 px-2 py-1">
                           <Fingerprint className="size-3" />
@@ -821,7 +1004,7 @@ export default function App() {
                 Secciones por Categoría
               </div>
 
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <button
                   key={cat.id}
                   type="button"
@@ -866,6 +1049,11 @@ export default function App() {
                 setWhatsAppModalOpen(true);
               }
             }}
+            productsList={products}
+            categoriesList={categories}
+            isLoading={isLoadingProducts}
+            error={productsError}
+            onRefresh={fetchCatalogData}
           />
         ) : (
           <div>
@@ -1034,7 +1222,7 @@ export default function App() {
                 <div className="flex items-center gap-3 self-start sm:self-auto">
                   <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3.5 py-1.5 text-xs font-bold text-muted-foreground backdrop-blur-md shadow-2xs">
                     <Sparkles className="size-3.5 text-offer" />
-                    <span>{CATEGORIES.length} categorías disponibles</span>
+                    <span>{categories.length} categorías disponibles</span>
                   </span>
 
                   <button
@@ -1050,46 +1238,74 @@ export default function App() {
               </div>
 
               {/* Grid de Iconos de Categorías Disponibles */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6">
-                {CATEGORIES.map((category, idx) => {
-                  const Icon = categoryIconMap[category.id];
-                  return (
-                    <motion.button
-                      key={category.id}
-                      type="button"
-                      initial={{ opacity: 0, scale: 0.92, y: 20 }}
-                      whileInView={{ opacity: 1, scale: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.45, delay: idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                      whileHover={{ y: -6, scale: 1.04 }}
-                      whileTap={{ scale: 0.96 }}
-                      onClick={() => navigateTo("tienda", category.id)}
-                      className="group relative flex flex-col items-center justify-center rounded-[32px] liquid-glass-card liquid-reflection p-6 sm:p-8 text-center shadow-xs transition-shadow hover:shadow-xl overflow-hidden"
+              {isLoadingProducts && categories.length === 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6">
+                  {[...Array(4)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded-[32px] liquid-glass p-6 sm:p-8 flex flex-col items-center justify-center animate-pulse"
                     >
-                      {/* Top Specular Edge */}
-                      <div className="absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
-
-                      <div
-                        className={`grid size-20 sm:size-24 place-items-center rounded-3xl border shadow-sm transition-transform duration-500 group-hover:scale-115 group-hover:rotate-2 ${category.accent}`}
+                      <div className="size-20 sm:size-24 rounded-3xl bg-black/5 mb-4" />
+                      <div className="h-5 bg-black/5 rounded w-24 mb-2" />
+                      <div className="h-3 bg-black/5 rounded w-16" />
+                    </div>
+                  ))}
+                </div>
+              ) : categories.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6">
+                  {categories.map((category, idx) => {
+                    const Icon = categoryIconMap[category.id] || UtensilsCrossed;
+                    return (
+                      <motion.button
+                        key={category.id}
+                        type="button"
+                        initial={{ opacity: 0, scale: 0.92, y: 20 }}
+                        whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.45, delay: idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                        whileHover={{ y: -6, scale: 1.04 }}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => navigateTo("tienda", category.id)}
+                        className="group relative flex flex-col items-center justify-center rounded-[32px] liquid-glass-card liquid-reflection p-6 sm:p-8 text-center shadow-xs transition-shadow hover:shadow-xl overflow-hidden"
                       >
-                        <Icon className="size-10 sm:size-12" />
-                      </div>
+                        {/* Top Specular Edge */}
+                        <div className="absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
 
-                      <h3 className="mt-4 text-base sm:text-lg font-black text-brand-deep group-hover:text-primary transition-colors">
-                        {category.name}
-                      </h3>
+                        <div
+                          className={`grid size-20 sm:size-24 place-items-center rounded-3xl border shadow-sm transition-transform duration-500 group-hover:scale-115 group-hover:rotate-2 ${category.accent}`}
+                        >
+                          <Icon className="size-10 sm:size-12" />
+                        </div>
 
-                      <p className="mt-1 text-xs text-muted-foreground line-clamp-1 max-w-[200px] hidden sm:block">
-                        {category.description}
-                      </p>
+                        <h3 className="mt-4 text-base sm:text-lg font-black text-brand-deep group-hover:text-primary transition-colors">
+                          {category.name}
+                        </h3>
 
-                      <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground bg-white/80 border border-white/90 px-3 py-0.5 rounded-full shadow-2xs group-hover:border-primary/30 group-hover:text-primary transition-colors">
-                        <span>{category.count}</span>
-                      </span>
-                    </motion.button>
-                  );
-                })}
-              </div>
+                        <p className="mt-1 text-xs text-muted-foreground line-clamp-1 max-w-[200px] hidden sm:block">
+                          {category.description}
+                        </p>
+
+                        <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground bg-white/80 border border-white/90 px-3 py-0.5 rounded-full shadow-2xs group-hover:border-primary/30 group-hover:text-primary transition-colors">
+                          <span>{category.count}</span>
+                        </span>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-[32px] liquid-glass p-8 text-center max-w-md mx-auto">
+                  <p className="text-sm font-semibold text-muted-foreground">
+                    {productsError || "No se encontraron categorías activas en Supabase."}
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={fetchCatalogData}
+                    className="mt-4 rounded-full text-xs font-bold"
+                  >
+                    Reintentar conexión
+                  </Button>
+                </div>
+              )}
             </motion.section>
 
             {/* Featured Products Carousel: Apple Liquid Glass */}
@@ -1233,121 +1449,156 @@ export default function App() {
                   </button>
 
                   {/* Carousel Rail */}
-                  <div
-                    ref={productRail}
-                    className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-6 pt-2 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
-                  >
-                    {featuredProducts.map((product, idx) => {
-                      const inCart = cart[product.id] ?? 0;
-                      const isCurrent = idx === activeCarouselIndex;
-
-                      return (
-                        <motion.article
-                          key={product.id}
-                          whileHover={{ y: -8, scale: 1.02 }}
-                          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                          className={`group/card relative w-[78vw] max-w-[285px] shrink-0 snap-start overflow-hidden rounded-[30px] liquid-glass-card liquid-reflection p-4 text-left transition-all duration-500 ${
-                            isCurrent
-                              ? "ring-2 ring-primary/40 shadow-[0_20px_45px_-12px_rgba(16,185,129,0.22)]"
-                              : "shadow-[0_12px_30px_-10px_rgba(0,0,0,0.06)]"
-                          }`}
+                  {isLoadingProducts && featuredProducts.length === 0 ? (
+                    <div className="flex gap-5 overflow-hidden pb-6 pt-2 px-1">
+                      {[...Array(4)].map((_, idx) => (
+                        <div
+                          key={idx}
+                          className="w-[78vw] max-w-[285px] shrink-0 rounded-[30px] liquid-glass p-4 animate-pulse space-y-4"
                         >
-                          {/* Specular Top Edge Line */}
-                          <div className="absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-85" />
-
-                          {/* Image Container */}
-                          <div className="relative aspect-square overflow-hidden rounded-2xl bg-white/70 border border-white/90 shadow-inner">
-                            {product.pos ? (
-                              <div
-                                className={`absolute inset-0 bg-cover transition-transform duration-700 group-hover/card:scale-110 ${product.pos}`}
-                                style={{
-                                  backgroundImage: `url(${productsImage})`,
-                                  backgroundSize: "300% 200%",
-                                }}
-                              />
-                            ) : (
-                              <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
-                                <ShoppingBasket className="size-12 text-muted-foreground/60" />
-                              </div>
-                            )}
-
-                            {/* Badge */}
-                            {product.badge && (
-                              <span className="absolute left-3 top-3 rounded-full bg-offer px-2.5 py-0.5 text-[10px] font-black text-offer-foreground shadow-sm">
-                                {product.badge}
-                              </span>
-                            )}
-
-                            {/* Rating Micro Pill */}
-                            <span className="absolute left-3 bottom-3 inline-flex items-center gap-1 rounded-full bg-white/90 border border-white px-2 py-0.5 text-[10px] font-extrabold text-foreground shadow-2xs backdrop-blur-md">
-                              <Star className="size-3 fill-amber-400 text-amber-400" />
-                              <span>{product.rating}</span>
-                            </span>
-
-                            {/* Favorite Button */}
-                            <button
-                              type="button"
-                              className={`absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-white/90 border border-white/90 shadow-sm backdrop-blur-md transition-all duration-300 active:scale-90 hover:scale-110 ${
-                                favorites.has(product.id)
-                                  ? "text-destructive"
-                                  : "text-muted-foreground hover:text-foreground"
-                              }`}
-                              onClick={() => toggleFavorite(product.id)}
-                              aria-label={
-                                favorites.has(product.id)
-                                  ? "Quitar de favoritos"
-                                  : "Agregar a favoritos"
-                              }
-                            >
-                              <Heart
-                                className={`size-4 ${
-                                  favorites.has(product.id) ? "fill-current" : ""
-                                }`}
-                              />
-                            </button>
+                          <div className="aspect-square rounded-2xl bg-black/5" />
+                          <div className="space-y-2">
+                            <div className="h-4 bg-black/5 rounded w-3/4" />
+                            <div className="h-3 bg-black/5 rounded w-1/2" />
                           </div>
+                          <div className="h-10 bg-black/5 rounded-full" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : featuredProducts.length > 0 ? (
+                    <div
+                      ref={productRail}
+                      className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-6 pt-2 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
+                    >
+                      {featuredProducts.map((product, idx) => {
+                        const inCart = cart[product.id] ?? 0;
+                        const isCurrent = idx === activeCarouselIndex;
 
-                          {/* Content & Price */}
-                          <div className="p-1.5 pt-3">
-                            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                              {product.unit}
-                            </span>
-                            <h3 className="mt-0.5 font-black text-sm text-brand-deep line-clamp-1 group-hover/card:text-primary transition-colors">
-                              {product.name}
-                            </h3>
-                            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
-                              {product.detail}
-                            </p>
+                        return (
+                          <motion.article
+                            key={product.id}
+                            whileHover={{ y: -8, scale: 1.02 }}
+                            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                            className={`group/card relative w-[78vw] max-w-[285px] shrink-0 snap-start overflow-hidden rounded-[30px] liquid-glass-card liquid-reflection p-4 text-left transition-all duration-500 ${
+                              isCurrent
+                                ? "ring-2 ring-primary/40 shadow-[0_20px_45px_-12px_rgba(16,185,129,0.22)]"
+                                : "shadow-[0_12px_30px_-10px_rgba(0,0,0,0.06)]"
+                            }`}
+                          >
+                            {/* Specular Top Edge Line */}
+                            <div className="absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-85" />
 
-                            <div className="mt-4 flex items-end justify-between gap-3 border-t border-white/60 pt-3">
-                              <div>
-                                <strong className="text-xl font-black text-brand-deep">
-                                  ${product.price.toFixed(2)}
-                                </strong>
-                                {product.oldPrice && (
-                                  <span className="ml-2 text-xs text-muted-foreground line-through">
-                                    ${product.oldPrice.toFixed(2)}
-                                  </span>
-                                )}
-                              </div>
+                            {/* Image Container */}
+                            <div className="relative aspect-square overflow-hidden rounded-2xl bg-white/70 border border-white/90 shadow-inner">
+                              {product.imageUrl ? (
+                                <img
+                                  src={product.imageUrl}
+                                  alt={product.name}
+                                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110"
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : product.pos ? (
+                                <div
+                                  className={`absolute inset-0 bg-cover transition-transform duration-700 group-hover/card:scale-110 ${product.pos}`}
+                                  style={{
+                                    backgroundImage: `url(${productsImage})`,
+                                    backgroundSize: "300% 200%",
+                                  }}
+                                />
+                              ) : (
+                                <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
+                                  <ShoppingBasket className="size-12 text-muted-foreground/60" />
+                                </div>
+                              )}
+
+                              {/* Badge */}
+                              {product.badge && (
+                                <span className="absolute left-3 top-3 rounded-full bg-offer px-2.5 py-0.5 text-[10px] font-black text-offer-foreground shadow-sm">
+                                  {product.badge}
+                                </span>
+                              )}
+
+                              {/* Rating Micro Pill */}
+                              <span className="absolute left-3 bottom-3 inline-flex items-center gap-1 rounded-full bg-white/90 border border-white px-2 py-0.5 text-[10px] font-extrabold text-foreground shadow-2xs backdrop-blur-md">
+                                <Star className="size-3 fill-amber-400 text-amber-400" />
+                                <span>{product.rating}</span>
+                              </span>
+
+                              {/* Favorite Button */}
                               <button
                                 type="button"
-                                className={`grid size-10 place-items-center rounded-full shadow-md active:scale-90 transition-all duration-300 hover:scale-108 ${
-                                  inCart > 0
-                                    ? "bg-offer text-offer-foreground shadow-offer/30"
-                                    : "bg-primary text-primary-foreground shadow-primary/30"
+                                className={`absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-white/90 border border-white/90 shadow-sm backdrop-blur-md transition-all duration-300 active:scale-90 hover:scale-110 ${
+                                  favorites.has(product.id)
+                                    ? "text-destructive"
+                                    : "text-muted-foreground hover:text-foreground"
                                 }`}
-                                onClick={() => changeCart(product.id, 1)}
-                                aria-label={`Agregar ${product.name} al carrito`}
+                                onClick={() => toggleFavorite(product.id)}
+                                aria-label={
+                                  favorites.has(product.id)
+                                    ? "Quitar de favoritos"
+                                    : "Agregar a favoritos"
+                                }
                               >
-                                <Plus className="size-4.5" />
+                                <Heart
+                                  className={`size-4 ${
+                                    favorites.has(product.id) ? "fill-current" : ""
+                                  }`}
+                                />
                               </button>
                             </div>
-                          </div>
-                        </motion.article>
-                      );
-                    })}
-                  </div>
+
+                            {/* Content & Price */}
+                            <div className="p-1.5 pt-3">
+                              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                                {product.unit}
+                              </span>
+                              <h3 className="mt-0.5 font-black text-sm text-brand-deep line-clamp-1 group-hover/card:text-primary transition-colors">
+                                {product.name}
+                              </h3>
+                              <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+                                {product.detail}
+                              </p>
+
+                              <div className="mt-4 flex items-end justify-between gap-3 border-t border-white/60 pt-3">
+                                <div>
+                                  <strong className="text-xl font-black text-brand-deep">
+                                    ${product.price.toFixed(2)}
+                                  </strong>
+                                  {product.oldPrice && (
+                                    <span className="ml-2 text-xs text-muted-foreground line-through">
+                                      ${product.oldPrice.toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  className={`grid size-10 place-items-center rounded-full shadow-md active:scale-90 transition-all duration-300 hover:scale-108 ${
+                                    inCart > 0
+                                      ? "bg-offer text-offer-foreground shadow-offer/30"
+                                      : "bg-primary text-primary-foreground shadow-primary/30"
+                                  }`}
+                                  onClick={() => changeCart(product.id, 1)}
+                                  aria-label={`Agregar ${product.name} al carrito`}
+                                >
+                                  <Plus className="size-4.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </motion.article>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center rounded-3xl liquid-glass max-w-md mx-auto p-6">
+                      <p className="text-sm text-muted-foreground">
+                        {query
+                          ? `No hay productos destacados que coincidan con "${query}".`
+                          : "No hay productos destacados activos en este momento."}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Carousel Interactive Pagination Indicator Dots */}
                   {featuredProducts.length > 1 && (
@@ -1848,7 +2099,7 @@ export default function App() {
                   Catálogo de Tienda
                 </button>
               </li>
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <li key={c.id}>
                   <button
                     type="button"
@@ -1899,8 +2150,16 @@ export default function App() {
             </p>
           </div>
         </div>
-        <div className="border-t border-white/10 px-4 py-5 text-center text-[11px] text-primary-foreground/50">
-          © 2026 CondiRico · Diseñado con estilo Apple Liquid Glass 2026.
+        <div className="border-t border-white/10 px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-primary-foreground/50">
+          <span>© 2026 CondiRico · Diseñado con estilo Apple Liquid Glass 2026.</span>
+          <button
+            type="button"
+            onClick={() => navigateTo("admin")}
+            className="hover:text-emerald-400 font-mono text-[11px] transition-colors flex items-center gap-1.5 text-primary-foreground/60 active:scale-95"
+          >
+            <ShieldCheckIcon className="size-3.5 text-emerald-400" />
+            <span>Área Administrativa (/admin)</span>
+          </button>
         </div>
       </footer>
 
@@ -1912,6 +2171,7 @@ export default function App() {
         onOpenCart={() => setCartOpen(true)}
         onOpenSearch={() => setSearchModalOpen(true)}
         currentUser={currentUser}
+        categoriesList={categories}
         onOpenAuth={() => {
           setIntendedAuthNotice("");
           navigateTo("auth");
@@ -1924,6 +2184,7 @@ export default function App() {
         onClose={() => setSearchModalOpen(false)}
         onAddToCart={changeCart}
         cart={cart}
+        productsList={products}
         onNavigateToStore={() => {
           setSearchModalOpen(false);
           navigateTo("tienda");
@@ -2005,14 +2266,23 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                ALL_PRODUCTS.filter((product) => cart[product.id]).map(
+                products.filter((product) => cart[product.id]).map(
                   (product) => (
                     <div
                       key={product.id}
                       className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3.5 rounded-2xl liquid-glass-card p-3 shadow-2xs"
                     >
                       <div className="relative size-16 rounded-xl bg-white/60 border border-white/80 overflow-hidden shadow-inner">
-                        {product.pos ? (
+                        {product.imageUrl ? (
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            className="size-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : product.pos ? (
                           <div
                             className={`size-full bg-cover ${product.pos}`}
                             style={{

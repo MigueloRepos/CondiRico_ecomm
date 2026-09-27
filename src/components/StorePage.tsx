@@ -28,6 +28,7 @@ import {
   ALL_PRODUCTS,
   CategoryId,
   ProductItem,
+  CategoryInfo,
 } from "@/data/products";
 import { Button } from "@/components/ui/button";
 import productsSprite from "@/assets/condirico-products.jpg";
@@ -46,9 +47,14 @@ interface StorePageProps {
   onToggleFavorite: (id: number) => void;
   onOpenCart: () => void;
   onOpenWhatsAppOrder?: () => void;
+  productsList?: ProductItem[];
+  categoriesList?: CategoryInfo[];
+  isLoading?: boolean;
+  error?: string | null;
+  onRefresh?: () => void;
 }
 
-const CATEGORY_ICONS: Record<CategoryId, React.ElementType> = {
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
   alimentos: UtensilsCrossed,
   "primera-necesidad": ShoppingBasket,
   limpieza: Sparkles,
@@ -63,6 +69,11 @@ export const StorePage: React.FC<StorePageProps> = ({
   onToggleFavorite,
   onOpenCart,
   onOpenWhatsAppOrder,
+  productsList = ALL_PRODUCTS,
+  categoriesList = CATEGORIES,
+  isLoading = false,
+  error = null,
+  onRefresh,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<CategoryId | "todas">(
@@ -72,14 +83,15 @@ export const StorePage: React.FC<StorePageProps> = ({
   const [addedNotice, setAddedNotice] = useState<string | null>(null);
 
   // Advanced Filters State
-  const absoluteMinPrice = useMemo(
-    () => Math.floor(Math.min(...ALL_PRODUCTS.map((p) => p.price))),
-    []
-  );
-  const absoluteMaxPrice = useMemo(
-    () => Math.ceil(Math.max(...ALL_PRODUCTS.map((p) => p.price))),
-    []
-  );
+  const absoluteMinPrice = useMemo(() => {
+    if (!productsList || productsList.length === 0) return 0;
+    return Math.floor(Math.min(...productsList.map((p) => p.price)));
+  }, [productsList]);
+
+  const absoluteMaxPrice = useMemo(() => {
+    if (!productsList || productsList.length === 0) return 20;
+    return Math.ceil(Math.max(...productsList.map((p) => p.price)));
+  }, [productsList]);
 
   const defaultFilters: FilterState = useMemo(
     () => ({
@@ -98,7 +110,7 @@ export const StorePage: React.FC<StorePageProps> = ({
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
-  const sectionRefs = {
+  const sectionRefs: Record<string, React.RefObject<HTMLElement | null>> = {
     alimentos: useRef<HTMLElement>(null),
     "primera-necesidad": useRef<HTMLElement>(null),
     limpieza: useRef<HTMLElement>(null),
@@ -108,7 +120,7 @@ export const StorePage: React.FC<StorePageProps> = ({
   useEffect(() => {
     if (initialCategory && sectionRefs[initialCategory]?.current) {
       setTimeout(() => {
-        sectionRefs[initialCategory].current?.scrollIntoView({
+        sectionRefs[initialCategory]?.current?.scrollIntoView({
           behavior: "smooth",
           block: "start",
         });
@@ -125,7 +137,7 @@ export const StorePage: React.FC<StorePageProps> = ({
   }, []);
 
   const cartCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
-  const cartTotal = ALL_PRODUCTS.reduce(
+  const cartTotal = productsList.reduce(
     (sum, p) => sum + p.price * (cart[p.id] ?? 0),
     0
   );
@@ -134,7 +146,7 @@ export const StorePage: React.FC<StorePageProps> = ({
     filters.minPrice > absoluteMinPrice || filters.maxPrice < absoluteMaxPrice;
   const isCategoriesFiltered =
     filters.selectedCategories.length > 0 &&
-    filters.selectedCategories.length < CATEGORIES.length;
+    filters.selectedCategories.length < categoriesList.length;
   const isSortFiltered = filters.sortBy !== "default";
 
   const activeFiltersCount =
@@ -146,7 +158,7 @@ export const StorePage: React.FC<StorePageProps> = ({
     (isSortFiltered ? 1 : 0);
 
   const filteredProducts = useMemo(() => {
-    let list = ALL_PRODUCTS;
+    let list = productsList;
 
     // 1. Text Query
     if (searchQuery.trim()) {
@@ -458,12 +470,12 @@ export const StorePage: React.FC<StorePageProps> = ({
                   : "bg-white/40 text-muted-foreground hover:bg-white/80 hover:text-foreground"
               }`}
             >
-              Todas ({ALL_PRODUCTS.length})
+              Todas ({productsList.length})
             </button>
 
-            {CATEGORIES.map((cat) => {
-              const Icon = CATEGORY_ICONS[cat.id];
-              const count = ALL_PRODUCTS.filter(
+            {categoriesList.map((cat) => {
+              const Icon = CATEGORY_ICONS[cat.id] || UtensilsCrossed;
+              const count = productsList.filter(
                 (p) => p.category === cat.id
               ).length;
               const isSelected = selectedFilter === cat.id;
@@ -548,29 +560,60 @@ export const StorePage: React.FC<StorePageProps> = ({
 
       {/* Main Content: Category Sections in Frosted Glass Layers */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-16">
-        {CATEGORIES.map((cat) => {
-          if (selectedFilter !== "todas" && selectedFilter !== cat.id) {
-            return null;
-          }
-          if (
-            filters.selectedCategories.length > 0 &&
-            !filters.selectedCategories.includes(cat.id)
-          ) {
-            return null;
-          }
+        {isLoading && productsList.length === 0 ? (
+          <div className="py-16 text-center space-y-4">
+            <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary animate-pulse">
+              <Sparkles className="size-7" />
+            </div>
+            <p className="text-sm font-semibold text-muted-foreground">
+              Cargando catálogo en tiempo real desde Supabase...
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-5xl mx-auto pt-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="h-64 rounded-3xl bg-white/40 animate-pulse border border-white/60 p-4 flex flex-col justify-between">
+                  <div className="h-28 rounded-2xl bg-black/5" />
+                  <div className="space-y-2">
+                    <div className="h-4 bg-black/5 rounded w-3/4" />
+                    <div className="h-3 bg-black/5 rounded w-1/2" />
+                  </div>
+                  <div className="h-8 bg-black/5 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : error && productsList.length === 0 ? (
+          <div className="py-16 text-center space-y-4 rounded-3xl liquid-glass p-8 max-w-md mx-auto">
+            <p className="text-sm font-bold text-rose-700">{error}</p>
+            {onRefresh && (
+              <Button onClick={onRefresh} variant="outline" className="rounded-full">
+                Reintentar
+              </Button>
+            )}
+          </div>
+        ) : (
+          categoriesList.map((cat) => {
+            if (selectedFilter !== "todas" && selectedFilter !== cat.id) {
+              return null;
+            }
+            if (
+              filters.selectedCategories.length > 0 &&
+              !filters.selectedCategories.includes(cat.id)
+            ) {
+              return null;
+            }
 
-          const catProducts = filteredProducts.filter(
-            (p) => p.category === cat.id
-          );
-          const Icon = CATEGORY_ICONS[cat.id];
+            const catProducts = filteredProducts.filter(
+              (p) => p.category === cat.id
+            );
+            const Icon = CATEGORY_ICONS[cat.id] || UtensilsCrossed;
 
-          return (
-            <section
-              key={cat.id}
-              id={`seccion-${cat.id}`}
-              ref={sectionRefs[cat.id]}
-              className="scroll-mt-32 relative rounded-[36px] liquid-glass p-6 sm:p-9 lg:p-10 shadow-[0_20px_50px_-15px_rgba(20,83,45,0.06)] overflow-hidden"
-            >
+            return (
+              <section
+                key={cat.id}
+                id={`seccion-${cat.id}`}
+                ref={sectionRefs[cat.id]}
+                className="scroll-mt-32 relative rounded-[36px] liquid-glass p-6 sm:p-9 lg:p-10 shadow-[0_20px_50px_-15px_rgba(20,83,45,0.06)] overflow-hidden"
+              >
               {/* Category Specular Edge */}
               <div className="absolute inset-x-12 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
 
@@ -750,9 +793,9 @@ export const StorePage: React.FC<StorePageProps> = ({
               )}
             </section>
           );
-        })}
+        }))}
 
-        {filteredProducts.length === 0 && (
+        {filteredProducts.length === 0 && !isLoading && (
           <div className="rounded-[36px] liquid-glass p-12 sm:p-16 text-center max-w-2xl mx-auto shadow-lg">
             <div className="mx-auto grid size-16 place-items-center rounded-3xl bg-muted/60 text-muted-foreground mb-4">
               <Search className="size-8 text-muted-foreground/80" />
@@ -816,11 +859,12 @@ export const StorePage: React.FC<StorePageProps> = ({
         filters={filters}
         onFiltersChange={setFilters}
         onResetFilters={handleResetFilters}
-        totalAvailable={ALL_PRODUCTS.length}
+        totalAvailable={productsList.length}
         matchedCount={filteredProducts.length}
         absoluteMinPrice={absoluteMinPrice}
         absoluteMaxPrice={absoluteMaxPrice}
         hasFavorites={favorites.size > 0}
+        categoriesList={categoriesList}
       />
 
       {/* Voice Search Modal */}

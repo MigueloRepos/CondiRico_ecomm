@@ -12,9 +12,10 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
-import { ALL_PRODUCTS } from "@/data/products";
+import { ALL_PRODUCTS, ProductItem } from "@/data/products";
 import { UserProfile } from "@/lib/auth";
-import { Lock, LogIn, Fingerprint, ShieldCheck } from "lucide-react";
+import { Lock, LogIn, Fingerprint, ShieldCheck, Loader2 } from "lucide-react";
+import { createOrder } from "@/services/orders";
 
 interface WhatsAppOrderModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ interface WhatsAppOrderModalProps {
   phoneNumber?: string; // e.g. "34600123456" or "18002663474"
   currentUser?: UserProfile | null;
   onRequireLogin?: () => void;
+  productsList?: ProductItem[];
 }
 
 export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
@@ -34,6 +36,7 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
   phoneNumber = "34600123456",
   currentUser,
   onRequireLogin,
+  productsList = ALL_PRODUCTS,
 }) => {
   const [name, setName] = useState(currentUser?.name || "");
   const [address, setAddress] = useState(currentUser?.address || "");
@@ -42,6 +45,9 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
   const [notes, setNotes] = useState("");
   const [copied, setCopied] = useState(false);
   const [sentOrder, setSentOrder] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmedOrderId, setConfirmedOrderId] = useState<number | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   // Sync with currentUser if it changes
   React.useEffect(() => {
@@ -62,12 +68,12 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
 
   // Filter items in cart
   const cartItems = useMemo(() => {
-    return ALL_PRODUCTS.filter((p) => cart[p.id] && cart[p.id] > 0).map((p) => ({
+    return productsList.filter((p) => cart[p.id] && cart[p.id] > 0).map((p) => ({
       product: p,
       quantity: cart[p.id],
       subtotal: p.price * cart[p.id],
     }));
-  }, [cart]);
+  }, [cart, productsList]);
 
   const subtotal = useMemo(() => {
     return cartItems.reduce((acc, item) => acc + item.subtotal, 0);
@@ -118,9 +124,47 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleSendToWhatsApp = () => {
-    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-    setSentOrder(true);
+  const handleSendToWhatsApp = async () => {
+    setIsSubmitting(true);
+    setOrderError(null);
+
+    try {
+      // 1. Persist real order to Supabase orders and order_items
+      const orderItemsPayload = cartItems.map((item) => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+      }));
+
+      const result = await createOrder({
+        userId: currentUser?.id || null,
+        customerName: name.trim() || currentUser?.name || "Cliente",
+        customerEmail: currentUser?.email || "cliente@condirico.com",
+        customerPhone: phone.trim() || currentUser?.phone || "+34 600 000 000",
+        shippingAddress: address.trim() || currentUser?.address || "Dirección de entrega",
+        shippingCity: currentUser?.preferences?.city || "Santiago",
+        deliveryInstructions: notes.trim() || null,
+        paymentMethod,
+        notes: notes.trim() || null,
+        whatsappSent: true,
+        items: orderItemsPayload,
+      });
+
+      if (!result.success) {
+        console.warn("[WhatsAppOrderModal] Order creation warning:", result.error);
+        setOrderError(result.error || null);
+      } else if (result.order) {
+        setConfirmedOrderId(result.order.id);
+      }
+    } catch (err: any) {
+      console.warn("[WhatsAppOrderModal] Error persisting order:", err);
+    } finally {
+      setIsSubmitting(false);
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      setSentOrder(true);
+      if (onClearCart) {
+        onClearCart();
+      }
+    }
   };
 
   if (!isOpen) return null;
@@ -211,8 +255,13 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
             <h3 className="mt-4 text-2xl font-black text-brand-deep">
               ¡Tu pedido fue enviado a WhatsApp!
             </h3>
+            {confirmedOrderId && (
+              <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold">
+                <span>Registrado en Supabase: <strong>Pedido #{confirmedOrderId}</strong></span>
+              </div>
+            )}
             <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-              Hemos abierto tu chat con <strong>CondiRico</strong> con el resumen de tu compra listo. Nuestro equipo te responderá enseguida para confirmar el despacho.
+              Hemos guardado tu pedido en el sistema y abierto tu chat con <strong>CondiRico</strong>. Nuestro equipo te responderá enseguida para confirmar el despacho.
             </p>
 
             <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -416,11 +465,20 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
             <div className="pt-2 flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={handleSendToWhatsApp}
-                className="flex-1 h-13 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/30 active:scale-98 transition-all"
+                className="flex-1 h-13 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/30 active:scale-98 transition-all disabled:opacity-75"
               >
-                <WhatsAppIcon className="size-5" />
-                <span>Enviar Pedido a WhatsApp (${total.toFixed(2)})</span>
+                {isSubmitting ? (
+                  <Loader2 className="size-5 animate-spin" />
+                ) : (
+                  <WhatsAppIcon className="size-5" />
+                )}
+                <span>
+                  {isSubmitting
+                    ? "Registrando pedido..."
+                    : `Enviar Pedido a WhatsApp ($${total.toFixed(2)})`}
+                </span>
                 <ExternalLink className="size-4 opacity-75" />
               </button>
 

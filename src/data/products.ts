@@ -1,4 +1,4 @@
-export type CategoryId = "alimentos" | "primera-necesidad" | "limpieza" | "utiles";
+export type CategoryId = "alimentos" | "primera-necesidad" | "limpieza" | "utiles" | string;
 
 export interface CategoryInfo {
   id: CategoryId;
@@ -25,6 +25,8 @@ export interface ProductItem {
   rating: number;
   reviews: number;
   isPopular?: boolean;
+  isFeatured?: boolean;
+  imageUrl?: string | null;
 }
 
 export const CATEGORIES: CategoryInfo[] = [
