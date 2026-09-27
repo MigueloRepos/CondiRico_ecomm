@@ -37,8 +37,14 @@ import {
 import { BiometricFingerprintModal } from "@/components/BiometricFingerprintModal";
 import { SupabaseConfigModal } from "@/components/SupabaseConfigModal";
 import { EmailOtpVerificationModal } from "@/components/EmailOtpVerificationModal";
+import { SecurityIpBlockModal } from "@/components/SecurityIpBlockModal";
 import { UserProfileView } from "@/components/UserProfileView";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
+import {
+  getUserClientIP,
+  recordUserSecurityIP,
+  verifyUserSecurityIP,
+} from "@/lib/userSecurity";
 
 interface AuthPageProps {
   onSuccessAuth: (user: UserProfile) => void;
@@ -85,6 +91,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [otpPendingAddress, setOtpPendingAddress] = useState("");
   const [otpPendingEnableBio, setOtpPendingEnableBio] = useState(true);
 
+  // IP Security & Anti-Intruder (User_Sec) state
+  const [detectedClientIp, setDetectedClientIp] = useState("186.32.115.42");
+  const [securityBlockModalOpen, setSecurityBlockModalOpen] = useState(false);
+  const [securityBlockedEmail, setSecurityBlockedEmail] = useState("");
+  const [securityCurrentIp, setSecurityCurrentIp] = useState("");
+  const [securityRegisteredIp, setSecurityRegisteredIp] = useState("");
+  const [isSimulatingIntruder, setIsSimulatingIntruder] = useState(false);
+  const [simulatedIntruderIp, setSimulatedIntruderIp] = useState("198.51.100.88");
+
+  // Load client IP on mount
+  React.useEffect(() => {
+    getUserClientIP().then((ip) => {
+      setDetectedClientIp(ip);
+    });
+  }, []);
+
   // Biometrics modal state
   const [biometricModalOpen, setBiometricModalOpen] = useState(false);
   const [biometricMode, setBiometricMode] = useState<"register" | "verify">("verify");
@@ -104,12 +126,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setLoginError("");
   };
 
-  // Submit Login with Supabase Cloud
+  // Submit Login with Supabase Cloud & User_Sec IP Security Verification
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
 
-    if (!loginEmail.trim() || !loginPassword.trim()) {
+    const targetEmail = loginEmail.trim();
+
+    if (!targetEmail || !loginPassword.trim()) {
       setLoginError("Por favor completa tu correo y contraseña.");
       return;
     }
@@ -117,13 +141,32 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setIsSubmitting(true);
 
     try {
-      // 1. Authenticate with Supabase Cloud
+      // 1. IP Security Check against Supabase User_Sec table
+      const activeIp = isSimulatingIntruder ? simulatedIntruderIp : undefined;
+      const secCheck = await verifyUserSecurityIP(targetEmail, activeIp);
+
+      if (!secCheck.allowed) {
+        setIsSubmitting(false);
+        setSecurityBlockedEmail(targetEmail);
+        setSecurityCurrentIp(secCheck.currentIp);
+        setSecurityRegisteredIp(secCheck.registeredIp || "Desconocida");
+        setSecurityBlockModalOpen(true);
+        setLoginError(
+          `Acceso bloqueado por seguridad: IP no autorizada (${secCheck.currentIp}). Tu cuenta está vinculada a la red (${secCheck.registeredIp}).`
+        );
+        return;
+      }
+
+      // 2. Authenticate with Supabase Cloud
       const { user: sbUser, error: sbError } = await signInWithSupabase({
-        email: loginEmail.trim(),
+        email: targetEmail,
         password: loginPassword,
       });
 
       if (sbUser) {
+        // Record or refresh security IP in Supabase User_Sec
+        recordUserSecurityIP(sbUser.email, secCheck.currentIp).catch(console.warn);
+
         setSessionUser(sbUser);
         setIsSubmitting(false);
 
@@ -139,7 +182,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           setBiometricMode("register");
           setBiometricModalOpen(true);
         } else {
-          setFeedbackSuccess(`¡Bienvenido de vuelta, ${sbUser.name}!`);
+          setFeedbackSuccess(`¡Bienvenido de vuelta, ${sbUser.name}! IP autorizada.`);
           setTimeout(() => {
             onSuccessAuth(sbUser);
           }, 600);
@@ -150,8 +193,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       // Check if email not confirmed error to prompt verification
       if (sbError && (sbError.includes("confirmar") || sbError.includes("confirmed"))) {
         setIsSubmitting(false);
-        setOtpPendingEmail(loginEmail.trim());
-        setOtpPendingName(loginEmail.trim().split("@")[0]);
+        setOtpPendingEmail(targetEmail);
+        setOtpPendingName(targetEmail.split("@")[0]);
         setLoginError("Debes confirmar tu correo electrónico con el código de 6 dígitos.");
         return;
       }
@@ -159,10 +202,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       // If Supabase returns an error or demo offline mode fallback
       const users = getStoredUsers();
       const found = users.find(
-        (u) => u.email.toLowerCase() === loginEmail.trim().toLowerCase()
+        (u) => u.email.toLowerCase() === targetEmail.toLowerCase()
       );
 
       if (found) {
+        // Record in User_Sec
+        recordUserSecurityIP(found.email, secCheck.currentIp).catch(console.warn);
+
         setSessionUser(found);
         setIsSubmitting(false);
 
@@ -190,7 +236,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
   };
 
-  // Submit Register with Supabase Cloud & trigger 6-digit OTP verification email
+  // Submit Register with Supabase Cloud & trigger 6-digit OTP verification email & User_Sec registration
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegisterError("");
@@ -223,6 +269,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         return;
       }
 
+      // 2. Pre-record IP security association in Supabase User_Sec
+      const activeIp = isSimulatingIntruder ? simulatedIntruderIp : detectedClientIp;
+      await recordUserSecurityIP(registerEmail.trim(), activeIp);
+
       setIsSubmitting(false);
 
       // Open the OTP Verification Modal for the user to enter the 6-digit code
@@ -241,8 +291,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   };
 
   // Handle successful OTP verification from modal
-  const handleOtpSuccess = (verifiedUser: UserProfile) => {
+  const handleOtpSuccess = async (verifiedUser: UserProfile) => {
     setOtpModalOpen(false);
+
+    // Record user & IP into Supabase User_Sec
+    const activeIp = isSimulatingIntruder ? simulatedIntruderIp : detectedClientIp;
+    await recordUserSecurityIP(verifiedUser.email, activeIp);
 
     // Save user to active session
     const users = getStoredUsers();
@@ -252,7 +306,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
     setSessionUser(verifiedUser);
 
-    setFeedbackSuccess(`¡Correo verificado con éxito! Bienvenido, ${verifiedUser.name}.`);
+    setFeedbackSuccess(`¡Correo verificado y red asegurada en User_Sec! Bienvenido, ${verifiedUser.name}.`);
 
     if (otpPendingEnableBio && !deviceHasBiometric) {
       setPendingUserForBio(verifiedUser);
@@ -265,8 +319,23 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
   };
 
-  // Initiate Biometric Fingerprint Login
-  const handleStartBiometricLogin = () => {
+  // Initiate Biometric Fingerprint Login with IP security check
+  const handleStartBiometricLogin = async () => {
+    const targetEmail = bioKeyInfo?.email || "miguelo.glez91@gmail.com";
+    const activeIp = isSimulatingIntruder ? simulatedIntruderIp : undefined;
+    const secCheck = await verifyUserSecurityIP(targetEmail, activeIp);
+
+    if (!secCheck.allowed) {
+      setSecurityBlockedEmail(targetEmail);
+      setSecurityCurrentIp(secCheck.currentIp);
+      setSecurityRegisteredIp(secCheck.registeredIp || "Desconocida");
+      setSecurityBlockModalOpen(true);
+      setLoginError(
+        `Acceso biométrico bloqueado por seguridad: IP no autorizada (${secCheck.currentIp}).`
+      );
+      return;
+    }
+
     setBiometricMode("verify");
     setBiometricModalOpen(true);
   };
@@ -372,20 +441,59 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           <div className="absolute inset-x-12 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90" />
 
           {/* Supabase Cloud Connection Status Badge & Settings Trigger */}
-          <div className="flex items-center justify-between mb-4 border-b border-white/60 pb-3">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-extrabold text-emerald-800 backdrop-blur-md">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Supabase Cloud Auth</span>
+          <div className="flex flex-col gap-2 mb-4 border-b border-white/60 pb-3">
+            <div className="flex items-center justify-between">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-extrabold text-emerald-800 backdrop-blur-md">
+                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Supabase Cloud Auth</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSupabaseModalOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors bg-white/60 border border-white/80 px-2.5 py-1 rounded-full shadow-2xs active:scale-95"
+                title="Configurar proyecto Supabase (URL + Anon Key)"
+              >
+                <Database className="size-3 text-emerald-600" />
+                <span>Conexión BD</span>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setSupabaseModalOpen(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors bg-white/60 border border-white/80 px-2.5 py-1 rounded-full shadow-2xs active:scale-95"
-              title="Configurar proyecto Supabase (URL + Anon Key)"
-            >
-              <Database className="size-3 text-emerald-600" />
-              <span>Conexión BD</span>
-            </button>
+
+            {/* IP Security Shield Indicator (User_Sec) */}
+            <div className="flex items-center justify-between rounded-xl bg-stone-900/85 text-stone-200 px-3 py-2 text-[11px] border border-white/10 shadow-xs">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="size-4 text-emerald-400 shrink-0" />
+                <div>
+                  <span className="font-extrabold text-white">Escudo IP User_Sec:</span>{" "}
+                  <span className="font-mono text-emerald-400 font-bold">{isSimulatingIntruder ? simulatedIntruderIp : detectedClientIp}</span>
+                </div>
+              </div>
+
+              {/* Simulation test button */}
+              <button
+                type="button"
+                onClick={() => setIsSimulatingIntruder(!isSimulatingIntruder)}
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                  isSimulatingIntruder
+                    ? "bg-red-500/20 text-red-300 border-red-500/40 animate-pulse"
+                    : "bg-white/10 text-stone-300 border-white/20 hover:bg-white/20"
+                }`}
+                title="Probar qué sucede si un intruso intenta acceder desde otra IP no autorizada"
+              >
+                {isSimulatingIntruder ? "🔴 Modo Intruso ON" : "🛡️ Probar Intruso"}
+              </button>
+            </div>
+
+            {isSimulatingIntruder && (
+              <div className="rounded-lg bg-red-950/70 border border-red-500/40 p-2 text-[11px] text-red-200">
+                <p className="font-bold flex items-center gap-1 text-red-300">
+                  <AlertCircle className="size-3 text-red-400 shrink-0" />
+                  Simulación de intruso activa: IP ficticia <code className="font-mono text-white">{simulatedIntruderIp}</code>
+                </p>
+                <p className="text-[10px] text-red-200/80 mt-0.5">
+                  Si intentas iniciar sesión con una cuenta registrada, el sistema la bloqueará automáticamente por seguridad.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Logo & Heading */}
@@ -755,6 +863,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       <SupabaseConfigModal
         isOpen={supabaseModalOpen}
         onClose={() => setSupabaseModalOpen(false)}
+      />
+
+      {/* Anti-Intruder IP Security Block Modal */}
+      <SecurityIpBlockModal
+        isOpen={securityBlockModalOpen}
+        onClose={() => setSecurityBlockModalOpen(false)}
+        userEmail={securityBlockedEmail}
+        currentIp={securityCurrentIp}
+        registeredIp={securityRegisteredIp}
+        onAuthorizeCurrentIp={async () => {
+          if (securityBlockedEmail && securityCurrentIp) {
+            await recordUserSecurityIP(securityBlockedEmail, securityCurrentIp);
+            setFeedbackSuccess("¡IP autorizada y actualizada en Supabase User_Sec!");
+          }
+        }}
       />
     </div>
   );
