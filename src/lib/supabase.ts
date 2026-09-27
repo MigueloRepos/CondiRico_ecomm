@@ -306,3 +306,92 @@ export async function updateSupabaseUserProfile(params: {
     return { user: null, error: msg };
   }
 }
+
+// Verify Email OTP token with Supabase Cloud
+export async function verifyOtpWithSupabase(params: {
+  email: string;
+  token: string;
+  userDataFallback?: {
+    fullName: string;
+    phone?: string;
+    address?: string;
+  };
+}): Promise<{ user: UserProfile | null; error: string | null }> {
+  const supabase = getSupabase();
+  const email = params.email.trim().toLowerCase();
+  const token = params.token.trim();
+
+  try {
+    // 1. Try type: 'signup' (Supabase default for signup confirmation OTPs)
+    let { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "signup",
+    });
+
+    // 2. If 'signup' fails, fallback to type: 'email'
+    if (error) {
+      const retry = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: "email",
+      });
+      if (!retry.error && retry.data?.user) {
+        data = retry.data;
+        error = null;
+      }
+    }
+
+    if (error) {
+      let errorMsg = error.message;
+      if (error.message.includes("Token has expired") || error.message.includes("expired")) {
+        errorMsg = "El código de verificación ha expirado. Por favor solicita uno nuevo.";
+      } else if (
+        error.message.includes("invalid") ||
+        error.message.includes("Token is invalid") ||
+        error.message.includes("bad_code")
+      ) {
+        errorMsg = "El código ingresado es incorrecto o inválido. Revisa los 6 dígitos recibidos en tu correo.";
+      }
+      return { user: null, error: errorMsg };
+    }
+
+    if (data?.user) {
+      const profile = mapSupabaseUserToProfile(data.user);
+      return { user: profile, error: null };
+    }
+
+    return { user: null, error: "No se pudo verificar el código de confirmación." };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Error al verificar código con Supabase.";
+    return { user: null, error: msg };
+  }
+}
+
+// Resend Verification Email / OTP to user email
+export async function resendVerificationOtpWithSupabase(
+  email: string
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = getSupabase();
+  try {
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim().toLowerCase(),
+    });
+
+    if (error) {
+      // If error is rate-limiting or project specific
+      let msg = error.message;
+      if (error.message.includes("rate limit") || error.message.includes("security purposes")) {
+        msg = "Por favor espera unos segundos antes de solicitar otro código.";
+      }
+      return { success: false, error: msg };
+    }
+    return { success: true, error: null };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Error al reenviar código.",
+    };
+  }
+}

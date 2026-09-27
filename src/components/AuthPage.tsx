@@ -36,6 +36,7 @@ import {
 } from "@/lib/supabase";
 import { BiometricFingerprintModal } from "@/components/BiometricFingerprintModal";
 import { SupabaseConfigModal } from "@/components/SupabaseConfigModal";
+import { EmailOtpVerificationModal } from "@/components/EmailOtpVerificationModal";
 import { UserProfileView } from "@/components/UserProfileView";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
 
@@ -75,6 +76,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   // Loading & status state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [supabaseModalOpen, setSupabaseModalOpen] = useState(false);
+
+  // Email OTP Verification modal state
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
+  const [otpPendingEmail, setOtpPendingEmail] = useState("");
+  const [otpPendingName, setOtpPendingName] = useState("");
+  const [otpPendingPhone, setOtpPendingPhone] = useState("");
+  const [otpPendingAddress, setOtpPendingAddress] = useState("");
+  const [otpPendingEnableBio, setOtpPendingEnableBio] = useState(true);
 
   // Biometrics modal state
   const [biometricModalOpen, setBiometricModalOpen] = useState(false);
@@ -138,6 +147,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         return;
       }
 
+      // Check if email not confirmed error to prompt verification
+      if (sbError && (sbError.includes("confirmar") || sbError.includes("confirmed"))) {
+        setIsSubmitting(false);
+        setOtpPendingEmail(loginEmail.trim());
+        setOtpPendingName(loginEmail.trim().split("@")[0]);
+        setLoginError("Debes confirmar tu correo electrónico con el código de 6 dígitos.");
+        return;
+      }
+
       // If Supabase returns an error or demo offline mode fallback
       const users = getStoredUsers();
       const found = users.find(
@@ -172,7 +190,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
   };
 
-  // Submit Register with Supabase Cloud
+  // Submit Register with Supabase Cloud & trigger 6-digit OTP verification email
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegisterError("");
@@ -190,8 +208,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setIsSubmitting(true);
 
     try {
-      // 1. Sign up on Supabase Cloud
-      const { user: sbUser, error: sbError, confirmationRequired } = await signUpWithSupabase({
+      // 1. Sign up on Supabase Cloud (triggers email dispatch with confirmation code)
+      const { error: sbError } = await signUpWithSupabase({
         email: registerEmail.trim(),
         password: registerPassword,
         fullName: registerName.trim(),
@@ -205,43 +223,45 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         return;
       }
 
-      const registeredUser: UserProfile = sbUser || {
-        id: "sb_user_" + Date.now(),
-        name: registerName.trim(),
-        email: registerEmail.trim().toLowerCase(),
-        phone: registerPhone.trim() || "+34 600 000 000",
-        address: registerAddress.trim() || "Dirección principal",
-        hasBiometrics: enableBiometricsOnRegister,
-        createdAt: new Date().toISOString(),
-      };
-
-      // Save session
-      const users = getStoredUsers();
-      if (!users.some((u) => u.email.toLowerCase() === registeredUser.email.toLowerCase())) {
-        users.push(registeredUser);
-        saveStoredUsers(users);
-      }
-      setSessionUser(registeredUser);
       setIsSubmitting(false);
 
-      if (confirmationRequired) {
-        setFeedbackSuccess("¡Cuenta creada en Supabase! Revisa tu correo si tienes confirmación activada.");
-      } else {
-        setFeedbackSuccess(`¡Cuenta creada en Supabase con éxito! Bienvenido, ${registeredUser.name}.`);
-      }
+      // Open the OTP Verification Modal for the user to enter the 6-digit code
+      setOtpPendingEmail(registerEmail.trim());
+      setOtpPendingName(registerName.trim());
+      setOtpPendingPhone(registerPhone.trim());
+      setOtpPendingAddress(registerAddress.trim());
+      setOtpPendingEnableBio(enableBiometricsOnRegister);
+      setOtpModalOpen(true);
 
-      if (enableBiometricsOnRegister) {
-        setPendingUserForBio(registeredUser);
-        setBiometricMode("register");
-        setBiometricModalOpen(true);
-      } else {
-        setTimeout(() => {
-          onSuccessAuth(registeredUser);
-        }, 800);
-      }
+      setFeedbackSuccess("¡Código de verificación enviado! Revisa tu correo electrónico.");
     } catch (err: unknown) {
       setIsSubmitting(false);
       setRegisterError(err instanceof Error ? err.message : "Error al registrar en Supabase");
+    }
+  };
+
+  // Handle successful OTP verification from modal
+  const handleOtpSuccess = (verifiedUser: UserProfile) => {
+    setOtpModalOpen(false);
+
+    // Save user to active session
+    const users = getStoredUsers();
+    if (!users.some((u) => u.email.toLowerCase() === verifiedUser.email.toLowerCase())) {
+      users.push(verifiedUser);
+      saveStoredUsers(users);
+    }
+    setSessionUser(verifiedUser);
+
+    setFeedbackSuccess(`¡Correo verificado con éxito! Bienvenido, ${verifiedUser.name}.`);
+
+    if (otpPendingEnableBio && !deviceHasBiometric) {
+      setPendingUserForBio(verifiedUser);
+      setBiometricMode("register");
+      setBiometricModalOpen(true);
+    } else {
+      setTimeout(() => {
+        onSuccessAuth(verifiedUser);
+      }, 700);
     }
   };
 
@@ -474,10 +494,26 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           {tab === "login" ? (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               {loginError && (
-                <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl flex items-start gap-2">
-                  <AlertCircle className="size-4 shrink-0 mt-0.5" />
-                  <span>{loginError}</span>
-                </p>
+                <div className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                    <span>{loginError}</span>
+                  </div>
+                  {loginError.includes("confirmar") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOtpPendingEmail(loginEmail.trim());
+                        setOtpPendingName(loginEmail.trim().split("@")[0]);
+                        setOtpModalOpen(true);
+                      }}
+                      className="w-full py-1.5 px-3 rounded-lg bg-emerald-600 text-white font-black text-xs hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Mail className="size-3.5" />
+                      <span>Ingresar código de 6 dígitos ahora</span>
+                    </button>
+                  )}
+                </div>
               )}
 
               <div>
@@ -698,6 +734,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         mode={biometricMode}
         userEmail={pendingUserForBio?.email || bioKeyInfo?.email}
         userName={pendingUserForBio?.name}
+      />
+
+      {/* Supabase 6-digit Email OTP Verification Modal */}
+      <EmailOtpVerificationModal
+        isOpen={otpModalOpen}
+        email={otpPendingEmail}
+        fullName={otpPendingName}
+        phone={otpPendingPhone}
+        address={otpPendingAddress}
+        onClose={() => setOtpModalOpen(false)}
+        onSuccess={handleOtpSuccess}
+        onChangeEmail={() => {
+          setOtpModalOpen(false);
+          setTab("register");
+        }}
       />
 
       {/* Supabase Config Modal */}
