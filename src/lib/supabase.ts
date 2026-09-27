@@ -97,6 +97,14 @@ export function mapSupabaseUserToProfile(sbUser: SupabaseUser): UserProfile {
     address: meta.address || "Dirección principal",
     hasBiometrics: Boolean(meta.hasBiometrics),
     createdAt: sbUser.created_at || new Date().toISOString(),
+    preferences: {
+      offersNewsletter: meta.offersNewsletter ?? true,
+      whatsappUpdates: meta.whatsappUpdates ?? true,
+      preferredInvoiceType: meta.preferredInvoiceType || "boleta",
+      deliveryInstructions: meta.deliveryInstructions || "",
+      city: meta.city || "Madrid",
+      postalCode: meta.postalCode || "28001",
+    },
   };
 }
 
@@ -235,5 +243,66 @@ export async function signOutSupabase(): Promise<void> {
     await supabase.auth.signOut();
   } catch (err) {
     console.warn("Supabase sign out error:", err);
+  }
+}
+
+// Update Supabase User Profile Metadata & Password (if provided)
+export async function updateSupabaseUserProfile(params: {
+  fullName: string;
+  phone: string;
+  address: string;
+  city?: string;
+  postalCode?: string;
+  deliveryInstructions?: string;
+  offersNewsletter?: boolean;
+  whatsappUpdates?: boolean;
+  preferredInvoiceType?: "boleta" | "factura";
+  hasBiometrics?: boolean;
+  newPassword?: string;
+}): Promise<{ user: UserProfile | null; error: string | null }> {
+  const supabase = getSupabase();
+
+  try {
+    const updatePayload: {
+      data: Record<string, unknown>;
+      password?: string;
+    } = {
+      data: {
+        full_name: params.fullName.trim(),
+        name: params.fullName.trim(),
+        phone: params.phone.trim(),
+        address: params.address.trim(),
+        city: params.city?.trim() || "",
+        postalCode: params.postalCode?.trim() || "",
+        deliveryInstructions: params.deliveryInstructions?.trim() || "",
+        offersNewsletter: params.offersNewsletter ?? true,
+        whatsappUpdates: params.whatsappUpdates ?? true,
+        preferredInvoiceType: params.preferredInvoiceType || "boleta",
+      },
+    };
+
+    if (params.hasBiometrics !== undefined) {
+      updatePayload.data.hasBiometrics = params.hasBiometrics;
+    }
+
+    if (params.newPassword && params.newPassword.trim().length >= 6) {
+      updatePayload.password = params.newPassword.trim();
+    }
+
+    const { data, error } = await supabase.auth.updateUser(updatePayload);
+
+    if (error) {
+      return { user: null, error: error.message };
+    }
+
+    if (data.user) {
+      const updatedProfile = mapSupabaseUserToProfile(data.user);
+      return { user: updatedProfile, error: null };
+    }
+
+    return { user: null, error: "No se pudo actualizar el perfil en Supabase." };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Error al conectar con Supabase.";
+    return { user: null, error: msg };
   }
 }

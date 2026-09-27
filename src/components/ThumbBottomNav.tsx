@@ -267,7 +267,7 @@ export const ThumbBottomNav: React.FC<ThumbBottomNavProps> = ({
               })}
             </div>
 
-            <div className="mt-5 pt-3 border-t border-white/60">
+            <div className="mt-5 pt-3 border-t border-white/60 space-y-2">
               <button
                 type="button"
                 onClick={() => {
@@ -278,6 +278,32 @@ export const ThumbBottomNav: React.FC<ThumbBottomNavProps> = ({
               >
                 <Store className="size-4" /> Ver Tienda Completa
               </button>
+
+              {currentUser ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategorySheetOpen(false);
+                    onNavigate("auth");
+                  }}
+                  className="w-full h-11 rounded-2xl border border-white/80 bg-white/80 font-extrabold text-brand-deep text-xs flex items-center justify-center gap-2 shadow-xs hover:bg-white active:scale-98"
+                >
+                  <User className="size-3.5 text-primary" />
+                  <span>Mi Perfil ({currentUser.name})</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategorySheetOpen(false);
+                    onOpenAuth?.();
+                  }}
+                  className="w-full h-11 rounded-2xl border border-white/80 bg-white/80 font-extrabold text-brand-deep text-xs flex items-center justify-center gap-2 shadow-xs hover:bg-white active:scale-98"
+                >
+                  <User className="size-3.5 text-primary" />
+                  <span>Iniciar Sesión / Crear Cuenta</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

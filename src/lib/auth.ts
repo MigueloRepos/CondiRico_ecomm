@@ -1,4 +1,13 @@
 // CondiRico Auth & Biometric Fingerprint Service
+export interface UserPreferences {
+  offersNewsletter?: boolean;
+  whatsappUpdates?: boolean;
+  preferredInvoiceType?: "boleta" | "factura";
+  deliveryInstructions?: string;
+  city?: string;
+  postalCode?: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -8,6 +17,7 @@ export interface UserProfile {
   hasBiometrics: boolean;
   biometricCredentialId?: string;
   createdAt: string;
+  preferences?: UserPreferences;
 }
 
 const USERS_STORAGE_KEY = "condirico_users_v1";

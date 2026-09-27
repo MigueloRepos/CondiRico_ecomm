@@ -36,6 +36,7 @@ import {
 } from "@/lib/supabase";
 import { BiometricFingerprintModal } from "@/components/BiometricFingerprintModal";
 import { SupabaseConfigModal } from "@/components/SupabaseConfigModal";
+import { UserProfileView } from "@/components/UserProfileView";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
 
 interface AuthPageProps {
@@ -43,6 +44,8 @@ interface AuthPageProps {
   onNavigate: (page: "inicio" | "tienda") => void;
   intendedActionNotice?: string;
   cartCount?: number;
+  currentUser?: UserProfile | null;
+  onLogout?: () => void;
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({
@@ -50,6 +53,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   onNavigate,
   intendedActionNotice,
   cartCount = 0,
+  currentUser,
+  onLogout,
 }) => {
   const [tab, setTab] = useState<"login" | "register">("login");
 
@@ -274,6 +279,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       }, 700);
     }
   };
+
+  // If user is already authenticated, show the User Profile View
+  if (currentUser) {
+    return (
+      <UserProfileView
+        currentUser={currentUser}
+        onUpdateUser={onSuccessAuth}
+        onLogout={onLogout || (() => {})}
+        onNavigate={onNavigate}
+      />
+    );
+  }
 
   return (
     <div className="relative min-h-screen py-8 px-4 sm:px-6 lg:px-8 flex flex-col justify-center selection:bg-sun selection:text-brand-deep">

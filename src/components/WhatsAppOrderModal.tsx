@@ -48,7 +48,15 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
     if (currentUser) {
       if (!name) setName(currentUser.name);
       if (!phone && currentUser.phone) setPhone(currentUser.phone);
-      if (!address && currentUser.address) setAddress(currentUser.address);
+      if (!address && currentUser.address) {
+        const fullAddr = currentUser.preferences?.city 
+          ? `${currentUser.address}, ${currentUser.preferences.city}`
+          : currentUser.address;
+        setAddress(fullAddr);
+      }
+      if (!notes && currentUser.preferences?.deliveryInstructions) {
+        setNotes(currentUser.preferences.deliveryInstructions);
+      }
     }
   }, [currentUser]);
 

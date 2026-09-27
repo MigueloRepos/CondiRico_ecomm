@@ -603,8 +603,19 @@ export default function App() {
                     <div className="px-2 py-1.5 border-b border-white/60 mb-2">
                       <p className="text-xs font-black text-foreground truncate">{currentUser.name}</p>
                       <p className="text-[11px] text-muted-foreground truncate">{currentUser.email}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          navigateTo("auth");
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-bold text-brand-deep hover:bg-white/80 transition-colors mb-1"
+                      >
+                        <UserIcon className="size-3.5 text-primary" />
+                        <span>Mi Perfil & Preferencias</span>
+                      </button>
                       {currentUser.hasBiometrics ? (
-                        <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-700">
+                        <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-700 px-2 py-1">
                           <Fingerprint className="size-3" />
                           <span>Huella dactilar activa</span>
                         </div>
@@ -615,7 +626,7 @@ export default function App() {
                             setUserDropdownOpen(false);
                             navigateTo("auth");
                           }}
-                          className="mt-1 text-[10px] font-bold text-primary hover:underline flex items-center gap-1"
+                          className="mt-1 text-[10px] font-bold text-primary hover:underline flex items-center gap-1 px-2 py-1"
                         >
                           <Fingerprint className="size-3" />
                           <span>Activar huella biométrica</span>
@@ -832,7 +843,9 @@ export default function App() {
       <main className="flex-1">
         {currentPage === "auth" ? (
           <AuthPage
+            currentUser={currentUser}
             onSuccessAuth={handleSuccessAuth}
+            onLogout={handleLogout}
             onNavigate={navigateTo}
             intendedActionNotice={intendedAuthNotice}
             cartCount={cartCount}
