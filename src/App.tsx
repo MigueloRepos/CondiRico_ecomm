@@ -34,6 +34,7 @@ import {
   Sparkle,
 } from "lucide-react";
 import { FormEvent, useMemo, useRef, useState, useEffect } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
 import { ThumbBottomNav } from "@/components/ThumbBottomNav";
@@ -114,6 +115,18 @@ export default function App() {
   });
   const productRail = useRef<HTMLDivElement>(null);
   const testimonialRail = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+
+  const { scrollYProgress: heroScrollProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+
+  const heroImageY = useTransform(heroScrollProgress, [0, 1], ["0%", "18%"]);
+  const heroImageScale = useTransform(heroScrollProgress, [0, 1], [1, 1.08]);
+  const heroTextY = useTransform(heroScrollProgress, [0, 1], ["0%", "10%"]);
+  const heroFloatY1 = useTransform(heroScrollProgress, [0, 1], ["0px", "-45px"]);
+  const heroFloatY2 = useTransform(heroScrollProgress, [0, 1], ["0px", "-25px"]);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -194,34 +207,37 @@ export default function App() {
       </div>
 
       {/* Top Banner (Apple Liquid Pill) */}
-      <div className="relative z-50 bg-brand-deep/95 backdrop-blur-md px-4 py-1.5 text-xs font-semibold text-primary-foreground border-b border-white/10 shadow-xs">
-        <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-y-1 gap-x-4">
-          {/* Lado izquierdo: Correo de contacto y Número de contacto */}
-          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+      <div className="relative z-50 bg-brand-deep/95 backdrop-blur-md px-4 py-2 text-xs font-semibold text-primary-foreground border-b border-white/10 shadow-xs">
+        <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-2 items-center gap-2 md:gap-6">
+          {/* Parte 1: Datos de Contacto */}
+          <div className="flex items-center justify-center md:justify-start gap-3 sm:gap-4 flex-wrap">
+            <span className="text-[10px] uppercase tracking-wider text-sun font-bold hidden lg:inline">
+              Contacto directo:
+            </span>
             <a
               href="mailto:hola@condirico.com"
-              className="inline-flex items-center gap-1.5 text-primary-foreground/90 hover:text-sun transition-colors active:scale-95"
+              className="inline-flex items-center gap-1.5 text-primary-foreground/90 hover:text-sun transition-colors active:scale-95 group"
               aria-label="Correo de contacto: hola@condirico.com"
             >
-              <Mail className="size-3.5 text-sun shrink-0" />
+              <Mail className="size-3.5 text-sun shrink-0 group-hover:scale-110 transition-transform" />
               <span className="text-[11px] sm:text-xs font-medium">hola@condirico.com</span>
             </a>
 
-            <span className="text-white/30 hidden xs:inline">•</span>
+            <span className="text-white/25 select-none">•</span>
 
             <a
               href="tel:+18002663474"
-              className="inline-flex items-center gap-1.5 text-primary-foreground/90 hover:text-sun transition-colors active:scale-95"
+              className="inline-flex items-center gap-1.5 text-primary-foreground/90 hover:text-sun transition-colors active:scale-95 group"
               aria-label="Teléfono de contacto: +1 800 CONDI RICO"
             >
-              <Phone className="size-3.5 text-sun shrink-0" />
+              <Phone className="size-3.5 text-sun shrink-0 group-hover:scale-110 transition-transform" />
               <span className="text-[11px] sm:text-xs font-medium">+1 800 CONDI RICO</span>
             </a>
           </div>
 
-          {/* Lado derecho: Redes sociales WhatsApp, Instagram, Twitter */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            <span className="hidden md:inline text-[11px] text-primary-foreground/60 font-normal">
+          {/* Parte 2: Redes Sociales */}
+          <div className="flex items-center justify-center md:justify-end gap-3 sm:gap-4 pt-1.5 md:pt-0 border-t border-white/10 md:border-t-0">
+            <span className="text-[10px] uppercase tracking-wider text-primary-foreground/60 font-bold hidden sm:inline">
               Síguenos:
             </span>
 
@@ -229,34 +245,38 @@ export default function App() {
             <button
               type="button"
               onClick={() => setWhatsAppModalOpen(true)}
-              className="inline-flex items-center gap-1 text-primary-foreground/90 hover:text-emerald-400 transition-colors active:scale-95"
+              className="inline-flex items-center gap-1.5 text-primary-foreground/90 hover:text-emerald-400 transition-colors active:scale-95 group"
               aria-label="Abrir WhatsApp CondiRico"
             >
-              <WhatsAppIcon className="size-3.5 text-emerald-400 shrink-0" />
+              <WhatsAppIcon className="size-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
               <span className="text-[11px] sm:text-xs font-medium">WhatsApp</span>
             </button>
+
+            <span className="text-white/25 select-none">•</span>
 
             {/* Instagram */}
             <a
               href="https://instagram.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-primary-foreground/90 hover:text-pink-400 transition-colors active:scale-95"
+              className="inline-flex items-center gap-1.5 text-primary-foreground/90 hover:text-pink-400 transition-colors active:scale-95 group"
               aria-label="Instagram de CondiRico"
             >
-              <Instagram className="size-3.5 text-pink-400 shrink-0" />
+              <Instagram className="size-3.5 text-pink-400 shrink-0 group-hover:scale-110 transition-transform" />
               <span className="text-[11px] sm:text-xs font-medium">Instagram</span>
             </a>
+
+            <span className="text-white/25 select-none">•</span>
 
             {/* Twitter */}
             <a
               href="https://twitter.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-primary-foreground/90 hover:text-sky-400 transition-colors active:scale-95"
+              className="inline-flex items-center gap-1.5 text-primary-foreground/90 hover:text-sky-400 transition-colors active:scale-95 group"
               aria-label="Twitter de CondiRico"
             >
-              <Twitter className="size-3.5 text-sky-400 shrink-0" />
+              <Twitter className="size-3.5 text-sky-400 shrink-0 group-hover:scale-110 transition-transform" />
               <span className="text-[11px] sm:text-xs font-medium">Twitter</span>
             </a>
           </div>
@@ -565,27 +585,56 @@ export default function App() {
           />
         ) : (
           <div>
-            {/* Hero Section: Apple Liquid Glass 2026 */}
-            <section className="relative overflow-hidden pt-6 pb-12 sm:pt-10 sm:pb-16">
+            {/* Hero Section: Apple Liquid Glass 2026 with Parallax */}
+            <section
+              ref={heroRef}
+              className="relative overflow-hidden pt-6 pb-12 sm:pt-10 sm:pb-16"
+            >
               <div className="mx-auto grid max-w-[1536px] lg:grid-cols-2 gap-8 items-center px-4 sm:px-6 lg:px-12">
-                <div className="w-full max-w-xl animate-rise">
-                  <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-primary shadow-xs backdrop-blur-md">
+                <motion.div
+                  style={{ y: heroTextY }}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                  className="w-full max-w-xl"
+                >
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-primary shadow-xs backdrop-blur-md"
+                  >
                     <Sparkle className="size-3.5 text-offer animate-pulse" />
                     <span>Tu supermercado de confianza</span>
-                  </div>
+                  </motion.div>
 
-                  <h1 className="text-4xl font-black leading-[1.07] tracking-tight text-brand-deep sm:text-5xl lg:text-6xl">
+                  <motion.h1
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                    className="text-4xl font-black leading-[1.07] tracking-tight text-brand-deep sm:text-5xl lg:text-6xl"
+                  >
                     Todo lo que necesitas
                     <br />
                     <span className="text-offer">en un solo lugar</span>
-                  </h1>
+                  </motion.h1>
 
-                  <p className="mt-6 max-w-md text-base leading-7 text-muted-foreground">
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                    className="mt-6 max-w-md text-base leading-7 text-muted-foreground"
+                  >
                     Productos frescos, despensa completa, limpieza y artículos
                     del hogar con entrega garantizada en 24 horas.
-                  </p>
+                  </motion.p>
 
-                  <div className="mt-8 flex flex-wrap items-center gap-4 sm:gap-5">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.7, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="mt-8 flex flex-wrap items-center gap-4 sm:gap-5"
+                  >
                     <button
                       type="button"
                       onClick={() => navigateTo("tienda")}
@@ -598,48 +647,98 @@ export default function App() {
                       <span className="size-2 rounded-full bg-primary" /> Más
                       de 1.500 productos
                     </span>
-                  </div>
-                </div>
+                  </motion.div>
+                </motion.div>
 
-                {/* Hero Showcase with Liquid Glass Floating Frame */}
-                <div className="relative min-h-[340px] sm:min-h-[440px] lg:min-h-[540px] rounded-[36px] overflow-hidden liquid-glass p-2.5 shadow-[0_30px_70px_-20px_rgba(20,83,45,0.15)]">
+                {/* Hero Showcase with Liquid Glass Floating Frame & Parallax */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.94 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className="relative min-h-[340px] sm:min-h-[440px] lg:min-h-[540px] rounded-[36px] overflow-hidden liquid-glass p-2.5 shadow-[0_30px_70px_-20px_rgba(20,83,45,0.15)]"
+                >
                   <div className="relative h-full w-full rounded-[28px] overflow-hidden">
-                    <img
+                    <motion.img
+                      style={{ y: heroImageY, scale: heroImageScale }}
                       src={heroImage}
                       width={1536}
                       height={1024}
                       alt="Bolsa de compras con alimentos frescos y productos de despensa"
-                      className="absolute inset-0 h-full w-full object-cover object-[68%_center] transition-transform duration-1000 ease-out hover:scale-105"
+                      className="absolute inset-0 h-full w-full object-cover object-[68%_center] will-change-transform"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent pointer-events-none" />
+
+                    {/* Floating Parallax Badges (Apple Liquid Glass) */}
+                    <motion.div
+                      style={{ y: heroFloatY1 }}
+                      className="absolute bottom-6 left-6 rounded-2xl border border-white/80 bg-white/85 backdrop-blur-xl px-4 py-3 shadow-lg flex items-center gap-3 z-10"
+                    >
+                      <div className="grid size-9 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
+                        <Truck className="size-4" />
+                      </div>
+                      <div>
+                        <strong className="block text-xs font-black text-brand-deep">Envíos Rápidos 24h</strong>
+                        <span className="text-[10px] text-muted-foreground">Directo a tu puerta</span>
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      style={{ y: heroFloatY2 }}
+                      className="absolute top-6 right-6 rounded-2xl border border-white/80 bg-white/85 backdrop-blur-xl px-4 py-2.5 shadow-lg flex items-center gap-2.5 z-10 hidden sm:flex"
+                    >
+                      <div className="grid size-8 place-items-center rounded-xl bg-sun/30 text-amber-800">
+                        <Sparkle className="size-4 text-offer" />
+                      </div>
+                      <div>
+                        <strong className="block text-xs font-black text-brand-deep">100% Fresco</strong>
+                        <span className="text-[10px] text-muted-foreground">Calidad garantizada</span>
+                      </div>
+                    </motion.div>
                   </div>
-                </div>
+                </motion.div>
               </div>
             </section>
 
             {/* Floating Glass Stats Bar */}
-            <section className="relative z-10 mx-auto -mt-6 max-w-4xl px-4 sm:px-6">
+            <motion.section
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="relative z-10 mx-auto -mt-6 max-w-4xl px-4 sm:px-6"
+            >
               <div className="grid grid-cols-3 divide-x divide-white/60 rounded-[28px] liquid-glass-dock px-4 py-5 shadow-[0_20px_45px_-12px_rgba(0,0,0,0.08)] sm:px-10">
                 {[
                   ["+1.5K", "Productos"],
                   ["24h", "Entrega rápida"],
                   ["4.9", "Valoración"],
-                ].map(([value, label]) => (
-                  <div key={label} className="text-center">
+                ].map(([value, label], idx) => (
+                  <motion.div
+                    key={label}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: idx * 0.1 }}
+                    className="text-center"
+                  >
                     <strong className="block text-2xl font-black text-primary sm:text-3xl">
                       {value}
                     </strong>
                     <span className="text-xs font-semibold text-muted-foreground">
                       {label}
                     </span>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
-            </section>
+            </motion.section>
 
             {/* Categories Showcase: Apple Liquid Glass Cards */}
-            <section
+            <motion.section
               id="categorias"
+              initial={{ opacity: 0, y: 35 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
               className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
             >
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
@@ -660,14 +759,20 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-                {CATEGORIES.map((category) => {
+                {CATEGORIES.map((category, idx) => {
                   const Icon = categoryIconMap[category.id];
                   return (
-                    <button
+                    <motion.button
                       key={category.id}
                       type="button"
+                      initial={{ opacity: 0, y: 25 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.5, delay: idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                      whileHover={{ y: -6, scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => navigateTo("tienda", category.id)}
-                      className="group relative flex flex-col justify-between rounded-[32px] liquid-glass-card liquid-reflection p-7 text-left active:scale-[0.98]"
+                      className="group relative flex flex-col justify-between rounded-[32px] liquid-glass-card liquid-reflection p-7 text-left"
                     >
                       <div>
                         <div
@@ -692,14 +797,21 @@ export default function App() {
                           <ArrowRight className="size-3.5" />
                         </div>
                       </div>
-                    </button>
+                    </motion.button>
                   );
                 })}
               </div>
-            </section>
+            </motion.section>
 
             {/* Featured Products Rail with Frosted Glass Cards */}
-            <section id="destacados" className="relative py-16 lg:py-24">
+            <motion.section
+              id="destacados"
+              initial={{ opacity: 0, y: 35 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              className="relative py-16 lg:py-24"
+            >
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
                   <SectionTitle
@@ -755,8 +867,10 @@ export default function App() {
                   {featuredProducts.map((product) => {
                     const inCart = cart[product.id] ?? 0;
                     return (
-                      <article
+                      <motion.article
                         key={product.id}
+                        whileHover={{ y: -6 }}
+                        transition={{ duration: 0.3 }}
                         className="group w-[80vw] max-w-[280px] shrink-0 snap-start overflow-hidden rounded-[28px] liquid-glass-card liquid-reflection p-3.5 sm:p-4"
                       >
                         <div className="relative aspect-square overflow-hidden rounded-2xl bg-white/60 border border-white/80 shadow-inner">
@@ -834,7 +948,7 @@ export default function App() {
                             </button>
                           </div>
                         </div>
-                      </article>
+                      </motion.article>
                     );
                   })}
                 </div>
@@ -850,11 +964,15 @@ export default function App() {
                   </button>
                 </div>
               </div>
-            </section>
+            </motion.section>
 
             {/* Weekly Promo Banner: Frosted Glass Horizon */}
-            <section
+            <motion.section
               id="ofertas"
+              initial={{ opacity: 0, scale: 0.96 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
               className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
             >
               <div className="relative min-h-[400px] overflow-hidden rounded-[36px] liquid-glass p-2 shadow-[0_25px_60px_-15px_rgba(20,83,45,0.15)]">
@@ -891,14 +1009,25 @@ export default function App() {
                   </div>
                 </div>
               </div>
-            </section>
+            </motion.section>
 
             {/* Benefits: Floating Glass Pods */}
-            <section className="py-14">
+            <motion.section
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.6 }}
+              className="py-14"
+            >
               <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 sm:gap-6 px-4 sm:px-6 md:grid-cols-5 lg:px-8">
                 {benefits.map(({ icon: Icon, title, text }, index) => (
-                  <div
+                  <motion.div
                     key={title}
+                    initial={{ opacity: 0, y: 25 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                    whileHover={{ y: -6, scale: 1.02 }}
                     className={`flex flex-col items-center rounded-[28px] liquid-glass-card p-6 text-center ${
                       index === 4 ? "col-span-2 md:col-span-1" : ""
                     }`}
@@ -908,10 +1037,10 @@ export default function App() {
                     </div>
                     <h3 className="mt-4 text-sm font-extrabold text-foreground">{title}</h3>
                     <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{text}</p>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
-            </section>
+            </motion.section>
 
             {/* Testimonials: Apple Frosted Glass Cards */}
             <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
@@ -947,24 +1076,24 @@ export default function App() {
               >
                 {[
                   [
-                    "María G.",
-                    "La compra llegó rapidísimo y todo estaba perfectamente empacado. Ya es mi supermercado de confianza.",
-                    "MG",
+                    "Valeria M.",
+                    "El aceite de oliva virgen extra y las especias llegaron en perfecto estado y con empaque protector. Se nota el cuidado y la frescura en cada detalle para cocinar en casa.",
+                    "VM",
                   ],
                   [
-                    "Carlos R.",
-                    "Encuentro todo lo de la semana en minutos. Los precios y las ofertas realmente valen la pena.",
-                    "CR",
+                    "Héctor S.",
+                    "Hice mi pedido semanal en 5 minutos por WhatsApp y la entrega llegó puntual antes de cenar. El detergente biodegradable y los productos de limpieza huelen increíble.",
+                    "HS",
                   ],
                   [
-                    "Ana P.",
-                    "La experiencia visual es increíblemente fluida y la calidad de los productos siempre supera mis expectativas.",
-                    "AP",
+                    "Beatriz C.",
+                    "Los paquetes familiares de arroz, harina y leche vegetal tienen precios insuperables. Con el envío gratis al pasar los $35 ahorramos notablemente en el presupuesto del mes.",
+                    "BC",
                   ],
                   [
-                    "David L.",
-                    "El pedido por WhatsApp es comodísimo. Envié mi lista y en 40 minutos ya lo tenía todo listo en casa.",
-                    "DL",
+                    "Javier E.",
+                    "La experiencia en la tienda web es súper intuitiva y el seguimiento en tiempo real funciona de diez. Me resolvieron una duda sobre fechas de vencimiento en segundos por chat.",
+                    "JE",
                   ],
                 ].map(([name, quote, initials], index) => (
                   <TestimonialCard
@@ -979,7 +1108,13 @@ export default function App() {
             </section>
 
             {/* Newsletter: Frosted Glass Pod */}
-            <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
+            <motion.section
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              className="mx-auto max-w-5xl px-4 py-12 sm:px-6"
+            >
               <div className="rounded-[36px] liquid-glass p-8 sm:p-14 text-center shadow-[0_20px_50px_-15px_rgba(20,83,45,0.08)]">
                 <span className="mx-auto grid size-13 place-items-center rounded-2xl bg-white/80 border border-white text-offer shadow-xs">
                   <Mail className="size-6" />
@@ -1018,11 +1153,24 @@ export default function App() {
                   </form>
                 )}
               </div>
-            </section>
+            </motion.section>
 
             {/* Contactos Section (Apple Liquid Glass 2026) */}
-            <section id="contactos" className="scroll-mt-24 mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-              <div className="text-center max-w-2xl mx-auto mb-12">
+            <motion.section
+              id="contactos"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              className="scroll-mt-24 mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="text-center max-w-2xl mx-auto mb-12"
+              >
                 <span className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-offer shadow-xs backdrop-blur-md">
                   <MessageSquare className="size-3.5" />
                   <span>Atención directa y cercana</span>
@@ -1033,11 +1181,17 @@ export default function App() {
                 <p className="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
                   ¿Tienes alguna duda sobre tu compra, entregas, sugerencias o requieres atención personalizada? Nuestro equipo está listo para ayudarte todos los días.
                 </p>
-              </div>
+              </motion.div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 {/* Contact Cards Pods */}
-                <div className="lg:col-span-5 space-y-4">
+                <motion.div
+                  initial={{ opacity: 0, x: -30 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                  className="lg:col-span-5 space-y-4"
+                >
                   <div className="rounded-[28px] liquid-glass-card p-6 flex items-start gap-4">
                     <div className="grid size-12 place-items-center rounded-2xl bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0 shadow-2xs">
                       <Phone className="size-5" />
@@ -1095,10 +1249,16 @@ export default function App() {
                       <p className="mt-1 text-xs font-bold text-foreground">Lunes a Domingo: 7:00 AM – 10:00 PM</p>
                     </div>
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Interactive Contact Form (Frosted Glass Container) */}
-                <div className="lg:col-span-7 rounded-[36px] liquid-glass p-7 sm:p-10 shadow-[0_20px_50px_-15px_rgba(20,83,45,0.08)]">
+                <motion.div
+                  initial={{ opacity: 0, x: 30 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                  className="lg:col-span-7 rounded-[36px] liquid-glass p-7 sm:p-10 shadow-[0_20px_50px_-15px_rgba(20,83,45,0.08)]"
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <MessageSquare className="size-4 text-offer" />
                     <span className="text-[11px] font-extrabold uppercase tracking-widest text-offer">
@@ -1229,9 +1389,9 @@ export default function App() {
                       </div>
                     </form>
                   )}
-                </div>
+                </motion.div>
               </div>
-            </section>
+            </motion.section>
           </div>
         )}
       </main>

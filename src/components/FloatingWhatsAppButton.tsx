@@ -11,7 +11,7 @@ export const FloatingWhatsAppButton: React.FC<FloatingWhatsAppButtonProps> = ({
   cartCount = 0,
 }) => {
   return (
-    <div className="fixed bottom-20 md:bottom-7 right-4 md:right-7 z-40 flex items-center gap-2">
+    <div className="fixed bottom-26 md:bottom-8 right-4 md:right-7 z-40 flex items-center gap-2">
       <button
         type="button"
         onClick={onClick}
