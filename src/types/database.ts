@@ -26,6 +26,7 @@ export interface Product {
   is_popular: boolean;
   is_featured: boolean;
   stock: number;
+  stock_quantity?: number | null;
   is_active: boolean;
   image_url: string | null;
   created_at?: string;

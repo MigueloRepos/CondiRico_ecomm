@@ -133,6 +133,32 @@ function Brand({
   );
 }
 
+export function StockBadge({ stockQuantity, stock }: { stockQuantity?: number; stock?: number }) {
+  const qty = stockQuantity ?? stock ?? 10;
+  if (qty <= 0) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-[11px] font-black text-rose-700 dark:text-rose-400 backdrop-blur-md shadow-2xs shrink-0">
+        <span className="size-1.5 rounded-full bg-rose-500" />
+        <span>Agotado</span>
+      </span>
+    );
+  }
+  if (qty <= 5) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[11px] font-black text-amber-800 dark:text-amber-300 backdrop-blur-md shadow-2xs shrink-0">
+        <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+        <span>Pocas unidades ({qty})</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-black text-emerald-800 dark:text-emerald-300 backdrop-blur-md shadow-2xs shrink-0">
+      <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+      <span>En stock</span>
+    </span>
+  );
+}
+
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<"inicio" | "tienda" | "auth" | "admin">("inicio");
   const { showCartToast } = useToast();
@@ -294,17 +320,18 @@ function AppContent() {
     0
   );
 
-  const featuredProducts = useMemo(() => {
-    // Dynamic Supabase filter: products marked is_featured = true or is_popular = true
-    const base = products.filter((p) => p.isFeatured || p.isPopular);
-    const list = base.length > 0 ? base : products;
-    if (!query) return list;
-    return list.filter((product) =>
+  const recentProducts = useMemo(() => {
+    // 6 productos más recientes desde la tabla en Supabase (public.products)
+    const sorted = [...products].sort((a, b) => Number(b.id) - Number(a.id)).slice(0, 6);
+    if (!query) return sorted;
+    return sorted.filter((product) =>
       `${product.name} ${product.detail} ${product.category}`
         .toLowerCase()
         .includes(query.toLowerCase())
     );
   }, [products, query]);
+
+  const featuredProducts = recentProducts;
 
   // Smooth scroll to product index
   const scrollToProductIndex = (index: number) => {
@@ -1369,22 +1396,28 @@ function AppContent() {
                   })}
                 </div>
               ) : (
-                <div className="rounded-[32px] liquid-glass p-8 text-center max-w-md mx-auto">
-                  <p className="text-sm font-semibold text-muted-foreground">
-                    {productsError || "No se encontraron categorías activas en Supabase."}
+                <div className="rounded-[32px] liquid-glass p-8 sm:p-12 text-center max-w-lg mx-auto border border-white/80 shadow-lg my-4">
+                  <div className="grid size-16 mx-auto place-items-center rounded-2xl bg-amber-500/10 text-amber-600 mb-4 border border-amber-500/20">
+                    <LayoutGrid className="size-8" />
+                  </div>
+                  <h4 className="text-xl font-black text-brand-deep">
+                    no existen categorias disponibles
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-2 max-w-xs mx-auto">
+                    Actualmente no se encontraron categorías registradas o activas en la tabla de Supabase.
                   </p>
                   <Button
                     variant="outline"
                     onClick={fetchCatalogData}
-                    className="mt-4 rounded-full text-xs font-bold"
+                    className="mt-5 rounded-full text-xs font-bold border-primary/30 text-primary hover:bg-primary/10 transition-colors"
                   >
-                    Reintentar conexión
+                    Reintentar conexión con Supabase
                   </Button>
                 </div>
               )}
             </motion.section>
 
-            {/* Featured Products Carousel: Apple Liquid Glass */}
+            {/* Featured Products Bento Grid: Apple Liquid Glass */}
             <motion.section
               id="destacados"
               initial={{ opacity: 0, y: 35 }}
@@ -1394,85 +1427,30 @@ function AppContent() {
               className="relative py-16 lg:py-24"
             >
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                {/* Carousel Header & Controls */}
+                {/* Header & Title */}
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
                   <SectionTitle
-                    eyebrow="Elegidos para ti"
-                    title="Productos destacados"
+                    eyebrow="Últimas novedades"
+                    title="Productos más recientes"
                     align="left"
                   />
 
-                  {/* Carousel Control Dock */}
                   <div className="flex items-center gap-2 self-start sm:self-auto">
-                    {/* Active Slide Counter Badge */}
-                    <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3.5 py-2 text-xs font-black text-brand-deep shadow-2xs backdrop-blur-md">
-                      <span className="text-primary font-black">
-                        {String(activeCarouselIndex + 1).padStart(2, "0")}
-                      </span>
-                      <span className="text-muted-foreground/60">/</span>
-                      <span className="text-muted-foreground">
-                        {String(featuredProducts.length).padStart(2, "0")}
-                      </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-black text-primary backdrop-blur-md shadow-2xs">
+                      <Sparkles className="size-3.5" />
+                      <span>Bento Grid • Supabase Live</span>
                     </span>
-
-                    {/* Autoplay Toggle Button */}
-                    <button
-                      type="button"
-                      onClick={() => setIsCarouselAutoPlay(!isCarouselAutoPlay)}
-                      title={isCarouselAutoPlay ? "Pausar carrusel automático" : "Reanudar carrusel automático"}
-                      className={`inline-flex items-center gap-1.5 rounded-full border border-white/80 px-3.5 py-2 text-xs font-bold shadow-2xs backdrop-blur-md transition-all active:scale-95 ${
-                        isCarouselAutoPlay
-                          ? "bg-primary/15 text-primary border-primary/30 hover:bg-primary/20"
-                          : "bg-white/70 text-muted-foreground hover:bg-white hover:text-foreground"
-                      }`}
-                      aria-label="Alternar carrusel automático"
-                    >
-                      {isCarouselAutoPlay ? (
-                        <>
-                          <Pause className="size-3.5 animate-pulse text-primary" />
-                          <span className="hidden md:inline">Auto</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play className="size-3.5 text-muted-foreground" />
-                          <span className="hidden md:inline">Pausado</span>
-                        </>
-                      )}
-                    </button>
-
-                    {/* Arrow Navigation */}
-                    <div className="flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 p-1 shadow-2xs backdrop-blur-md">
-                      <button
-                        type="button"
-                        className="grid size-9 place-items-center rounded-full text-foreground transition-all duration-300 hover:bg-white hover:scale-105 active:scale-90 hover:text-primary"
-                        onClick={handlePrevProduct}
-                        aria-label="Producto anterior del carrusel"
-                      >
-                        <ChevronLeft className="size-5" />
-                      </button>
-                      <button
-                        type="button"
-                        className="grid size-9 place-items-center rounded-full text-foreground transition-all duration-300 hover:bg-white hover:scale-105 active:scale-90 hover:text-primary"
-                        onClick={handleNextProduct}
-                        aria-label="Producto siguiente del carrusel"
-                      >
-                        <ChevronRight className="size-5" />
-                      </button>
-                    </div>
                   </div>
                 </div>
 
-                {/* Filter Search Bar within Destacados */}
+                {/* Filter Search Bar */}
                 <div className="relative mt-6 max-w-md sm:max-w-lg">
                   <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   <input
                     value={query}
-                    onChange={(event) => {
-                      setQuery(event.target.value);
-                      setActiveCarouselIndex(0);
-                    }}
-                    placeholder="Filtrar productos destacados..."
-                    aria-label="Buscar productos destacados"
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Filtrar productos recientes..."
+                    aria-label="Buscar productos recientes"
                     className="h-11 w-full rounded-full border border-white/80 bg-white/75 pl-11 pr-20 text-sm outline-none backdrop-blur-xl shadow-inner transition-all focus:bg-white focus:ring-4 focus:ring-primary/15 focus:border-primary/40"
                   />
                   <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -1488,219 +1466,350 @@ function AppContent() {
                     ) : null}
                     <VoiceSearchButton
                       onClick={() => setVoiceModalOpen(true)}
-                      ariaLabel="Buscar destacados por voz"
+                      ariaLabel="Buscar recientes por voz"
                     />
                   </div>
                 </div>
 
-                {/* Carousel Stage Container with Lateral Gradient Masks and Smooth Drag/Scroll */}
-                <div
-                  className="relative mt-8 group/carousel"
-                  onMouseEnter={() => setIsCarouselHovered(true)}
-                  onMouseLeave={() => setIsCarouselHovered(false)}
-                >
-                  {/* Lateral Glass Fade Gradient Mask (Left) */}
-                  <div className="pointer-events-none absolute left-0 top-0 bottom-6 w-8 sm:w-16 bg-gradient-to-r from-background via-background/40 to-transparent z-10 hidden sm:block rounded-l-[32px]" />
+                {/* Bento Grid Stage */}
+                {isLoadingProducts && recentProducts.length === 0 ? (
+                  <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 auto-rows-[280px]">
+                    {[...Array(6)].map((_, idx) => (
+                      <div
+                        key={idx}
+                        className={`rounded-[32px] liquid-glass p-6 animate-pulse space-y-4 ${
+                          idx === 0 ? "sm:col-span-2 sm:row-span-2 lg:col-span-2 lg:row-span-2" : ""
+                        }`}
+                      >
+                        <div className="h-full rounded-2xl bg-black/5" />
+                      </div>
+                    ))}
+                  </div>
+                ) : recentProducts.length > 0 ? (
+                  <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 auto-rows-[280px]">
+                    {recentProducts.map((product, idx) => {
+                      const inCart = cart[product.id] ?? 0;
+                      const isFav = favorites.has(product.id);
 
-                  {/* Lateral Glass Fade Gradient Mask (Right) */}
-                  <div className="pointer-events-none absolute right-0 top-0 bottom-6 w-8 sm:w-16 bg-gradient-to-l from-background via-background/40 to-transparent z-10 hidden sm:block rounded-r-[32px]" />
+                      // Determine Bento Grid Layout Spans based on index
+                      let gridSpanClass = "sm:col-span-1 sm:row-span-1";
+                      if (idx === 0) {
+                        gridSpanClass = "sm:col-span-2 sm:row-span-2 lg:col-span-2 lg:row-span-2";
+                      } else if (idx === 1) {
+                        gridSpanClass = "sm:col-span-1 sm:row-span-2 lg:col-span-1 lg:row-span-2";
+                      } else if (idx === 5) {
+                        gridSpanClass = "sm:col-span-2 lg:col-span-3 lg:row-span-1";
+                      }
 
-                  {/* Floating Edge Navigation Buttons (Desktop) */}
-                  <button
-                    type="button"
-                    onClick={handlePrevProduct}
-                    className="absolute -left-4 sm:left-2 top-1/2 -translate-y-1/2 z-20 hidden sm:grid size-11 place-items-center rounded-full border border-white/90 bg-white/85 text-brand-deep shadow-[0_8px_25px_rgba(0,0,0,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white hover:scale-110 active:scale-95 opacity-0 group-hover/carousel:opacity-100 focus:opacity-100"
-                    aria-label="Anterior en carrusel"
-                  >
-                    <ChevronLeft className="size-5" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleNextProduct}
-                    className="absolute -right-4 sm:right-2 top-1/2 -translate-y-1/2 z-20 hidden sm:grid size-11 place-items-center rounded-full border border-white/90 bg-white/85 text-brand-deep shadow-[0_8px_25px_rgba(0,0,0,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white hover:scale-110 active:scale-95 opacity-0 group-hover/carousel:opacity-100 focus:opacity-100"
-                    aria-label="Siguiente en carrusel"
-                  >
-                    <ChevronRight className="size-5" />
-                  </button>
-
-                  {/* Carousel Rail */}
-                  {isLoadingProducts && featuredProducts.length === 0 ? (
-                    <div className="flex gap-5 overflow-hidden pb-6 pt-2 px-1">
-                      {[...Array(4)].map((_, idx) => (
-                        <div
-                          key={idx}
-                          className="w-[78vw] max-w-[285px] shrink-0 rounded-[30px] liquid-glass p-4 animate-pulse space-y-4"
-                        >
-                          <div className="aspect-square rounded-2xl bg-black/5" />
-                          <div className="space-y-2">
-                            <div className="h-4 bg-black/5 rounded w-3/4" />
-                            <div className="h-3 bg-black/5 rounded w-1/2" />
-                          </div>
-                          <div className="h-10 bg-black/5 rounded-full" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : featuredProducts.length > 0 ? (
-                    <div
-                      ref={productRail}
-                      className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-6 pt-2 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
-                    >
-                      {featuredProducts.map((product, idx) => {
-                        const inCart = cart[product.id] ?? 0;
-                        const isCurrent = idx === activeCarouselIndex;
-
+                      if (idx === 0) {
+                        // Flagship Hero Bento Card (2x2)
                         return (
                           <motion.article
                             key={product.id}
-                            whileHover={{ y: -8, scale: 1.02 }}
-                            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                            className={`group/card relative w-[78vw] max-w-[285px] shrink-0 snap-start overflow-hidden rounded-[30px] liquid-glass-card liquid-reflection p-4 text-left transition-all duration-500 ${
-                              isCurrent
-                                ? "ring-2 ring-primary/40 shadow-[0_20px_45px_-12px_rgba(16,185,129,0.22)]"
-                                : "shadow-[0_12px_30px_-10px_rgba(0,0,0,0.06)]"
-                            }`}
+                            initial={{ opacity: 0, scale: 0.96 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
+                            viewport={{ once: true }}
+                            whileHover={{ y: -6 }}
+                            transition={{ duration: 0.4 }}
+                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[36px] liquid-glass-card liquid-reflection p-6 sm:p-8 flex flex-col justify-between border border-white/90 shadow-xl hover:shadow-2xl transition-all duration-500`}
                           >
-                            {/* Specular Top Edge Line */}
-                            <div className="absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-85" />
+                            <div className="absolute inset-x-12 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary/80 to-transparent" />
+                            <div className="absolute -right-16 -bottom-16 size-72 bg-primary/10 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/20 transition-all duration-700" />
 
-                            {/* Image Container */}
-                            <div className="relative aspect-square overflow-hidden rounded-2xl bg-white/70 border border-white/90 shadow-inner">
-                              {product.imageUrl ? (
-                                <img
-                                  src={product.imageUrl}
-                                  alt={product.name}
-                                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110"
-                                  onError={(e) => {
-                                    (e.target as HTMLElement).style.display = 'none';
-                                  }}
-                                />
-                              ) : product.pos ? (
-                                <div
-                                  className={`absolute inset-0 bg-cover transition-transform duration-700 group-hover/card:scale-110 ${product.pos}`}
-                                  style={{
-                                    backgroundImage: `url(${productsImage})`,
-                                    backgroundSize: "300% 200%",
-                                  }}
-                                />
-                              ) : (
-                                <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
-                                  <ShoppingBasket className="size-12 text-muted-foreground/60" />
-                                </div>
-                              )}
-
-                              {/* Badge */}
-                              {product.badge && (
-                                <span className="absolute left-3 top-3 rounded-full bg-offer px-2.5 py-0.5 text-[10px] font-black text-offer-foreground shadow-sm">
-                                  {product.badge}
+                            <div className="flex items-center justify-between gap-2 z-10">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 border border-primary/30 px-3.5 py-1 text-xs font-black text-primary backdrop-blur-md">
+                                  <Sparkles className="size-3.5" />
+                                  <span>{product.badge || "Recién Llegado #1"}</span>
                                 </span>
-                              )}
-
-                              {/* Rating Micro Pill */}
-                              <span className="absolute left-3 bottom-3 inline-flex items-center gap-1 rounded-full bg-white/90 border border-white px-2 py-0.5 text-[10px] font-extrabold text-foreground shadow-2xs backdrop-blur-md">
-                                <Star className="size-3 fill-amber-400 text-amber-400" />
-                                <span>{product.rating}</span>
-                              </span>
-
-                              {/* Favorite Button */}
+                                <StockBadge stockQuantity={product.stockQuantity} stock={product.stock} />
+                              </div>
                               <button
                                 type="button"
-                                className={`absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-white/90 border border-white/90 shadow-sm backdrop-blur-md transition-all duration-300 active:scale-90 hover:scale-110 ${
-                                  favorites.has(product.id)
-                                    ? "text-destructive"
-                                    : "text-muted-foreground hover:text-foreground"
-                                }`}
                                 onClick={() => toggleFavorite(product.id)}
-                                aria-label={
-                                  favorites.has(product.id)
-                                    ? "Quitar de favoritos"
-                                    : "Agregar a favoritos"
-                                }
+                                className="grid size-9 place-items-center rounded-full bg-white/80 border border-white shadow-xs backdrop-blur-md hover:scale-110 active:scale-95 transition-all shrink-0"
+                                aria-label="Agregar a favoritos"
                               >
-                                <Heart
-                                  className={`size-4 ${
-                                    favorites.has(product.id) ? "fill-current" : ""
-                                  }`}
-                                />
+                                <Heart className={`size-4 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
                               </button>
                             </div>
 
-                            {/* Content & Price */}
-                            <div className="p-1.5 pt-3">
-                              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                                {product.unit}
-                              </span>
-                              <h3 className="mt-0.5 font-black text-sm text-brand-deep line-clamp-1 group-hover/card:text-primary transition-colors">
-                                {product.name}
-                              </h3>
-                              <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
-                                {product.detail}
-                              </p>
-
-                              <div className="mt-4 flex items-end justify-between gap-3 border-t border-white/60 pt-3">
-                                <div>
-                                  <strong className="text-xl font-black text-brand-deep">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center my-4 z-10">
+                              <div>
+                                <span className="text-xs font-black uppercase text-primary tracking-wider">
+                                  {product.unit} • Producto Supabase
+                                </span>
+                                <h3 className="text-2xl sm:text-3xl font-black text-brand-deep mt-1 leading-tight group-hover:text-primary transition-colors">
+                                  {product.name}
+                                </h3>
+                                <p className="text-xs sm:text-sm text-muted-foreground mt-2 line-clamp-2">
+                                  {product.detail || "Calidad superior garantizada desde nuestro catálogo activo en Supabase."}
+                                </p>
+                                
+                                <div className="mt-4 flex items-baseline gap-2">
+                                  <span className="text-3xl sm:text-4xl font-black text-brand-deep">
                                     ${product.price.toFixed(2)}
-                                  </strong>
+                                  </span>
                                   {product.oldPrice && (
-                                    <span className="ml-2 text-xs text-muted-foreground line-through">
+                                    <span className="text-sm text-muted-foreground line-through">
                                       ${product.oldPrice.toFixed(2)}
                                     </span>
                                   )}
                                 </div>
+                              </div>
+
+                              <div className="relative aspect-square w-full max-w-[220px] mx-auto rounded-3xl overflow-hidden bg-white/80 border border-white/90 shadow-lg group-hover:scale-105 transition-transform duration-500">
+                                {product.imageUrl ? (
+                                  <img
+                                    src={product.imageUrl}
+                                    alt={product.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-emerald-500/10">
+                                    <ShoppingBasket className="size-16 text-primary/70" />
+                                  </div>
+                                )}
+                                <div className="absolute left-3 bottom-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-black text-brand-deep shadow-xs backdrop-blur-md">
+                                  <Star className="size-3.5 fill-amber-400 text-amber-400" />
+                                  <span>{product.rating}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/60 z-10">
+                              <span className="text-xs font-bold text-muted-foreground hidden sm:inline">
+                                Supabase ID #{product.id}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => changeCart(product.id, 1)}
+                                className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black shadow-lg transition-all active:scale-95 hover:scale-105 ${
+                                  inCart > 0
+                                    ? "bg-offer text-offer-foreground shadow-offer/20"
+                                    : "bg-primary text-primary-foreground shadow-primary/30"
+                                }`}
+                              >
+                                <Plus className="size-4" />
+                                <span>{inCart > 0 ? `En carrito (${inCart})` : "Agregar al Carrito"}</span>
+                              </button>
+                            </div>
+                          </motion.article>
+                        );
+                      }
+
+                      if (idx === 1) {
+                        // Tall Bento Card (1x2)
+                        return (
+                          <motion.article
+                            key={product.id}
+                            initial={{ opacity: 0, scale: 0.96 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
+                            viewport={{ once: true }}
+                            whileHover={{ y: -6 }}
+                            transition={{ duration: 0.4, delay: 0.1 }}
+                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[32px] liquid-glass-card liquid-reflection p-6 flex flex-col justify-between border border-white/80 shadow-lg hover:shadow-xl transition-all duration-500`}
+                          >
+                            <div className="flex items-center justify-between gap-2 z-10">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-extrabold text-primary">
+                                Novedad #{idx + 1}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <StockBadge stockQuantity={product.stockQuantity} stock={product.stock} />
                                 <button
                                   type="button"
-                                  className={`grid size-10 place-items-center rounded-full shadow-md active:scale-90 transition-all duration-300 hover:scale-108 ${
-                                    inCart > 0
-                                      ? "bg-offer text-offer-foreground shadow-offer/30"
-                                      : "bg-primary text-primary-foreground shadow-primary/30"
-                                  }`}
-                                  onClick={() => changeCart(product.id, 1)}
-                                  aria-label={`Agregar ${product.name} al carrito`}
+                                  onClick={() => toggleFavorite(product.id)}
+                                  className="grid size-8 place-items-center rounded-full bg-white/80 border border-white shadow-2xs backdrop-blur-md hover:scale-110 active:scale-95 transition-all shrink-0"
                                 >
-                                  <Plus className="size-4.5" />
+                                  <Heart className={`size-3.5 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="relative aspect-square w-full my-auto rounded-2xl overflow-hidden bg-white/80 border border-white/90 shadow-md group-hover:scale-105 transition-transform duration-500 z-10">
+                              {product.imageUrl ? (
+                                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-emerald-500/10">
+                                  <ShoppingBasket className="size-12 text-primary/70" />
+                                </div>
+                              )}
+                              <span className="absolute left-2.5 bottom-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-black text-brand-deep shadow-2xs backdrop-blur-md">
+                                <Star className="size-3 fill-amber-400 text-amber-400" />
+                                <span>{product.rating}</span>
+                              </span>
+                            </div>
+
+                            <div className="z-10">
+                              <h3 className="font-black text-base text-brand-deep line-clamp-1 group-hover:text-primary transition-colors">
+                                {product.name}
+                              </h3>
+                              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{product.detail}</p>
+                              
+                              <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-white/60">
+                                <strong className="text-lg font-black text-brand-deep">${product.price.toFixed(2)}</strong>
+                                <button
+                                  type="button"
+                                  onClick={() => changeCart(product.id, 1)}
+                                  className={`grid size-9 place-items-center rounded-full shadow-md active:scale-90 transition-all hover:scale-108 ${
+                                    inCart > 0 ? "bg-offer text-offer-foreground" : "bg-primary text-primary-foreground"
+                                  }`}
+                                >
+                                  <Plus className="size-4" />
                                 </button>
                               </div>
                             </div>
                           </motion.article>
                         );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="py-12 text-center rounded-3xl liquid-glass max-w-md mx-auto p-6">
-                      <p className="text-sm text-muted-foreground">
-                        {query
-                          ? `No hay productos destacados que coincidan con "${query}".`
-                          : "No hay productos destacados activos en este momento."}
-                      </p>
-                    </div>
-                  )}
+                      }
 
-                  {/* Carousel Interactive Pagination Indicator Dots */}
-                  {featuredProducts.length > 1 && (
-                    <div className="mt-4 flex items-center justify-center gap-2">
-                      {featuredProducts.map((_, i) => {
-                        const isActive = i === activeCarouselIndex;
+                      if (idx === 5) {
+                        // Wide Banner Bento Card (3x1)
                         return (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => scrollToProductIndex(i)}
-                            aria-label={`Ir al producto destacado ${i + 1}`}
-                            className={`h-2.5 rounded-full transition-all duration-500 active:scale-90 ${
-                              isActive
-                                ? "w-8 bg-primary shadow-sm shadow-primary/40 scale-105"
-                                : "w-2.5 bg-foreground/20 hover:bg-foreground/40"
-                            }`}
-                          />
+                          <motion.article
+                            key={product.id}
+                            initial={{ opacity: 0, scale: 0.96 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
+                            viewport={{ once: true }}
+                            whileHover={{ y: -4 }}
+                            transition={{ duration: 0.4, delay: 0.25 }}
+                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[32px] liquid-glass-card liquid-reflection p-6 flex flex-col sm:flex-row items-center justify-between gap-6 border border-white/80 shadow-lg hover:shadow-xl transition-all duration-500`}
+                          >
+                            <div className="flex items-center gap-4 z-10 w-full sm:w-auto">
+                              <div className="relative size-20 rounded-2xl overflow-hidden bg-white/80 border border-white/90 shadow-md shrink-0 group-hover:scale-105 transition-transform duration-500">
+                                {product.imageUrl ? (
+                                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-emerald-500/10">
+                                    <ShoppingBasket className="size-8 text-primary/70" />
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-primary tracking-wider bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
+                                    Novedad #{idx + 1}
+                                  </span>
+                                  <StockBadge stockQuantity={product.stockQuantity} stock={product.stock} />
+                                </div>
+                                <h3 className="font-black text-lg text-brand-deep group-hover:text-primary transition-colors mt-0.5">
+                                  {product.name}
+                                </h3>
+                                <p className="text-xs text-muted-foreground line-clamp-1">{product.detail}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between sm:justify-end gap-5 w-full sm:w-auto z-10 border-t sm:border-t-0 border-white/60 pt-3 sm:pt-0">
+                              <div className="text-left sm:text-right">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground block">{product.unit}</span>
+                                <strong className="text-xl font-black text-brand-deep">${product.price.toFixed(2)}</strong>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => changeCart(product.id, 1)}
+                                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-black shadow-md transition-all active:scale-95 hover:scale-105 ${
+                                  inCart > 0 ? "bg-offer text-offer-foreground" : "bg-primary text-primary-foreground"
+                                }`}
+                              >
+                                <Plus className="size-4" />
+                                <span>{inCart > 0 ? `(${inCart})` : "Agregar"}</span>
+                              </button>
+                            </div>
+                          </motion.article>
                         );
-                      })}
+                      }
+
+                      // Standard Square Bento Cards (idx 2, 3, 4)
+                      return (
+                        <motion.article
+                          key={product.id}
+                          initial={{ opacity: 0, scale: 0.96 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          viewport={{ once: true }}
+                          whileHover={{ y: -5 }}
+                          transition={{ duration: 0.4, delay: idx * 0.05 }}
+                          className={`group relative ${gridSpanClass} overflow-hidden rounded-[28px] liquid-glass-card liquid-reflection p-5 flex flex-col justify-between border border-white/80 shadow-md hover:shadow-lg transition-all duration-500`}
+                        >
+                          <div className="flex items-start justify-between gap-3 z-10">
+                            <div className="relative size-16 rounded-xl overflow-hidden bg-white/80 border border-white/90 shadow-2xs shrink-0 group-hover:scale-105 transition-transform duration-500">
+                              {product.imageUrl ? (
+                                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-emerald-500/10">
+                                  <ShoppingBasket className="size-6 text-primary/70" />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col items-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => toggleFavorite(product.id)}
+                                className="grid size-7 place-items-center rounded-full bg-white/80 border border-white shadow-2xs backdrop-blur-md hover:scale-110 active:scale-95 transition-all"
+                              >
+                                <Heart className={`size-3.5 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
+                              </button>
+                              <StockBadge stockQuantity={product.stockQuantity} stock={product.stock} />
+                            </div>
+                          </div>
+
+                          <div className="my-2 z-10">
+                            <h3 className="font-black text-sm text-brand-deep line-clamp-1 group-hover:text-primary transition-colors">
+                              {product.name}
+                            </h3>
+                            <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{product.detail}</p>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/60 z-10">
+                            <div>
+                              <span className="text-[10px] text-muted-foreground block font-bold">{product.unit}</span>
+                              <strong className="text-base font-black text-brand-deep">${product.price.toFixed(2)}</strong>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => changeCart(product.id, 1)}
+                              className={`grid size-8 place-items-center rounded-full shadow-md active:scale-90 transition-all hover:scale-108 ${
+                                inCart > 0 ? "bg-offer text-offer-foreground" : "bg-primary text-primary-foreground"
+                              }`}
+                            >
+                              <Plus className="size-3.5" />
+                            </button>
+                          </div>
+                        </motion.article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Empty State required by prompt if no products exist */
+                  <div className="mt-8 py-16 text-center rounded-[32px] liquid-glass max-w-lg mx-auto p-8 border border-white/80 shadow-lg">
+                    <div className="grid size-16 mx-auto place-items-center rounded-2xl bg-amber-500/10 text-amber-600 mb-4 border border-amber-500/20">
+                      <ShoppingBasket className="size-8" />
                     </div>
-                  )}
-                </div>
+                    <h3 className="text-xl font-black text-brand-deep">Catálogo Vacío</h3>
+                    <p className="mt-2 text-sm font-semibold text-muted-foreground">
+                      {query
+                        ? `No se encontraron productos que coincidan con "${query}".`
+                        : "no existen productos disponibles en la tienda"}
+                    </p>
+                    {query ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => setQuery("")}
+                        className="mt-5 rounded-full text-xs font-bold"
+                      >
+                        Limpiar búsqueda
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/80 mt-2">
+                        Puedes agregar nuevos productos en tiempo real desde el panel administrativo (/admin).
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Bottom Store Link */}
-                <div className="mt-10 text-center">
+                <div className="mt-12 text-center">
                   <button
                     type="button"
                     onClick={() => navigateTo("tienda")}

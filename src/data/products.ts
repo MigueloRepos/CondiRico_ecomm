@@ -27,6 +27,8 @@ export interface ProductItem {
   isPopular?: boolean;
   isFeatured?: boolean;
   imageUrl?: string | null;
+  stockQuantity?: number;
+  stock?: number;
 }
 
 export const CATEGORIES: CategoryInfo[] = [

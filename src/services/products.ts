@@ -31,6 +31,10 @@ export function mapProductFromDatabase(dbProduct: Product): ProductItem {
     isPopular: Boolean(dbProduct.is_popular),
     isFeatured: Boolean(dbProduct.is_featured),
     imageUrl: dbProduct.image_url || undefined,
+    stockQuantity: dbProduct.stock_quantity !== undefined && dbProduct.stock_quantity !== null
+      ? Number(dbProduct.stock_quantity)
+      : (dbProduct.stock !== undefined ? Number(dbProduct.stock) : 12),
+    stock: dbProduct.stock !== undefined ? Number(dbProduct.stock) : 12,
   };
 }
 
