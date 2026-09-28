@@ -55,7 +55,7 @@ import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { VoiceSearchModal } from "@/components/VoiceSearchModal";
 import { ToastProvider, useToast } from "@/components/ui/ToastContext";
 import { UserProfile, getCurrentSessionUser, setSessionUser } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { supabase, mapSupabaseUserToProfile } from "@/lib/supabase";
 import {
   Fingerprint,
   LogIn,
@@ -161,7 +161,7 @@ export function StockBadge({ stockQuantity, stock }: { stockQuantity?: number; s
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<"inicio" | "tienda" | "auth" | "admin">("inicio");
-  const { showCartToast } = useToast();
+  const { showCartToast, showSuccessToast } = useToast();
   const [targetCategory, setTargetCategory] = useState<CategoryId | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -254,6 +254,24 @@ function AppContent() {
 
     return () => {
       supabase.removeChannel(catalogChannel);
+    };
+  }, []);
+
+  // 1b. Listen for Supabase Auth state changes (e.g. clicking email confirmation link)
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session?.user) {
+          const profile = mapSupabaseUserToProfile(session.user);
+          setCurrentUser(profile);
+          setSessionUser(profile);
+          showSuccessToast("¡Cuenta confirmada!", `Bienvenido a CondiRico, ${profile.name}`);
+        }
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
     };
   }, []);
 

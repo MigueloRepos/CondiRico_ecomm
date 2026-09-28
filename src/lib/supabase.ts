@@ -139,6 +139,7 @@ export async function signUpWithSupabase(params: {
       email,
       password,
       options: {
+        emailRedirectTo: window.location.origin + window.location.pathname + "#auth",
         data: {
           full_name: params.fullName,
           phone: params.phone || "",
@@ -386,8 +387,8 @@ export async function verifyOtpWithSupabase(params: {
   }
 }
 
-// Resend Verification Email / OTP to user email
-export async function resendVerificationOtpWithSupabase(
+// Resend Confirmation Link to user email
+export async function resendConfirmationLinkWithSupabase(
   email: string
 ): Promise<{ success: boolean; error: string | null }> {
   const supabase = getSupabase();
@@ -395,13 +396,15 @@ export async function resendVerificationOtpWithSupabase(
     const { error } = await supabase.auth.resend({
       type: "signup",
       email: email.trim().toLowerCase(),
+      options: {
+        emailRedirectTo: window.location.origin + window.location.pathname + "#auth",
+      },
     });
 
     if (error) {
-      // If error is rate-limiting or project specific
       let msg = error.message;
       if (error.message.includes("rate limit") || error.message.includes("security purposes")) {
-        msg = "Por favor espera unos segundos antes de solicitar otro código.";
+        msg = "Por favor espera unos segundos antes de solicitar otro enlace de confirmación.";
       }
       return { success: false, error: msg };
     }
@@ -409,7 +412,30 @@ export async function resendVerificationOtpWithSupabase(
   } catch (err: unknown) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Error al reenviar código.",
+      error: err instanceof Error ? err.message : "Error al reenviar enlace.",
     };
   }
+}
+
+// Check if user session exists and email is confirmed
+export async function checkEmailConfirmedWithSupabase(): Promise<{ confirmed: boolean; user: UserProfile | null }> {
+  const supabase = getSupabase();
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const profile = mapSupabaseUserToProfile(session.user);
+      return { confirmed: true, user: profile };
+    }
+    return { confirmed: false, user: null };
+  } catch (err) {
+    console.warn("Check confirmation error:", err);
+    return { confirmed: false, user: null };
+  }
+}
+
+// Resend Verification Email / OTP to user email
+export async function resendVerificationOtpWithSupabase(
+  email: string
+): Promise<{ success: boolean; error: string | null }> {
+  return resendConfirmationLinkWithSupabase(email);
 }

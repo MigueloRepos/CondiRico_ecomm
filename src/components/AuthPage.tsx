@@ -214,7 +214,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         setIsSubmitting(false);
         setOtpPendingEmail(targetEmail);
         setOtpPendingName(targetEmail.split("@")[0]);
-        setLoginError("Debes confirmar tu correo electrónico con el código de 6 dígitos.");
+        setLoginError("Debes confirmar tu correo electrónico con el enlace enviado a tu bandeja de entrada.");
+        setOtpModalOpen(true);
         return;
       }
 
@@ -308,7 +309,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
       setIsSubmitting(false);
 
-      // Open the OTP Verification Modal for the user to enter the 6-digit code
+      // Open the Confirmation Link Modal
       setOtpPendingEmail(registerEmail.trim());
       setOtpPendingName(registerName.trim());
       setOtpPendingPhone(registerPhone.trim());
@@ -316,7 +317,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       setOtpPendingEnableBio(enableBiometricsOnRegister);
       setOtpModalOpen(true);
 
-      setFeedbackSuccess("¡Código de verificación enviado! Revisa tu correo electrónico.");
+      setFeedbackSuccess("¡Enlace de confirmación enviado! Revisa tu correo electrónico para activar tu cuenta.");
     } catch (err: unknown) {
       setIsSubmitting(false);
       setRegisterError(err instanceof Error ? err.message : "Error al registrar en Supabase");
