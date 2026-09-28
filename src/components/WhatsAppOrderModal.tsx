@@ -16,6 +16,7 @@ import { ALL_PRODUCTS, ProductItem } from "@/data/products";
 import { UserProfile } from "@/lib/auth";
 import { Lock, LogIn, Fingerprint, ShieldCheck, Loader2 } from "lucide-react";
 import { createOrder } from "@/services/orders";
+import { useToast } from "@/components/ui/ToastContext";
 
 interface WhatsAppOrderModalProps {
   isOpen: boolean;
@@ -118,6 +119,8 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
   }, [phoneNumber, messageText]);
 
+  const { showOrderConfirmedToast } = useToast();
+
   const handleCopy = () => {
     navigator.clipboard.writeText(messageText);
     setCopied(true);
@@ -127,6 +130,8 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
   const handleSendToWhatsApp = async () => {
     setIsSubmitting(true);
     setOrderError(null);
+
+    let createdId: number | string = Date.now().toString().slice(-6);
 
     try {
       // 1. Persist real order to Supabase orders and order_items
@@ -154,6 +159,7 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
         setOrderError(result.error || null);
       } else if (result.order) {
         setConfirmedOrderId(result.order.id);
+        createdId = result.order.id;
       }
     } catch (err: any) {
       console.warn("[WhatsAppOrderModal] Error persisting order:", err);
@@ -161,6 +167,7 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
       setIsSubmitting(false);
       window.open(whatsappUrl, "_blank", "noopener,noreferrer");
       setSentOrder(true);
+      showOrderConfirmedToast(createdId, total);
       if (onClearCart) {
         onClearCart();
       }

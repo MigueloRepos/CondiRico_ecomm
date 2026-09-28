@@ -45,6 +45,7 @@ import {
   recordUserSecurityIP,
   verifyUserSecurityIP,
 } from "@/lib/userSecurity";
+import { getProfile, checkIsAdmin } from "@/services";
 
 interface AuthPageProps {
   onSuccessAuth: (user: UserProfile) => void;
@@ -167,22 +168,40 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         // Record or refresh security IP in Supabase User_Sec
         recordUserSecurityIP(sbUser.email, secCheck.currentIp).catch(console.warn);
 
+        // Fetch user role from Supabase public.profiles
+        try {
+          const dbProfile = await getProfile(sbUser.id);
+          if (dbProfile?.role) {
+            sbUser.role = dbProfile.role;
+          } else {
+            const isAdmin = await checkIsAdmin(sbUser.id);
+            if (isAdmin) sbUser.role = "admin";
+            else sbUser.role = "customer";
+          }
+        } catch (err) {
+          console.warn("[AuthPage] Failed to fetch role:", err);
+        }
+
         setSessionUser(sbUser);
         setIsSubmitting(false);
 
         // Sync local users cache
         const localUsers = getStoredUsers();
-        if (!localUsers.some((u) => u.email.toLowerCase() === sbUser.email.toLowerCase())) {
+        const existingIdx = localUsers.findIndex((u) => u.email.toLowerCase() === sbUser.email.toLowerCase());
+        if (existingIdx >= 0) {
+          localUsers[existingIdx] = { ...localUsers[existingIdx], ...sbUser };
+        } else {
           localUsers.push(sbUser);
-          saveStoredUsers(localUsers);
         }
+        saveStoredUsers(localUsers);
 
         if (!sbUser.hasBiometrics && !deviceHasBiometric) {
           setPendingUserForBio(sbUser);
           setBiometricMode("register");
           setBiometricModalOpen(true);
         } else {
-          setFeedbackSuccess(`¡Bienvenido de vuelta, ${sbUser.name}! IP autorizada.`);
+          const destName = sbUser.role === "admin" ? "Panel Administrativo (/admin)" : "Catálogo y Perfil de Cliente";
+          setFeedbackSuccess(`¡Bienvenido de vuelta, ${sbUser.name}! Redirigiendo a ${destName}...`);
           setTimeout(() => {
             onSuccessAuth(sbUser);
           }, 600);
@@ -209,6 +228,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         // Record in User_Sec
         recordUserSecurityIP(found.email, secCheck.currentIp).catch(console.warn);
 
+        // Fetch user role
+        try {
+          const dbProfile = await getProfile(found.id);
+          if (dbProfile?.role) {
+            found.role = dbProfile.role;
+          } else {
+            const isAdmin = await checkIsAdmin(found.id);
+            if (isAdmin) found.role = "admin";
+          }
+        } catch (err) {
+          console.warn("[AuthPage] Failed to fetch role:", err);
+        }
+
         setSessionUser(found);
         setIsSubmitting(false);
 
@@ -217,7 +249,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           setBiometricMode("register");
           setBiometricModalOpen(true);
         } else {
-          setFeedbackSuccess(`¡Bienvenido de vuelta, ${found.name}!`);
+          const destName = found.role === "admin" ? "Panel Administrativo (/admin)" : "Tienda y Perfil de Cliente";
+          setFeedbackSuccess(`¡Bienvenido de vuelta, ${found.name}! Redirigiendo a ${destName}...`);
           setTimeout(() => {
             onSuccessAuth(found);
           }, 600);

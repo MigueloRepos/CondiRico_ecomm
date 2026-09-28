@@ -31,6 +31,7 @@ import {
   OrderWithItems,
 } from "@/services/admin/orders";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/ToastContext";
 
 const ORDER_STATUS_CONFIG: Record<
   string,
@@ -164,10 +165,12 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({ initialOrderId
     fetchDetail();
   }, [selectedOrderId]);
 
+  const { showDeliveryStatusToast, showSuccessToast } = useToast();
+
   const handleUpdateStatus = async () => {
     if (!selectedOrderDetail || !newStatusSelect) return;
     if (newStatusSelect === selectedOrderDetail.status && !statusChangeNote.trim()) {
-      showToast("El pedido ya está en este estado.");
+      showSuccessToast("El pedido ya está en este estado.");
       return;
     }
 
@@ -180,7 +183,7 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({ initialOrderId
       );
 
       if (res.success) {
-        showToast(`Pedido #${selectedOrderDetail.id} actualizado a "${newStatusSelect}".`);
+        showDeliveryStatusToast(selectedOrderDetail.id, newStatusSelect);
         setStatusChangeNote("");
         // Reload detail
         const updated = await getAdminOrderById(selectedOrderDetail.id);

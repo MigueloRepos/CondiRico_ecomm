@@ -38,6 +38,7 @@ import {
 } from "@/components/AdvancedFilterDrawer";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { VoiceSearchModal } from "@/components/VoiceSearchModal";
+import { useToast } from "@/components/ui/ToastContext";
 
 interface StorePageProps {
   initialCategory?: CategoryId | null;
@@ -69,8 +70,8 @@ export const StorePage: React.FC<StorePageProps> = ({
   onToggleFavorite,
   onOpenCart,
   onOpenWhatsAppOrder,
-  productsList = ALL_PRODUCTS,
-  categoriesList = CATEGORIES,
+  productsList = [],
+  categoriesList = [],
   isLoading = false,
   error = null,
   onRefresh,
@@ -231,8 +232,15 @@ export const StorePage: React.FC<StorePageProps> = ({
     });
   };
 
+  const { showCartToast } = useToast();
+
   const handleAddWithFeedback = (product: ProductItem) => {
     onAddToCart(product.id, 1);
+    showCartToast(
+      { name: product.name, image: product.imageUrl || undefined, price: product.price },
+      1,
+      onOpenCart
+    );
     setAddedNotice(`¡${product.name} agregado al carrito!`);
     setTimeout(() => setAddedNotice(null), 2400);
   };

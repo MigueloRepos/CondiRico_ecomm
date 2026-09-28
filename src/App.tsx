@@ -53,7 +53,9 @@ import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { AdminProtectedRoute, AdminRouteGuard } from "@/components/admin/AdminProtectedRoute";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { VoiceSearchModal } from "@/components/VoiceSearchModal";
+import { ToastProvider, useToast } from "@/components/ui/ToastContext";
 import { UserProfile, getCurrentSessionUser, setSessionUser } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 import {
   Fingerprint,
   LogIn,
@@ -81,6 +83,8 @@ import {
   removeFavorite as removeDbFavorite,
   subscribeNewsletter,
   sendContactMessage,
+  getProfile,
+  checkIsAdmin,
 } from "@/services";
 import heroImage from "@/assets/condirico-hero.jpg";
 import productsImage from "@/assets/condirico-products.jpg";
@@ -91,6 +95,10 @@ const categoryIconMap: Record<string, React.ElementType> = {
   "primera-necesidad": ShoppingBasket,
   limpieza: Sparkles,
   utiles: Home,
+  despensa: StoreIcon,
+  frescos: Leaf,
+  lacteos: ShoppingBasket,
+  bebidas: UtensilsCrossed,
 };
 
 const benefits = [
@@ -125,8 +133,9 @@ function Brand({
   );
 }
 
-export default function App() {
+function AppContent() {
   const [currentPage, setCurrentPage] = useState<"inicio" | "tienda" | "auth" | "admin">("inicio");
+  const { showCartToast } = useToast();
   const [targetCategory, setTargetCategory] = useState<CategoryId | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -197,6 +206,29 @@ export default function App() {
 
   useEffect(() => {
     fetchCatalogData();
+
+    // Subscribe to real-time changes on categories & products in Supabase
+    const catalogChannel = supabase
+      .channel("catalog-realtime-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "categories" },
+        () => {
+          fetchCatalogData();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "products" },
+        () => {
+          fetchCatalogData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(catalogChannel);
+    };
   }, []);
 
   // 2. Synchronize authenticated user's cart and favorites with Supabase
@@ -370,7 +402,7 @@ export default function App() {
       return next;
     });
 
-  const changeCart = (id: number, amount: number) =>
+  const changeCart = (id: number, amount: number) => {
     setCart((current) => {
       const next = Math.max(0, (current[id] ?? 0) + amount);
       const updated = { ...current, [id]: next };
@@ -387,6 +419,18 @@ export default function App() {
 
       return updated;
     });
+
+    if (amount > 0) {
+      const prod = products.find((p) => p.id === id);
+      if (prod) {
+        showCartToast(
+          { name: prod.name, image: prod.imageUrl || undefined, price: prod.price },
+          amount,
+          () => setCartOpen(true)
+        );
+      }
+    }
+  };
 
   const handleClearCart = () => {
     setCart({});
@@ -423,9 +467,28 @@ export default function App() {
     setFavorites(new Set());
   };
 
-  const handleSuccessAuth = (user: UserProfile) => {
-    setCurrentUser(user);
-    if (intendedAuthNotice) {
+  const handleSuccessAuth = async (user: UserProfile) => {
+    let finalUser: UserProfile = { ...user };
+    try {
+      const dbProfile = await getProfile(user.id);
+      if (dbProfile?.role) {
+        finalUser.role = dbProfile.role;
+      } else {
+        const isAdmin = await checkIsAdmin(user.id);
+        if (isAdmin) finalUser.role = "admin";
+        else if (!finalUser.role) finalUser.role = "customer";
+      }
+    } catch (err) {
+      console.warn("[handleSuccessAuth] Error verifying user role from Supabase:", err);
+    }
+
+    setCurrentUser(finalUser);
+    setSessionUser(finalUser);
+
+    // Role-based automatic dashboard redirection
+    if (finalUser.role === "admin") {
+      navigateTo("admin");
+    } else if (intendedAuthNotice) {
       setIntendedAuthNotice("");
       setCartOpen(false);
       setWhatsAppModalOpen(true);
@@ -2521,5 +2584,13 @@ function SectionTitle({
         {title}
       </h2>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 }
