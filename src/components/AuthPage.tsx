@@ -36,7 +36,7 @@ import {
 } from "@/lib/supabase";
 import { BiometricFingerprintModal } from "@/components/BiometricFingerprintModal";
 import { SupabaseConfigModal } from "@/components/SupabaseConfigModal";
-import { EmailOtpVerificationModal } from "@/components/EmailOtpVerificationModal";
+import { EmailConfirmationModal } from "@/components/EmailConfirmationModal";
 import { SecurityIpBlockModal } from "@/components/SecurityIpBlockModal";
 import { UserProfileView } from "@/components/UserProfileView";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
@@ -878,8 +878,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         userName={pendingUserForBio?.name}
       />
 
-      {/* Supabase 6-digit Email OTP Verification Modal */}
-      <EmailOtpVerificationModal
+      {/* Supabase Email Confirmation Link Modal */}
+      <EmailConfirmationModal
         isOpen={otpModalOpen}
         email={otpPendingEmail}
         fullName={otpPendingName}

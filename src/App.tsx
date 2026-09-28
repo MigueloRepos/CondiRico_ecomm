@@ -1442,8 +1442,13 @@ function AppContent() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              className="relative py-16 lg:py-24"
+              className="relative py-16 lg:py-24 overflow-hidden"
             >
+              {/* Subtle ambient lighting for frosted glassmorphic refraction */}
+              <div className="pointer-events-none absolute -top-12 left-10 -z-10 size-96 rounded-full bg-emerald-500/10 blur-[90px]" />
+              <div className="pointer-events-none absolute top-1/3 left-1/3 -z-10 size-80 rounded-full bg-primary/10 blur-[80px]" />
+              <div className="pointer-events-none absolute bottom-10 right-10 -z-10 size-80 rounded-full bg-amber-400/10 blur-[90px]" />
+
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 {/* Header & Title */}
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
@@ -1529,10 +1534,12 @@ function AppContent() {
                             viewport={{ once: true }}
                             whileHover={{ y: -6 }}
                             transition={{ duration: 0.4 }}
-                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[36px] liquid-glass-card liquid-reflection p-6 sm:p-8 flex flex-col justify-between border border-white/90 shadow-xl hover:shadow-2xl transition-all duration-500`}
+                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[36px] flagship-glassmorphic-card liquid-reflection p-6 sm:p-8 flex flex-col justify-between transition-all duration-500`}
                           >
-                            <div className="absolute inset-x-12 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary/80 to-transparent" />
-                            <div className="absolute -right-16 -bottom-16 size-72 bg-primary/10 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/20 transition-all duration-700" />
+                            <div className="absolute inset-x-12 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary/80 to-transparent z-10" />
+                            <div className="absolute -left-16 -top-16 size-72 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-400/30 transition-all duration-700" />
+                            <div className="absolute -right-16 -bottom-16 size-80 bg-primary/15 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/25 transition-all duration-700" />
+                            <div className="absolute left-1/3 top-1/2 -translate-y-1/2 size-48 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
 
                             <div className="flex items-center justify-between gap-2 z-10">
                               <div className="flex items-center gap-2 flex-wrap">

@@ -17,7 +17,6 @@ import {
 import {
   resendConfirmationLinkWithSupabase,
   checkEmailConfirmedWithSupabase,
-  verifyOtpWithSupabase,
 } from "@/lib/supabase";
 import { UserProfile } from "@/lib/auth";
 
@@ -92,10 +91,6 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
     return `mailto:${userEmail}`;
   };
 
-  const handleOpenEmailClient = () => {
-    const url = getEmailClientUrl(email);
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
 
   // Re-check confirmation status
   const handleCheckConfirmation = async () => {
@@ -246,14 +241,15 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
 
         {/* Action Buttons */}
         <div className="mt-5 space-y-2.5">
-          <button
-            type="button"
-            onClick={handleOpenEmailClient}
+          <a
+            href={getEmailClientUrl(email)}
+            target="_blank"
+            rel="noopener noreferrer"
             className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-lg shadow-primary/25 liquid-glass-button active:scale-98 transition-all flex items-center justify-center gap-2"
           >
             <ExternalLink className="size-4" />
             <span>Abrir mi Correo ({email.split("@")[1] || "Bandeja"})</span>
-          </button>
+          </a>
 
           <button
             type="button"
