@@ -654,8 +654,9 @@ export const StorePage: React.FC<StorePageProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                  <span className="text-xs font-bold text-primary bg-white/70 border border-white/80 px-3 py-1.5 rounded-full shadow-2xs">
-                    Frescura y Calidad CondiRico
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-xs font-black text-primary backdrop-blur-md shadow-2xs">
+                    <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Supabase Live Realtime</span>
                   </span>
                 </div>
               </div>
@@ -812,9 +813,14 @@ export const StorePage: React.FC<StorePageProps> = ({
                   })}
                 </div>
               ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <p className="text-sm">
-                    No se encontraron productos en esta sección para "{searchQuery}".
+                <div className="py-12 text-center text-muted-foreground rounded-2xl border border-dashed border-white/60 bg-white/30 my-4">
+                  <p className="text-sm font-bold text-brand-deep">
+                    {searchQuery
+                      ? `No se encontraron productos en esta sección para "${searchQuery}".`
+                      : "no existen productos disponibles en esta sección de la tienda"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Conectado en tiempo real a la tabla public.products en Supabase
                   </p>
                 </div>
               )}
