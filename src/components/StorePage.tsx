@@ -255,61 +255,61 @@ export const StorePage: React.FC<StorePageProps> = ({
       </div>
 
       {/* Tienda Hero Header: Apple Liquid Glass Banner */}
-      <section className="relative pt-8 pb-10 sm:pt-14 sm:pb-16 px-4 sm:px-6 lg:px-8">
+      <section className="relative pt-6 pb-8 sm:pt-14 sm:pb-16 px-3 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl">
-          <div className="relative rounded-[36px] liquid-glass p-7 sm:p-12 text-center shadow-[0_25px_60px_-15px_rgba(20,83,45,0.08)]">
+          <div className="relative rounded-[28px] sm:rounded-[36px] liquid-glass p-4 sm:p-8 lg:p-12 text-center shadow-[0_25px_60px_-15px_rgba(20,83,45,0.08)]">
             {/* Subtle specular top highlight line */}
-            <div className="absolute inset-x-12 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90" />
+            <div className="absolute inset-x-8 sm:inset-x-12 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90" />
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-primary shadow-xs backdrop-blur-md">
-              <Sparkle className="size-3.5 text-offer animate-pulse" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-3.5 py-1 text-[11px] sm:text-xs font-extrabold uppercase tracking-widest text-primary shadow-xs backdrop-blur-md">
+              <Sparkle className="size-3 text-offer animate-pulse" />
               <span>Apple Liquid Glass 2026</span>
             </div>
 
-            <h1 className="mt-4 text-3xl font-black tracking-tight text-brand-deep sm:text-5xl lg:text-6xl">
+            <h1 className="mt-3 sm:mt-4 text-2xl font-black tracking-tight text-brand-deep sm:text-5xl lg:text-6xl">
               Tienda <span className="text-offer">CondiRico</span>
             </h1>
 
-            <p className="mt-3 mx-auto max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className="mt-2 sm:mt-3 mx-auto max-w-2xl text-xs sm:text-base leading-relaxed text-muted-foreground">
               Experiencia fluida de compra. Todos los productos del supermercado
               organizados meticulosamente en secciones según su categoría.
             </p>
 
             {/* Micro Badges / Value Pillars */}
-            <div className="mt-6 flex flex-wrap justify-center gap-3 text-xs font-semibold text-foreground/85">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/60 px-4 py-1.5 backdrop-blur-md shadow-2xs">
-                <Truck className="size-3.5 text-emerald-600" /> Envío gratis +$35
+            <div className="mt-4 sm:mt-6 flex flex-wrap justify-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-semibold text-foreground/85">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/60 px-3 py-1 sm:px-4 sm:py-1.5 backdrop-blur-md shadow-2xs">
+                <Truck className="size-3 sm:size-3.5 text-emerald-600" /> Envío gratis +$35
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/60 px-4 py-1.5 backdrop-blur-md shadow-2xs">
-                <Check className="size-3.5 text-emerald-600" /> Entrega hoy mismo
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/60 px-3 py-1 sm:px-4 sm:py-1.5 backdrop-blur-md shadow-2xs">
+                <Check className="size-3 sm:size-3.5 text-emerald-600" /> Entrega hoy mismo
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/60 px-4 py-1.5 backdrop-blur-md shadow-2xs">
-                <ShieldCheck className="size-3.5 text-emerald-600" /> Calidad certificada
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/60 px-3 py-1 sm:px-4 sm:py-1.5 backdrop-blur-md shadow-2xs">
+                <ShieldCheck className="size-3 sm:size-3.5 text-emerald-600" /> Calidad certificada
               </span>
             </div>
 
             {/* Liquid Glass Search Bar & Advanced Filter Trigger */}
-            <div className="mt-8 mx-auto max-w-2xl">
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1 group">
-                  <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground pointer-events-none transition-colors group-focus-within:text-primary" />
+            <div className="mt-6 sm:mt-8 mx-auto max-w-2xl">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="relative flex-1 group min-w-0">
+                  <Search className="absolute left-3.5 sm:left-4 top-1/2 size-4 sm:size-5 -translate-y-1/2 text-muted-foreground pointer-events-none transition-colors group-focus-within:text-primary" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar arroz, aceite de oliva, detergente, café..."
+                    placeholder="Buscar en catálogo (arroz, aceite, café...)"
                     aria-label="Buscar en la tienda"
-                    className="h-13 w-full rounded-full border border-white/80 bg-white/75 pl-12 pr-20 text-sm outline-none backdrop-blur-xl shadow-[0_8px_25px_-5px_rgba(0,0,0,0.05)] transition-all focus:bg-white focus:ring-4 focus:ring-primary/15 focus:border-primary/40"
+                    className="h-11 sm:h-13 w-full rounded-full border border-white/80 bg-white/75 pl-10 sm:pl-12 pr-16 sm:pr-20 text-xs sm:text-sm outline-none backdrop-blur-xl shadow-[0_8px_25px_-5px_rgba(0,0,0,0.05)] transition-all focus:bg-white focus:ring-4 focus:ring-primary/15 focus:border-primary/40"
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 sm:gap-1">
                     {searchQuery ? (
                       <button
                         type="button"
                         onClick={() => setSearchQuery("")}
-                        className="grid size-7 place-items-center rounded-full bg-muted/80 text-muted-foreground hover:text-foreground active:scale-90"
+                        className="grid size-6 sm:size-7 place-items-center rounded-full bg-muted/80 text-muted-foreground hover:text-foreground active:scale-90"
                         aria-label="Borrar búsqueda"
                       >
-                        <X className="size-4" />
+                        <X className="size-3.5 sm:size-4" />
                       </button>
                     ) : null}
                     <VoiceSearchButton
@@ -323,17 +323,17 @@ export const StorePage: React.FC<StorePageProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsFilterDrawerOpen(true)}
-                  className={`h-13 rounded-full px-5 text-xs font-bold flex items-center gap-2.5 shadow-md backdrop-blur-xl transition-all duration-300 active:scale-95 shrink-0 ${
+                  className={`h-11 sm:h-13 rounded-full px-3.5 sm:px-5 text-xs font-bold flex items-center gap-1.5 sm:gap-2.5 shadow-md backdrop-blur-xl transition-all duration-300 active:scale-95 shrink-0 ${
                     activeFiltersCount > 0
                       ? "bg-primary text-primary-foreground shadow-primary/25 border border-primary scale-[1.02]"
                       : "border border-white/80 bg-white/80 text-brand-deep hover:bg-white hover:border-primary/30"
                   }`}
                   aria-label="Abrir panel desplegable de filtros avanzados"
                 >
-                  <SlidersHorizontal className="size-4" />
-                  <span className="font-extrabold">Filtros</span>
+                  <SlidersHorizontal className="size-3.5 sm:size-4" />
+                  <span className="font-extrabold hidden xs:inline sm:inline">Filtros</span>
                   {activeFiltersCount > 0 && (
-                    <span className="grid size-5 place-items-center rounded-full bg-offer text-offer-foreground text-[10px] font-black shadow-xs">
+                    <span className="grid size-4.5 sm:size-5 place-items-center rounded-full bg-offer text-offer-foreground text-[9px] sm:text-[10px] font-black shadow-xs">
                       {activeFiltersCount}
                     </span>
                   )}
@@ -878,10 +878,10 @@ export const StorePage: React.FC<StorePageProps> = ({
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-30 grid size-12 place-items-center rounded-full liquid-glass-dock text-primary shadow-xl active:scale-90 hover:scale-110 transition-all duration-300 border border-white"
+          className="fixed bottom-22 left-3.5 md:bottom-7 md:left-7 z-30 grid size-11 sm:size-12 place-items-center rounded-full liquid-glass-dock text-primary shadow-xl active:scale-90 hover:scale-110 transition-all duration-300 border border-white/80"
           aria-label="Volver arriba"
         >
-          <ArrowUp className="size-5" />
+          <ArrowUp className="size-4.5 sm:size-5" />
         </button>
       )}
 

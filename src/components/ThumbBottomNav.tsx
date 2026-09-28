@@ -54,7 +54,7 @@ export const ThumbBottomNav: React.FC<ThumbBottomNavProps> = ({
   return (
     <>
       {/* Apple Liquid Glass 2026: Floating Thumb Dock */}
-      <div className="fixed bottom-3 inset-x-3 z-40 md:hidden pointer-events-none">
+      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] inset-x-3 z-40 md:hidden pointer-events-none">
         <nav
           aria-label="Navegación móvil flotante Liquid Glass"
           className="pointer-events-auto mx-auto max-w-md liquid-glass-dock rounded-[28px] px-2 py-1.5 shadow-[0_20px_50px_-10px_rgba(20,83,45,0.22),0_4px_16px_rgba(0,0,0,0.06)]"

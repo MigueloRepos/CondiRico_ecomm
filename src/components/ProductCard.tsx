@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Plus, Check, Heart, ShoppingBag, Eye } from "lucide-react";
 import { ProductItem } from "@/data/products";
+import { BlurUpImage } from "@/components/BlurUpImage";
 
 interface ProductCardProps {
   product: ProductItem;
@@ -40,11 +41,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* Top Media Showcase */}
       <div className="relative aspect-square w-full rounded-2xl bg-[#F8F7F2] border border-[#E5EAE6] overflow-hidden flex items-center justify-center">
         {product.imageUrl ? (
-          <img
+          <BlurUpImage
             src={product.imageUrl}
             alt={product.name}
             className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-            loading="lazy"
+            fallbackIcon={<ShoppingBag className="size-16 text-[#075B3A]/30" />}
           />
         ) : (
           <ShoppingBag className="size-16 text-[#075B3A]/30 transition-transform duration-500 group-hover:scale-110" />
@@ -57,11 +58,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             e.stopPropagation();
             onToggleFavorite(product.id);
           }}
-          className="absolute top-2.5 right-2.5 grid size-8 place-items-center rounded-full bg-white/90 backdrop-blur-md border border-[#E5EAE6] text-[#66736D] hover:text-rose-500 hover:bg-white shadow-2xs transition-all active:scale-90"
+          className="absolute top-2 right-2 grid size-11 place-items-center rounded-full bg-white/90 backdrop-blur-md border border-[#E5EAE6] text-[#66736D] hover:text-rose-500 hover:bg-white shadow-2xs transition-all active:scale-90"
           aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
         >
           <Heart
-            className={`size-4 transition-colors ${
+            className={`size-4.5 transition-colors ${
               isFavorite ? "fill-rose-500 text-rose-500" : ""
             }`}
           />
@@ -84,7 +85,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
 
       {/* Product Content Details */}
-      <div className="pt-4 flex flex-1 flex-col justify-between">
+      <div className="pt-3.5 sm:pt-4 flex flex-1 flex-col justify-between">
         <div>
           {/* Metadata Row: Category & Stock State */}
           <div className="flex items-center justify-between gap-2 text-xs text-[#66736D]">
@@ -133,7 +134,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         {/* Pricing and Action Row */}
-        <div className="mt-4 pt-3 border-t border-[#E5EAE6] flex items-center justify-between gap-2">
+        <div className="mt-3.5 pt-3 border-t border-[#E5EAE6] flex items-center justify-between gap-2">
           <div>
             <span className="text-base sm:text-lg font-extrabold text-[#12352C]">
               ${product.price.toFixed(2)}
@@ -150,7 +151,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             type="button"
             onClick={handleAdd}
             disabled={isOutOfStock}
-            className={`h-9 px-3.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 ${
+            className={`min-h-[44px] h-11 px-4 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer ${
               justAdded
                 ? "bg-emerald-700 text-white"
                 : inCartCount > 0

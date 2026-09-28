@@ -86,6 +86,16 @@
   animation: cart-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite ease-in-out;
+}
+
 /* Flagship Bento Glassmorphism Card with Pronounced Backdrop Blur & 1px Gradient Border */
 .flagship-glassmorphic-card {
   position: relative;
@@ -249,6 +259,8 @@
 html {
   scroll-behavior: smooth;
   background-color: #F8F7F2;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 body {
@@ -257,6 +269,9 @@ body {
   color: #12352C;
   font-family: var(--font-sans);
   background-color: #F8F7F2;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

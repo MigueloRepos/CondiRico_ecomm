@@ -54,6 +54,8 @@ import { AdminProtectedRoute, AdminRouteGuard } from "@/components/admin/AdminPr
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { VoiceSearchModal } from "@/components/VoiceSearchModal";
 import { ToastProvider, useToast } from "@/components/ui/ToastContext";
+import { BlurUpImage } from "@/components/BlurUpImage";
+import { CategoryBento } from "@/components/CategoryBento";
 import { UserProfile, getCurrentSessionUser, setSessionUser } from "@/lib/auth";
 import { supabase, mapSupabaseUserToProfile } from "@/lib/supabase";
 import {
@@ -260,12 +262,14 @@ function AppContent() {
   // 1b. Listen for Supabase Auth state changes (e.g. clicking email confirmation link)
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session?.user) {
+      (event, session) => {
+        if (session?.user) {
           const profile = mapSupabaseUserToProfile(session.user);
           setCurrentUser(profile);
           setSessionUser(profile);
-          showSuccessToast("¡Cuenta confirmada!", `Bienvenido a CondiRico, ${profile.name}`);
+          if (event === "USER_UPDATED") {
+            showSuccessToast("¡Cuenta actualizada!", `Tus datos han sido actualizados.`);
+          }
         }
       }
     );
@@ -303,11 +307,11 @@ function AppContent() {
     offset: ["start start", "end start"],
   });
 
-  const heroImageY = useTransform(heroScrollProgress, [0, 1], ["0%", "18%"]);
-  const heroImageScale = useTransform(heroScrollProgress, [0, 1], [1, 1.08]);
-  const heroTextY = useTransform(heroScrollProgress, [0, 1], ["0%", "10%"]);
-  const heroFloatY1 = useTransform(heroScrollProgress, [0, 1], ["0px", "-45px"]);
-  const heroFloatY2 = useTransform(heroScrollProgress, [0, 1], ["0px", "-25px"]);
+  const heroBgY = useTransform(heroScrollProgress, [0, 1], ["0%", "28%"]);
+  const heroBgScale = useTransform(heroScrollProgress, [0, 1], [1, 1.15]);
+  const heroTextY = useTransform(heroScrollProgress, [0, 1], ["0%", "14%"]);
+  const heroFloatY1 = useTransform(heroScrollProgress, [0, 1], ["0px", "-50px"]);
+  const heroFloatY2 = useTransform(heroScrollProgress, [0, 1], ["0px", "-30px"]);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -624,7 +628,7 @@ function AppContent() {
   }
 
   return (
-    <div id="inicio" className="relative min-h-screen text-foreground flex flex-col selection:bg-sun selection:text-brand-deep">
+    <div id="inicio" className="relative min-h-screen w-full max-w-full overflow-x-hidden text-foreground flex flex-col selection:bg-sun selection:text-brand-deep pb-24 md:pb-0">
       {/* Volumetric Ambient Mesh Lighting Layers for Glassmorphism */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         {/* Top-Right Emerald Aurora */}
@@ -639,82 +643,6 @@ function AppContent() {
         <div className="absolute bottom-0 left-10 h-[650px] w-[650px] rounded-full bg-gradient-to-tr from-emerald-300/35 via-amber-200/25 to-transparent blur-[140px] animate-float-reverse" />
       </div>
 
-      {/* Top Banner (Apple Liquid Pill) */}
-      <div className="relative z-50 bg-brand-deep/95 backdrop-blur-md px-4 py-2 text-xs font-semibold text-primary-foreground border-b border-white/10 shadow-xs">
-        <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-2 items-center gap-2 md:gap-6">
-          {/* Parte 1: Datos de Contacto */}
-          <div className="flex items-center justify-center md:justify-start gap-3 sm:gap-4 flex-wrap">
-            <span className="text-[10px] uppercase tracking-wider text-sun font-bold hidden lg:inline">
-              Contacto directo:
-            </span>
-            <a
-              href="mailto:hola@condirico.com"
-              className="inline-flex items-center gap-1.5 text-primary-foreground/90 hover:text-sun transition-colors active:scale-95 group"
-              aria-label="Correo de contacto: hola@condirico.com"
-            >
-              <Mail className="size-3.5 text-sun shrink-0 group-hover:scale-110 transition-transform" />
-              <span className="text-[11px] sm:text-xs font-medium">hola@condirico.com</span>
-            </a>
-
-            <span className="text-white/25 select-none">•</span>
-
-            <a
-              href="tel:+18002663474"
-              className="inline-flex items-center gap-1.5 text-primary-foreground/90 hover:text-sun transition-colors active:scale-95 group"
-              aria-label="Teléfono de contacto: +1 800 CONDI RICO"
-            >
-              <Phone className="size-3.5 text-sun shrink-0 group-hover:scale-110 transition-transform" />
-              <span className="text-[11px] sm:text-xs font-medium">+1 800 CONDI RICO</span>
-            </a>
-          </div>
-
-          {/* Parte 2: Redes Sociales */}
-          <div className="flex items-center justify-center md:justify-end gap-3 sm:gap-4 pt-1.5 md:pt-0 border-t border-white/10 md:border-t-0">
-            <span className="text-[10px] uppercase tracking-wider text-primary-foreground/60 font-bold hidden sm:inline">
-              Síguenos:
-            </span>
-
-            {/* WhatsApp */}
-            <button
-              type="button"
-              onClick={() => setWhatsAppModalOpen(true)}
-              className="inline-flex items-center gap-1.5 text-primary-foreground/90 hover:text-emerald-400 transition-colors active:scale-95 group"
-              aria-label="Abrir WhatsApp CondiRico"
-            >
-              <WhatsAppIcon className="size-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-              <span className="text-[11px] sm:text-xs font-medium">WhatsApp</span>
-            </button>
-
-            <span className="text-white/25 select-none">•</span>
-
-            {/* Instagram */}
-            <a
-              href="https://instagram.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-primary-foreground/90 hover:text-pink-400 transition-colors active:scale-95 group"
-              aria-label="Instagram de CondiRico"
-            >
-              <Instagram className="size-3.5 text-pink-400 shrink-0 group-hover:scale-110 transition-transform" />
-              <span className="text-[11px] sm:text-xs font-medium">Instagram</span>
-            </a>
-
-            <span className="text-white/25 select-none">•</span>
-
-            {/* Twitter */}
-            <a
-              href="https://twitter.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-primary-foreground/90 hover:text-sky-400 transition-colors active:scale-95 group"
-              aria-label="Twitter de CondiRico"
-            >
-              <Twitter className="size-3.5 text-sky-400 shrink-0 group-hover:scale-110 transition-transform" />
-              <span className="text-[11px] sm:text-xs font-medium">Twitter</span>
-            </a>
-          </div>
-        </div>
-      </div>
 
       {/* Apple Liquid Glass 2026 Header */}
       <header className="sticky top-0 z-40 border-b border-white/60 bg-white/70 backdrop-blur-2xl shadow-[0_4px_30px_rgba(0,0,0,0.03)] transition-all">
@@ -1178,115 +1106,108 @@ function AppContent() {
           />
         ) : (
           <div>
-            {/* Hero Section: Apple Liquid Glass 2026 with Parallax */}
+            {/* Hero Section: Editorial with True Background & Foreground Parallax */}
             <section
               ref={heroRef}
-              className="relative overflow-hidden pt-6 pb-12 sm:pt-10 sm:pb-16"
+              className="relative overflow-hidden pt-8 pb-14 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28"
             >
-              <div className="mx-auto grid max-w-[1536px] lg:grid-cols-2 gap-8 items-center px-4 sm:px-6 lg:px-12">
+              {/* Parallax Background Media Layer */}
+              <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
                 <motion.div
-                  style={{ y: heroTextY }}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                  className="w-full max-w-xl"
+                  style={{ y: heroBgY, scale: heroBgScale }}
+                  className="absolute -inset-x-0 -top-[15%] h-[135%] w-full will-change-transform"
                 >
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.1 }}
-                    className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-primary shadow-xs backdrop-blur-md"
-                  >
-                    <Sparkle className="size-3.5 text-offer animate-pulse" />
-                    <span>Tu supermercado de confianza</span>
-                  </motion.div>
-
-                  <motion.h1
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                    className="text-4xl font-black leading-[1.07] tracking-tight text-brand-deep sm:text-5xl lg:text-6xl"
-                  >
-                    Todo lo que necesitas
-                    <br />
-                    <span className="text-offer">en un solo lugar</span>
-                  </motion.h1>
-
-                  <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    className="mt-6 max-w-md text-base leading-7 text-muted-foreground"
-                  >
-                    Productos frescos, despensa completa, limpieza y artículos
-                    del hogar con entrega garantizada en 24 horas.
-                  </motion.p>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.7, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                    className="mt-8 flex flex-wrap items-center gap-4 sm:gap-5"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => navigateTo("tienda")}
-                      className="h-13 rounded-full bg-offer px-8 font-black text-offer-foreground text-sm flex items-center gap-2.5 shadow-xl shadow-offer/30 liquid-glass-button active:scale-95"
-                    >
-                      <span>Explorar la Tienda</span>
-                      <ArrowRight className="size-4" />
-                    </button>
-                    <span className="flex items-center gap-2 text-sm font-semibold text-primary">
-                      <span className="size-2 rounded-full bg-primary" /> Más
-                      de 1.500 productos
-                    </span>
-                  </motion.div>
+                  <img
+                    src={heroImage}
+                    width={1536}
+                    height={1024}
+                    alt="Abastecimiento y productos frescos CondiRico"
+                    className="h-full w-full object-cover object-[center_35%]"
+                  />
+                  {/* Frosted Editorial Glass & Gradient Overlays */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#F8F7F2] via-[#F8F7F2]/90 to-[#F8F7F2]/55 backdrop-blur-[2px]" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#F8F7F2] via-transparent to-[#F8F7F2]/75" />
                 </motion.div>
 
-                {/* Hero Showcase with Liquid Glass Floating Frame & Parallax */}
+                {/* Subtle Ambient Refractions */}
+                <div className="pointer-events-none absolute -top-20 right-1/4 size-96 rounded-full bg-emerald-500/12 blur-[100px]" />
+                <div className="pointer-events-none absolute bottom-0 left-1/4 size-80 rounded-full bg-amber-400/10 blur-[90px]" />
+              </div>
+
+              <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 relative">
+                <div className="max-w-2xl">
+                  <motion.div
+                    style={{ y: heroTextY }}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    {/* Eyebrow */}
+                    <div className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-bold tracking-[0.2em] uppercase text-primary mb-4 sm:mb-5">
+                      <span className="size-1.5 rounded-full bg-primary" />
+                      <span>Calidad · Frescura · Confianza</span>
+                    </div>
+
+                    {/* Headline */}
+                    <h1 className="text-2xl sm:text-5xl lg:text-6xl font-black tracking-tight text-brand-deep leading-[1.1] text-balance">
+                      Todo lo que necesitas.{" "}
+                      <span className="text-primary block mt-1">En un solo lugar.</span>
+                    </h1>
+
+                    {/* Subtitle */}
+                    <p className="mt-3 sm:mt-5 text-sm sm:text-lg text-muted-foreground max-w-lg leading-relaxed font-normal">
+                      Productos frescos, enlatados y de primera necesidad para tu hogar y tu negocio.
+                    </p>
+
+                    {/* Action CTAs */}
+                    <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                      {/* Primary CTA */}
+                      <button
+                        type="button"
+                        onClick={() => setWhatsAppModalOpen(true)}
+                        className="min-h-[48px] h-12 w-full sm:w-auto px-6 sm:px-7 rounded-full bg-[#075B3A] hover:bg-primary text-white text-sm font-bold flex items-center justify-center gap-2.5 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                      >
+                        <WhatsAppIcon className="size-4.5" />
+                        <span>Solicitar información</span>
+                      </button>
+
+                      {/* Secondary CTA */}
+                      <button
+                        type="button"
+                        onClick={() => navigateTo("tienda")}
+                        className="min-h-[48px] h-12 w-full sm:w-auto px-6 sm:px-7 rounded-full bg-white/90 hover:bg-white text-brand-deep border border-white/80 shadow-xs text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:border-[#CBD5CE] active:scale-95 cursor-pointer backdrop-blur-md"
+                      >
+                        <span>Ver productos</span>
+                        <ArrowRight className="size-4 text-muted-foreground" />
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* Floating Parallax Badges in Foreground */}
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.94 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                  className="relative min-h-[340px] sm:min-h-[440px] lg:min-h-[540px] rounded-[36px] overflow-hidden liquid-glass p-2.5 shadow-[0_30px_70px_-20px_rgba(20,83,45,0.15)]"
+                  style={{ y: heroFloatY1 }}
+                  className="hidden md:flex absolute top-12 right-6 lg:right-12 rounded-2xl border border-white/90 bg-white/85 backdrop-blur-xl px-4 py-3 shadow-lg items-center gap-3 z-10 max-w-xs"
                 >
-                  <div className="relative h-full w-full rounded-[28px] overflow-hidden">
-                    <motion.img
-                      style={{ y: heroImageY, scale: heroImageScale }}
-                      src={heroImage}
-                      width={1536}
-                      height={1024}
-                      alt="Bolsa de compras con alimentos frescos y productos de despensa"
-                      className="absolute inset-0 h-full w-full object-cover object-[68%_center] will-change-transform"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent pointer-events-none" />
+                  <div className="grid size-10 place-items-center rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
+                    <Truck className="size-5" />
+                  </div>
+                  <div>
+                    <strong className="block text-xs font-black text-brand-deep">Envíos Rápidos 24h</strong>
+                    <span className="text-[11px] text-muted-foreground">Directo a tu puerta o negocio</span>
+                  </div>
+                </motion.div>
 
-                    {/* Floating Parallax Badges (Apple Liquid Glass) */}
-                    <motion.div
-                      style={{ y: heroFloatY1 }}
-                      className="absolute bottom-6 left-6 rounded-2xl border border-white/80 bg-white/85 backdrop-blur-xl px-4 py-3 shadow-lg flex items-center gap-3 z-10"
-                    >
-                      <div className="grid size-9 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
-                        <Truck className="size-4" />
-                      </div>
-                      <div>
-                        <strong className="block text-xs font-black text-brand-deep">Envíos Rápidos 24h</strong>
-                        <span className="text-[10px] text-muted-foreground">Directo a tu puerta</span>
-                      </div>
-                    </motion.div>
-
-                    <motion.div
-                      style={{ y: heroFloatY2 }}
-                      className="absolute top-6 right-6 rounded-2xl border border-white/80 bg-white/85 backdrop-blur-xl px-4 py-2.5 shadow-lg flex items-center gap-2.5 z-10 hidden sm:flex"
-                    >
-                      <div className="grid size-8 place-items-center rounded-xl bg-sun/30 text-amber-800">
-                        <Sparkle className="size-4 text-offer" />
-                      </div>
-                      <div>
-                        <strong className="block text-xs font-black text-brand-deep">100% Fresco</strong>
-                        <span className="text-[10px] text-muted-foreground">Calidad garantizada</span>
-                      </div>
-                    </motion.div>
+                <motion.div
+                  style={{ y: heroFloatY2 }}
+                  className="hidden lg:flex absolute bottom-8 right-20 rounded-2xl border border-white/90 bg-white/85 backdrop-blur-xl px-4 py-2.5 shadow-lg items-center gap-2.5 z-10"
+                >
+                  <div className="grid size-9 place-items-center rounded-xl bg-sun/30 text-amber-800 shrink-0">
+                    <Sparkle className="size-4 text-offer" />
+                  </div>
+                  <div>
+                    <strong className="block text-xs font-black text-brand-deep">Abastecimiento Confiable</strong>
+                    <span className="text-[11px] text-muted-foreground">Frescura y calidad garantizada</span>
                   </div>
                 </motion.div>
               </div>
@@ -1298,9 +1219,9 @@ function AppContent() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="relative z-10 mx-auto -mt-6 max-w-4xl px-4 sm:px-6"
+              className="relative z-10 mx-auto -mt-4 sm:-mt-6 max-w-4xl px-3 sm:px-6"
             >
-              <div className="grid grid-cols-3 divide-x divide-white/60 rounded-[28px] liquid-glass-dock px-4 py-5 shadow-[0_20px_45px_-12px_rgba(0,0,0,0.08)] sm:px-10">
+              <div className="grid grid-cols-3 divide-x divide-white/60 rounded-[22px] sm:rounded-[28px] liquid-glass-dock px-1.5 sm:px-10 py-3 sm:py-5 shadow-[0_20px_45px_-12px_rgba(0,0,0,0.08)]">
                 {[
                   ["+1.5K", "Productos"],
                   ["24h", "Entrega rápida"],
@@ -1312,12 +1233,12 @@ function AppContent() {
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, delay: idx * 0.1 }}
-                    className="text-center"
+                    className="text-center px-1"
                   >
-                    <strong className="block text-2xl font-black text-primary sm:text-3xl">
+                    <strong className="block text-lg sm:text-3xl font-black text-primary tracking-tight">
                       {value}
                     </strong>
-                    <span className="text-xs font-semibold text-muted-foreground">
+                    <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground block leading-tight mt-0.5">
                       {label}
                     </span>
                   </motion.div>
@@ -1325,115 +1246,14 @@ function AppContent() {
               </div>
             </motion.section>
 
-            {/* Categories Showcase: Apple Liquid Glass Category Icons */}
-            <motion.section
-              id="categorias"
-              initial={{ opacity: 0, y: 35 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
-                <SectionTitle
-                  eyebrow="Explora nuestro catálogo"
-                  title="Compra por categoría"
-                  align="left"
-                />
-                <div className="flex items-center gap-3 self-start sm:self-auto">
-                  <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3.5 py-1.5 text-xs font-bold text-muted-foreground backdrop-blur-md shadow-2xs">
-                    <Sparkles className="size-3.5 text-offer" />
-                    <span>{categories.length} categorías disponibles</span>
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => navigateTo("tienda")}
-                    className="rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-bold text-primary shadow-xs backdrop-blur-md transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95 flex items-center gap-2"
-                  >
-                    <StoreIcon className="size-3.5" />
-                    <span>Ver tienda completa</span>
-                    <ArrowRight className="size-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Grid de Iconos de Categorías Disponibles */}
-              {isLoadingProducts && categories.length === 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6">
-                  {[...Array(4)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="rounded-[32px] liquid-glass p-6 sm:p-8 flex flex-col items-center justify-center animate-pulse"
-                    >
-                      <div className="size-20 sm:size-24 rounded-3xl bg-black/5 mb-4" />
-                      <div className="h-5 bg-black/5 rounded w-24 mb-2" />
-                      <div className="h-3 bg-black/5 rounded w-16" />
-                    </div>
-                  ))}
-                </div>
-              ) : categories.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:gap-6">
-                  {categories.map((category, idx) => {
-                    const Icon = categoryIconMap[category.id] || UtensilsCrossed;
-                    return (
-                      <motion.button
-                        key={category.id}
-                        type="button"
-                        initial={{ opacity: 0, scale: 0.92, y: 20 }}
-                        whileInView={{ opacity: 1, scale: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.45, delay: idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                        whileHover={{ y: -6, scale: 1.04 }}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => navigateTo("tienda", category.id)}
-                        className="group relative flex flex-col items-center justify-center rounded-[32px] liquid-glass-card liquid-reflection p-6 sm:p-8 text-center shadow-xs transition-shadow hover:shadow-xl overflow-hidden"
-                      >
-                        {/* Top Specular Edge */}
-                        <div className="absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
-
-                        <div
-                          className={`grid size-20 sm:size-24 place-items-center rounded-3xl border shadow-sm transition-transform duration-500 group-hover:scale-115 group-hover:rotate-2 ${category.accent}`}
-                        >
-                          <Icon className="size-10 sm:size-12" />
-                        </div>
-
-                        <h3 className="mt-4 text-base sm:text-lg font-black text-brand-deep group-hover:text-primary transition-colors">
-                          {category.name}
-                        </h3>
-
-                        <p className="mt-1 text-xs text-muted-foreground line-clamp-1 max-w-[200px] hidden sm:block">
-                          {category.description}
-                        </p>
-
-                        <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground bg-white/80 border border-white/90 px-3 py-0.5 rounded-full shadow-2xs group-hover:border-primary/30 group-hover:text-primary transition-colors">
-                          <span>{category.count}</span>
-                        </span>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-[32px] liquid-glass p-8 sm:p-12 text-center max-w-lg mx-auto border border-white/80 shadow-lg my-4">
-                  <div className="grid size-16 mx-auto place-items-center rounded-2xl bg-amber-500/10 text-amber-600 mb-4 border border-amber-500/20">
-                    <LayoutGrid className="size-8" />
-                  </div>
-                  <h4 className="text-xl font-black text-brand-deep">
-                    no existen categorias disponibles
-                  </h4>
-                  <p className="text-xs text-muted-foreground mt-2 max-w-xs mx-auto">
-                    Actualmente no se encontraron categorías registradas o activas en la tabla de Supabase.
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={fetchCatalogData}
-                    className="mt-5 rounded-full text-xs font-bold border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-                  >
-                    Reintentar conexión con Supabase
-                  </Button>
-                </div>
-              )}
-            </motion.section>
+            {/* Category Bento Grid: Apple Liquid Glass & Supabase Live Data with Skeleton Loader */}
+            <CategoryBento
+              isLoading={isLoadingProducts && categories.length === 0}
+              categories={categories}
+              products={products}
+              onSelectCategory={(categoryId) => navigateTo("tienda", categoryId)}
+              onExploreAll={() => navigateTo("tienda")}
+            />
 
             {/* Featured Products Bento Grid: Apple Liquid Glass */}
             <motion.section
@@ -1449,9 +1269,9 @@ function AppContent() {
               <div className="pointer-events-none absolute top-1/3 left-1/3 -z-10 size-80 rounded-full bg-primary/10 blur-[80px]" />
               <div className="pointer-events-none absolute bottom-10 right-10 -z-10 size-80 rounded-full bg-amber-400/10 blur-[90px]" />
 
-              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
                 {/* Header & Title */}
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                   <SectionTitle
                     eyebrow="Últimas novedades"
                     title="Productos más recientes"
@@ -1459,7 +1279,7 @@ function AppContent() {
                   />
 
                   <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-black text-primary backdrop-blur-md shadow-2xs">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-xs font-black text-primary backdrop-blur-md shadow-2xs">
                       <Sparkles className="size-3.5" />
                       <span>Bento Grid • Supabase Live</span>
                     </span>
@@ -1468,19 +1288,19 @@ function AppContent() {
 
                 {/* Filter Search Bar */}
                 <div className="relative mt-6 max-w-md sm:max-w-lg">
-                  <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <Search className="absolute left-3.5 sm:left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                   <input
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Filtrar productos recientes..."
                     aria-label="Buscar productos recientes"
-                    className="h-11 w-full rounded-full border border-white/80 bg-white/75 pl-11 pr-20 text-sm outline-none backdrop-blur-xl shadow-inner transition-all focus:bg-white focus:ring-4 focus:ring-primary/15 focus:border-primary/40"
+                    className="h-12 w-full rounded-full border border-white/80 bg-white/75 pl-10 sm:pl-11 pr-20 text-xs sm:text-sm outline-none backdrop-blur-xl shadow-inner transition-all focus:bg-white focus:ring-4 focus:ring-primary/15 focus:border-primary/40"
                   />
-                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     {query ? (
                       <button
                         type="button"
-                        className="grid size-6 place-items-center rounded-full bg-muted text-muted-foreground hover:text-foreground active:scale-90"
+                        className="grid size-9 place-items-center rounded-full bg-muted text-muted-foreground hover:text-foreground active:scale-90 cursor-pointer"
                         onClick={() => setQuery("")}
                         aria-label="Borrar búsqueda"
                       >
@@ -1496,20 +1316,20 @@ function AppContent() {
 
                 {/* Bento Grid Stage */}
                 {isLoadingProducts && recentProducts.length === 0 ? (
-                  <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 auto-rows-[280px]">
+                  <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 auto-rows-auto sm:auto-rows-[280px]">
                     {[...Array(6)].map((_, idx) => (
                       <div
                         key={idx}
-                        className={`rounded-[32px] liquid-glass p-6 animate-pulse space-y-4 ${
+                        className={`rounded-[32px] liquid-glass p-5 sm:p-6 animate-pulse space-y-4 min-h-[260px] sm:min-h-0 ${
                           idx === 0 ? "sm:col-span-2 sm:row-span-2 lg:col-span-2 lg:row-span-2" : ""
                         }`}
                       >
-                        <div className="h-full rounded-2xl bg-black/5" />
+                        <div className="h-full rounded-2xl bg-black/5 min-h-[200px]" />
                       </div>
                     ))}
                   </div>
                 ) : recentProducts.length > 0 ? (
-                  <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 auto-rows-[280px]">
+                  <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5 lg:gap-6 auto-rows-auto sm:auto-rows-[280px]">
                     {recentProducts.map((product, idx) => {
                       const inCart = cart[product.id] ?? 0;
                       const isFav = favorites.has(product.id);
@@ -1534,7 +1354,7 @@ function AppContent() {
                             viewport={{ once: true }}
                             whileHover={{ y: -6 }}
                             transition={{ duration: 0.4 }}
-                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[36px] flagship-glassmorphic-card liquid-reflection p-6 sm:p-8 flex flex-col justify-between transition-all duration-500`}
+                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[28px] sm:rounded-[36px] flagship-glassmorphic-card liquid-reflection p-4.5 sm:p-8 flex flex-col justify-between transition-all duration-500`}
                           >
                             <div className="absolute inset-x-12 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary/80 to-transparent z-10" />
                             <div className="absolute -left-16 -top-16 size-72 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-400/30 transition-all duration-700" />
@@ -1543,7 +1363,7 @@ function AppContent() {
 
                             <div className="flex items-center justify-between gap-2 z-10">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 border border-primary/30 px-3.5 py-1 text-xs font-black text-primary backdrop-blur-md">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 border border-primary/30 px-3 py-1 text-xs font-black text-primary backdrop-blur-md">
                                   <Sparkles className="size-3.5" />
                                   <span>{product.badge || "Recién Llegado #1"}</span>
                                 </span>
@@ -1552,10 +1372,10 @@ function AppContent() {
                               <button
                                 type="button"
                                 onClick={() => toggleFavorite(product.id)}
-                                className="grid size-9 place-items-center rounded-full bg-white/80 border border-white shadow-xs backdrop-blur-md hover:scale-110 active:scale-95 transition-all shrink-0"
+                                className="grid size-11 place-items-center rounded-full bg-white/80 border border-white shadow-xs backdrop-blur-md hover:scale-110 active:scale-95 transition-all shrink-0 cursor-pointer"
                                 aria-label="Agregar a favoritos"
                               >
-                                <Heart className={`size-4 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
+                                <Heart className={`size-4.5 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
                               </button>
                             </div>
 
@@ -1564,53 +1384,54 @@ function AppContent() {
                                 <span className="text-xs font-black uppercase text-primary tracking-wider">
                                   {product.unit} • Producto Supabase
                                 </span>
-                                <h3 className="text-2xl sm:text-3xl font-black text-brand-deep mt-1 leading-tight group-hover:text-primary transition-colors">
+                                <h3 className="text-xl sm:text-3xl font-black text-brand-deep mt-1 leading-tight group-hover:text-primary transition-colors">
                                   {product.name}
                                 </h3>
-                                <p className="text-xs sm:text-sm text-muted-foreground mt-2 line-clamp-2">
+                                <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 sm:mt-2 line-clamp-2">
                                   {product.detail || "Calidad superior garantizada desde nuestro catálogo activo en Supabase."}
                                 </p>
                                 
-                                <div className="mt-4 flex items-baseline gap-2">
-                                  <span className="text-3xl sm:text-4xl font-black text-brand-deep">
+                                <div className="mt-3 sm:mt-4 flex items-baseline gap-2">
+                                  <span className="text-2xl sm:text-4xl font-black text-brand-deep">
                                     ${product.price.toFixed(2)}
                                   </span>
                                   {product.oldPrice && (
-                                    <span className="text-sm text-muted-foreground line-through">
+                                    <span className="text-xs sm:text-sm text-muted-foreground line-through">
                                       ${product.oldPrice.toFixed(2)}
                                     </span>
                                   )}
                                 </div>
                               </div>
 
-                              <div className="relative aspect-square w-full max-w-[220px] mx-auto rounded-3xl overflow-hidden bg-white/80 border border-white/90 shadow-lg group-hover:scale-105 transition-transform duration-500">
+                              <div className="relative aspect-square w-full max-w-[170px] sm:max-w-[220px] mx-auto rounded-2xl sm:rounded-3xl overflow-hidden bg-white/80 border border-white/90 shadow-lg group-hover:scale-105 transition-transform duration-500">
                                 {product.imageUrl ? (
-                                  <img
+                                  <BlurUpImage
                                     src={product.imageUrl}
                                     alt={product.name}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                    priority={true}
+                                    className="size-full object-cover"
+                                    fallbackIcon={<ShoppingBasket className="size-16 text-primary/70" />}
                                   />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center bg-emerald-500/10">
                                     <ShoppingBasket className="size-16 text-primary/70" />
                                   </div>
                                 )}
-                                <div className="absolute left-3 bottom-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-black text-brand-deep shadow-xs backdrop-blur-md">
+                                <div className="absolute left-2.5 bottom-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-black text-brand-deep shadow-xs backdrop-blur-md z-10">
                                   <Star className="size-3.5 fill-amber-400 text-amber-400" />
                                   <span>{product.rating}</span>
                                 </div>
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between gap-4 pt-3 border-t border-white/60 z-10">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pt-3 border-t border-white/60 z-10">
                               <span className="text-xs font-bold text-muted-foreground hidden sm:inline">
                                 Supabase ID #{product.id}
                               </span>
                               <button
                                 type="button"
                                 onClick={() => changeCart(product.id, 1)}
-                                className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black shadow-lg transition-all active:scale-95 hover:scale-105 ${
+                                className={`inline-flex items-center justify-center gap-2 w-full sm:w-auto min-h-[48px] px-6 py-3 rounded-full text-xs font-black shadow-lg transition-all active:scale-95 hover:scale-105 cursor-pointer ${
                                   inCart > 0
                                     ? "bg-offer text-offer-foreground shadow-offer/20"
                                     : "bg-primary text-primary-foreground shadow-primary/30"
@@ -1634,7 +1455,7 @@ function AppContent() {
                             viewport={{ once: true }}
                             whileHover={{ y: -6 }}
                             transition={{ duration: 0.4, delay: 0.1 }}
-                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[32px] liquid-glass-card liquid-reflection p-6 flex flex-col justify-between border border-white/80 shadow-lg hover:shadow-xl transition-all duration-500`}
+                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[28px] sm:rounded-[32px] liquid-glass-card liquid-reflection p-4.5 sm:p-6 flex flex-col justify-between border border-white/80 shadow-lg hover:shadow-xl transition-all duration-500`}
                           >
                             <div className="flex items-center justify-between gap-2 z-10">
                               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-extrabold text-primary">
@@ -1645,22 +1466,29 @@ function AppContent() {
                                 <button
                                   type="button"
                                   onClick={() => toggleFavorite(product.id)}
-                                  className="grid size-8 place-items-center rounded-full bg-white/80 border border-white shadow-2xs backdrop-blur-md hover:scale-110 active:scale-95 transition-all shrink-0"
+                                  className="grid size-11 place-items-center rounded-full bg-white/80 border border-white shadow-2xs backdrop-blur-md hover:scale-110 active:scale-95 transition-all shrink-0 cursor-pointer"
+                                  aria-label="Agregar a favoritos"
                                 >
-                                  <Heart className={`size-3.5 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
+                                  <Heart className={`size-4 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
                                 </button>
                               </div>
                             </div>
 
                             <div className="relative aspect-square w-full my-auto rounded-2xl overflow-hidden bg-white/80 border border-white/90 shadow-md group-hover:scale-105 transition-transform duration-500 z-10">
                               {product.imageUrl ? (
-                                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <BlurUpImage
+                                  src={product.imageUrl}
+                                  alt={product.name}
+                                  priority={false}
+                                  className="size-full object-cover"
+                                  fallbackIcon={<ShoppingBasket className="size-12 text-primary/70" />}
+                                />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-emerald-500/10">
                                   <ShoppingBasket className="size-12 text-primary/70" />
                                 </div>
                               )}
-                              <span className="absolute left-2.5 bottom-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-black text-brand-deep shadow-2xs backdrop-blur-md">
+                              <span className="absolute left-2.5 bottom-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-black text-brand-deep shadow-2xs backdrop-blur-md z-10">
                                 <Star className="size-3 fill-amber-400 text-amber-400" />
                                 <span>{product.rating}</span>
                               </span>
@@ -1677,11 +1505,12 @@ function AppContent() {
                                 <button
                                   type="button"
                                   onClick={() => changeCart(product.id, 1)}
-                                  className={`grid size-9 place-items-center rounded-full shadow-md active:scale-90 transition-all hover:scale-108 ${
+                                  className={`grid size-11 place-items-center rounded-full shadow-md active:scale-90 transition-all hover:scale-108 cursor-pointer ${
                                     inCart > 0 ? "bg-offer text-offer-foreground" : "bg-primary text-primary-foreground"
                                   }`}
+                                  aria-label="Agregar al carrito"
                                 >
-                                  <Plus className="size-4" />
+                                  <Plus className="size-4.5" />
                                 </button>
                               </div>
                             </div>
@@ -1699,12 +1528,18 @@ function AppContent() {
                             viewport={{ once: true }}
                             whileHover={{ y: -4 }}
                             transition={{ duration: 0.4, delay: 0.25 }}
-                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[32px] liquid-glass-card liquid-reflection p-6 flex flex-col sm:flex-row items-center justify-between gap-6 border border-white/80 shadow-lg hover:shadow-xl transition-all duration-500`}
+                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[28px] sm:rounded-[32px] liquid-glass-card liquid-reflection p-4.5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 border border-white/80 shadow-lg hover:shadow-xl transition-all duration-500`}
                           >
-                            <div className="flex items-center gap-4 z-10 w-full sm:w-auto">
-                              <div className="relative size-20 rounded-2xl overflow-hidden bg-white/80 border border-white/90 shadow-md shrink-0 group-hover:scale-105 transition-transform duration-500">
+                            <div className="flex items-center gap-3.5 sm:gap-4 z-10 w-full sm:w-auto">
+                              <div className="relative size-18 sm:size-20 rounded-2xl overflow-hidden bg-white/80 border border-white/90 shadow-md shrink-0 group-hover:scale-105 transition-transform duration-500">
                                 {product.imageUrl ? (
-                                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                  <BlurUpImage
+                                    src={product.imageUrl}
+                                    alt={product.name}
+                                    priority={false}
+                                    className="size-full object-cover"
+                                    fallbackIcon={<ShoppingBasket className="size-8 text-primary/70" />}
+                                  />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center bg-emerald-500/10">
                                     <ShoppingBasket className="size-8 text-primary/70" />
@@ -1718,22 +1553,22 @@ function AppContent() {
                                   </span>
                                   <StockBadge stockQuantity={product.stockQuantity} stock={product.stock} />
                                 </div>
-                                <h3 className="font-black text-lg text-brand-deep group-hover:text-primary transition-colors mt-0.5">
+                                <h3 className="font-black text-base sm:text-lg text-brand-deep group-hover:text-primary transition-colors mt-0.5">
                                   {product.name}
                                 </h3>
                                 <p className="text-xs text-muted-foreground line-clamp-1">{product.detail}</p>
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between sm:justify-end gap-5 w-full sm:w-auto z-10 border-t sm:border-t-0 border-white/60 pt-3 sm:pt-0">
+                            <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-5 w-full sm:w-auto z-10 border-t sm:border-t-0 border-white/60 pt-3 sm:pt-0">
                               <div className="text-left sm:text-right">
                                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">{product.unit}</span>
-                                <strong className="text-xl font-black text-brand-deep">${product.price.toFixed(2)}</strong>
+                                <strong className="text-lg sm:text-xl font-black text-brand-deep">${product.price.toFixed(2)}</strong>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => changeCart(product.id, 1)}
-                                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-black shadow-md transition-all active:scale-95 hover:scale-105 ${
+                                className={`inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-full text-xs font-black shadow-md transition-all active:scale-95 hover:scale-105 cursor-pointer ${
                                   inCart > 0 ? "bg-offer text-offer-foreground" : "bg-primary text-primary-foreground"
                                 }`}
                               >
@@ -1754,12 +1589,18 @@ function AppContent() {
                           viewport={{ once: true }}
                           whileHover={{ y: -5 }}
                           transition={{ duration: 0.4, delay: idx * 0.05 }}
-                          className={`group relative ${gridSpanClass} overflow-hidden rounded-[28px] liquid-glass-card liquid-reflection p-5 flex flex-col justify-between border border-white/80 shadow-md hover:shadow-lg transition-all duration-500`}
+                          className={`group relative ${gridSpanClass} overflow-hidden rounded-[26px] sm:rounded-[28px] liquid-glass-card liquid-reflection p-4 sm:p-5 flex flex-col justify-between border border-white/80 shadow-md hover:shadow-lg transition-all duration-500`}
                         >
-                          <div className="flex items-start justify-between gap-3 z-10">
+                          <div className="flex items-start justify-between gap-2.5 z-10">
                             <div className="relative size-16 rounded-xl overflow-hidden bg-white/80 border border-white/90 shadow-2xs shrink-0 group-hover:scale-105 transition-transform duration-500">
                               {product.imageUrl ? (
-                                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <BlurUpImage
+                                  src={product.imageUrl}
+                                  alt={product.name}
+                                  priority={false}
+                                  className="size-full object-cover"
+                                  fallbackIcon={<ShoppingBasket className="size-6 text-primary/70" />}
+                                />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-emerald-500/10">
                                   <ShoppingBasket className="size-6 text-primary/70" />
@@ -1767,13 +1608,14 @@ function AppContent() {
                               )}
                             </div>
 
-                            <div className="flex flex-col items-end gap-1.5">
+                            <div className="flex flex-col items-end gap-1">
                               <button
                                 type="button"
                                 onClick={() => toggleFavorite(product.id)}
-                                className="grid size-7 place-items-center rounded-full bg-white/80 border border-white shadow-2xs backdrop-blur-md hover:scale-110 active:scale-95 transition-all"
+                                className="grid size-11 place-items-center rounded-full bg-white/80 border border-white shadow-2xs backdrop-blur-md hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                                aria-label="Agregar a favoritos"
                               >
-                                <Heart className={`size-3.5 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
+                                <Heart className={`size-4 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
                               </button>
                               <StockBadge stockQuantity={product.stockQuantity} stock={product.stock} />
                             </div>
@@ -1794,11 +1636,12 @@ function AppContent() {
                             <button
                               type="button"
                               onClick={() => changeCart(product.id, 1)}
-                              className={`grid size-8 place-items-center rounded-full shadow-md active:scale-90 transition-all hover:scale-108 ${
+                              className={`grid size-11 place-items-center rounded-full shadow-md active:scale-90 transition-all hover:scale-108 cursor-pointer ${
                                 inCart > 0 ? "bg-offer text-offer-foreground" : "bg-primary text-primary-foreground"
                               }`}
+                              aria-label="Agregar al carrito"
                             >
-                              <Plus className="size-3.5" />
+                              <Plus className="size-4.5" />
                             </button>
                           </div>
                         </motion.article>

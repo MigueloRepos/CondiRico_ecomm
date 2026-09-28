@@ -27,7 +27,7 @@ export const Footer: React.FC<FooterProps> = ({
   };
 
   return (
-    <footer className="bg-[#075B3A] text-white pt-16 pb-12 border-t border-[#0B7A45]">
+    <footer className="bg-[#075B3A] text-white pt-16 pb-28 md:pb-12 border-t border-[#0B7A45]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* Main Columns */}

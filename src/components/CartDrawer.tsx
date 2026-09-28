@@ -146,21 +146,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <button
                       type="button"
                       onClick={() => onUpdateQuantity(product.id, -1)}
-                      className="grid size-6 place-items-center rounded-full text-[#12352C] hover:bg-[#F8F7F2]"
+                      className="grid size-7.5 place-items-center rounded-full text-[#12352C] hover:bg-[#F8F7F2] active:scale-90 transition-transform"
                       aria-label="Restar uno"
                     >
-                      <Minus className="size-3" />
+                      <Minus className="size-3.5" />
                     </button>
-                    <span className="w-6 text-center text-xs font-bold text-[#12352C]">
+                    <span className="w-7 text-center text-xs font-bold text-[#12352C]">
                       {quantity}
                     </span>
                     <button
                       type="button"
                       onClick={() => onUpdateQuantity(product.id, 1)}
-                      className="grid size-6 place-items-center rounded-full text-[#12352C] hover:bg-[#F8F7F2]"
+                      className="grid size-7.5 place-items-center rounded-full text-[#12352C] hover:bg-[#F8F7F2] active:scale-90 transition-transform"
                       aria-label="Sumar uno"
                     >
-                      <Plus className="size-3" />
+                      <Plus className="size-3.5" />
                     </button>
                   </div>
                 </div>
@@ -171,7 +171,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
         {/* Footer / Summary Action */}
         {cartItems.length > 0 && (
-          <div className="p-6 border-t border-[#E5EAE6] bg-[#F8F7F2] space-y-4">
+          <div className="p-5 sm:p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] border-t border-[#E5EAE6] bg-[#F8F7F2] space-y-3.5 sm:space-y-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-[#66736D]">Subtotal estimado:</span>
               <span className="text-xl font-extrabold text-[#12352C]">
@@ -179,7 +179,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </span>
             </div>
 
-            <p className="text-[11px] text-[#66736D]">
+            <p className="text-[11px] text-[#66736D] leading-tight">
               Envío y confirmación coordinados directamente por WhatsApp con nuestro equipo.
             </p>
 
@@ -189,7 +189,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 onClose();
                 onProceedToWhatsApp();
               }}
-              className="w-full h-12 rounded-full bg-[#075B3A] hover:bg-[#0B7A45] text-white text-xs font-bold flex items-center justify-center gap-2.5 shadow-md active:scale-98 transition-all"
+              className="w-full h-12 rounded-full bg-[#075B3A] hover:bg-[#0B7A45] text-white text-xs font-bold flex items-center justify-center gap-2.5 shadow-md active:scale-98 transition-all cursor-pointer"
             >
               <WhatsAppIcon className="size-4" />
               <span>Tramitar pedido por WhatsApp</span>
@@ -201,7 +201,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 onClose();
                 onExploreStore();
               }}
-              className="w-full py-2 text-center text-xs font-semibold text-[#075B3A] hover:underline"
+              className="w-full py-1.5 text-center text-xs font-semibold text-[#075B3A] hover:underline cursor-pointer"
             >
               Continuar viendo productos
             </button>
