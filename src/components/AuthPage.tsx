@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Fingerprint,
   Mail,
@@ -13,17 +13,12 @@ import {
   ShoppingBag,
   Store,
   ChevronLeft,
-  KeyRound,
   Database,
   Loader2,
-  Settings2,
   AlertCircle,
 } from "lucide-react";
 import {
   UserProfile,
-  getStoredUsers,
-  saveStoredUsers,
-  setSessionUser,
   hasDeviceBiometricKey,
   getBiometricKeyInfo,
   registerWebAuthnBiometrics,
@@ -93,7 +88,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [otpPendingEnableBio, setOtpPendingEnableBio] = useState(true);
 
   // IP Security & Anti-Intruder (User_Sec) state
-  const [detectedClientIp, setDetectedClientIp] = useState("186.32.115.42");
+  const [detectedClientIp, setDetectedClientIp] = useState("");
   const [securityBlockModalOpen, setSecurityBlockModalOpen] = useState(false);
   const [securityBlockedEmail, setSecurityBlockedEmail] = useState("");
   const [securityCurrentIp, setSecurityCurrentIp] = useState("");
@@ -102,7 +97,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [simulatedIntruderIp, setSimulatedIntruderIp] = useState("198.51.100.88");
 
   // Load client IP on mount
-  React.useEffect(() => {
+  useEffect(() => {
     getUserClientIP().then((ip) => {
       setDetectedClientIp(ip);
     });
@@ -120,19 +115,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const bioKeyInfo = getBiometricKeyInfo();
   const sbConfig = getSupabaseConfig();
 
-  // Quick fill demo user
-  const handleQuickDemoFill = () => {
-    setLoginEmail("miguelo.glez91@gmail.com");
-    setLoginPassword("condirico2026");
-    setLoginError("");
-  };
-
   // Submit Login with Supabase Cloud & User_Sec IP Security Verification
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
 
-    const targetEmail = loginEmail.trim();
+    const targetEmail = loginEmail.trim().toLowerCase();
 
     if (!targetEmail || !loginPassword.trim()) {
       setLoginError("Por favor completa tu correo y contraseña.");
@@ -182,18 +170,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           console.warn("[AuthPage] Failed to fetch role:", err);
         }
 
-        setSessionUser(sbUser);
         setIsSubmitting(false);
-
-        // Sync local users cache
-        const localUsers = getStoredUsers();
-        const existingIdx = localUsers.findIndex((u) => u.email.toLowerCase() === sbUser.email.toLowerCase());
-        if (existingIdx >= 0) {
-          localUsers[existingIdx] = { ...localUsers[existingIdx], ...sbUser };
-        } else {
-          localUsers.push(sbUser);
-        }
-        saveStoredUsers(localUsers);
 
         if (!sbUser.hasBiometrics && !deviceHasBiometric) {
           setPendingUserForBio(sbUser);
@@ -219,47 +196,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         return;
       }
 
-      // If Supabase returns an error or demo offline mode fallback
-      const users = getStoredUsers();
-      const found = users.find(
-        (u) => u.email.toLowerCase() === targetEmail.toLowerCase()
-      );
-
-      if (found) {
-        // Record in User_Sec
-        recordUserSecurityIP(found.email, secCheck.currentIp).catch(console.warn);
-
-        // Fetch user role
-        try {
-          const dbProfile = await getProfile(found.id);
-          if (dbProfile?.role) {
-            found.role = dbProfile.role;
-          } else {
-            const isAdmin = await checkIsAdmin(found.id);
-            if (isAdmin) found.role = "admin";
-          }
-        } catch (err) {
-          console.warn("[AuthPage] Failed to fetch role:", err);
-        }
-
-        setSessionUser(found);
-        setIsSubmitting(false);
-
-        if (!found.hasBiometrics && !deviceHasBiometric) {
-          setPendingUserForBio(found);
-          setBiometricMode("register");
-          setBiometricModalOpen(true);
-        } else {
-          const destName = found.role === "admin" ? "Panel Administrativo (/admin)" : "Tienda y Perfil de Cliente";
-          setFeedbackSuccess(`¡Bienvenido de vuelta, ${found.name}! Redirigiendo a ${destName}...`);
-          setTimeout(() => {
-            onSuccessAuth(found);
-          }, 600);
-        }
-        return;
-      }
-
-      // If error from Supabase and not found locally
+      // Supabase authentication failed
       setIsSubmitting(false);
       setLoginError(
         sbError || "Credenciales incorrectas. Si eres nuevo usuario, haz clic en 'Registrarme'."
@@ -270,7 +207,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
   };
 
-  // Submit Register with Supabase Cloud & trigger 6-digit OTP verification email & User_Sec registration
+  // Submit Register with Supabase Cloud & trigger confirmation link & User_Sec registration
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegisterError("");
@@ -288,7 +225,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setIsSubmitting(true);
 
     try {
-      // 1. Sign up on Supabase Cloud (triggers email dispatch with confirmation code)
+      // 1. Sign up on Supabase Cloud
       const { error: sbError } = await signUpWithSupabase({
         email: registerEmail.trim(),
         password: registerPassword,
@@ -305,11 +242,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
       // 2. Pre-record IP security association in Supabase User_Sec
       const activeIp = isSimulatingIntruder ? simulatedIntruderIp : detectedClientIp;
-      await recordUserSecurityIP(registerEmail.trim(), activeIp);
+      if (activeIp) {
+        await recordUserSecurityIP(registerEmail.trim(), activeIp);
+      }
 
       setIsSubmitting(false);
 
-      // Open the Confirmation Link Modal
+      // Open Confirmation Link Modal
       setOtpPendingEmail(registerEmail.trim());
       setOtpPendingName(registerName.trim());
       setOtpPendingPhone(registerPhone.trim());
@@ -330,15 +269,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
     // Record user & IP into Supabase User_Sec
     const activeIp = isSimulatingIntruder ? simulatedIntruderIp : detectedClientIp;
-    await recordUserSecurityIP(verifiedUser.email, activeIp);
-
-    // Save user to active session
-    const users = getStoredUsers();
-    if (!users.some((u) => u.email.toLowerCase() === verifiedUser.email.toLowerCase())) {
-      users.push(verifiedUser);
-      saveStoredUsers(users);
+    if (activeIp) {
+      await recordUserSecurityIP(verifiedUser.email, activeIp);
     }
-    setSessionUser(verifiedUser);
 
     setFeedbackSuccess(`¡Correo verificado y red asegurada en User_Sec! Bienvenido, ${verifiedUser.name}.`);
 
@@ -355,7 +288,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   // Initiate Biometric Fingerprint Login with IP security check
   const handleStartBiometricLogin = async () => {
-    const targetEmail = bioKeyInfo?.email || "miguelo.glez91@gmail.com";
+    const targetEmail = bioKeyInfo?.email;
+    if (!targetEmail) {
+      setLoginError("No hay huella registrada en este dispositivo. Inicia sesión con contraseña para activarla.");
+      return;
+    }
+
     const activeIp = isSimulatingIntruder ? simulatedIntruderIp : undefined;
     const secCheck = await verifyUserSecurityIP(targetEmail, activeIp);
 
@@ -379,27 +317,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setBiometricModalOpen(false);
 
     if (biometricMode === "register" && pendingUserForBio) {
-      await registerWebAuthnBiometrics(pendingUserForBio);
-      const users = getStoredUsers().map((u) =>
-        u.id === pendingUserForBio.id ? { ...u, hasBiometrics: true } : u
-      );
-      saveStoredUsers(users);
-      const updatedUser = { ...pendingUserForBio, hasBiometrics: true };
-      setSessionUser(updatedUser);
-      setFeedbackSuccess("¡Huella dactilar activada! Acceso biométrico configurado.");
-      setTimeout(() => {
-        onSuccessAuth(updatedUser);
-      }, 700);
+      const regRes = await registerWebAuthnBiometrics(pendingUserForBio);
+      if (regRes.success) {
+        const updatedUser = { ...pendingUserForBio, hasBiometrics: true };
+        setFeedbackSuccess("¡Huella dactilar activada! Acceso biométrico configurado.");
+        setTimeout(() => {
+          onSuccessAuth(updatedUser);
+        }, 700);
+      }
     } else {
-      // Biometric login verified
-      const users = getStoredUsers();
-      const targetEmail = bioKeyInfo?.email || "miguelo.glez91@gmail.com";
-      const user = users.find((u) => u.email.toLowerCase() === targetEmail.toLowerCase()) || users[0];
-      setSessionUser(user);
-      setFeedbackSuccess(`¡Identidad biométrica confirmada! Hola, ${user.name}.`);
-      setTimeout(() => {
-        onSuccessAuth(user);
-      }, 700);
+      // For verify mode, refresh current session from Supabase
+      if (currentUser) {
+        setFeedbackSuccess(`¡Identidad biométrica confirmada! Hola, ${currentUser.name}.`);
+        setTimeout(() => {
+          onSuccessAuth(currentUser);
+        }, 700);
+      }
     }
   };
 
@@ -428,7 +361,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         <button
           type="button"
           onClick={() => onNavigate("tienda")}
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-bold text-muted-foreground shadow-2xs backdrop-blur-md hover:text-foreground hover:bg-white active:scale-95 transition-all"
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-bold text-muted-foreground shadow-2xs backdrop-blur-md hover:text-foreground hover:bg-white active:scale-95 transition-all cursor-pointer"
         >
           <ChevronLeft className="size-4" />
           <span>Volver a la Tienda</span>
@@ -437,7 +370,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         <button
           type="button"
           onClick={() => onNavigate("inicio")}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors cursor-pointer"
         >
           <span>Ir a Inicio</span>
         </button>
@@ -484,7 +417,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               <button
                 type="button"
                 onClick={() => setSupabaseModalOpen(true)}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors bg-white/60 border border-white/80 px-2.5 py-1 rounded-full shadow-2xs active:scale-95"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors bg-white/60 border border-white/80 px-2.5 py-1 rounded-full shadow-2xs active:scale-95 cursor-pointer"
                 title="Configurar proyecto Supabase (URL + Anon Key)"
               >
                 <Database className="size-3 text-emerald-600" />
@@ -498,7 +431,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 <ShieldCheck className="size-4 text-emerald-400 shrink-0" />
                 <div>
                   <span className="font-extrabold text-white">Escudo IP User_Sec:</span>{" "}
-                  <span className="font-mono text-emerald-400 font-bold">{isSimulatingIntruder ? simulatedIntruderIp : detectedClientIp}</span>
+                  <span className="font-mono text-emerald-400 font-bold">{isSimulatingIntruder ? simulatedIntruderIp : (detectedClientIp || "Verificando red...")}</span>
                 </div>
               </div>
 
@@ -506,7 +439,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               <button
                 type="button"
                 onClick={() => setIsSimulatingIntruder(!isSimulatingIntruder)}
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
                   isSimulatingIntruder
                     ? "bg-red-500/20 text-red-300 border-red-500/40 animate-pulse"
                     : "bg-white/10 text-stone-300 border-white/20 hover:bg-white/20"
@@ -521,7 +454,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               <div className="rounded-lg bg-red-950/70 border border-red-500/40 p-2 text-[11px] text-red-200">
                 <p className="font-bold flex items-center gap-1 text-red-300">
                   <AlertCircle className="size-3 text-red-400 shrink-0" />
-                  Simulación de intruso activa: IP ficticia <code className="font-mono text-white">{simulatedIntruderIp}</code>
+                  Simulación de intruso activa: IP no autorizada <code className="font-mono text-white">{simulatedIntruderIp}</code>
                 </p>
                 <p className="text-[10px] text-red-200/80 mt-0.5">
                   Si intentas iniciar sesión con una cuenta registrada, el sistema la bloqueará automáticamente por seguridad.
@@ -546,12 +479,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           </div>
 
           {/* Biometrics One-Tap Banner for Returning Users */}
-          {tab === "login" && (
+          {tab === "login" && bioKeyInfo && (
             <div className="mt-6">
               <button
                 type="button"
                 onClick={handleStartBiometricLogin}
-                className="group relative w-full rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 p-4 text-white shadow-[0_10px_25px_rgba(16,185,129,0.35)] active:scale-98 transition-all hover:shadow-[0_14px_30px_rgba(16,185,129,0.45)] border border-emerald-400/40 text-left overflow-hidden"
+                className="group relative w-full rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 p-4 text-white shadow-[0_10px_25px_rgba(16,185,129,0.35)] active:scale-98 transition-all hover:shadow-[0_14px_30px_rgba(16,185,129,0.45)] border border-emerald-400/40 text-left overflow-hidden cursor-pointer"
               >
                 <div className="relative z-10 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -569,7 +502,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                         Ingresar con Huella Dactilar
                       </h4>
                       <p className="text-[11px] text-white/80">
-                        {bioKeyInfo ? `Huella vinculada a ${bioKeyInfo.email}` : "Autenticación biométrica Fingerprint"}
+                        {`Huella vinculada a ${bioKeyInfo.email}`}
                       </p>
                     </div>
                   </div>
@@ -593,16 +526,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           )}
 
           {/* Tabs Pill Switcher */}
-          <div className="grid grid-cols-2 p-1 rounded-2xl bg-muted/60 border border-white/80 backdrop-blur-md mb-6">
+          <div className="grid grid-cols-2 p-1 rounded-2xl bg-muted/60 border border-white/80 backdrop-blur-md mb-6 mt-4">
             <button
               type="button"
               onClick={() => {
                 setTab("login");
                 setLoginError("");
+                setRegisterError("");
               }}
-              className={`py-2 text-xs font-bold rounded-xl transition-all ${
+              className={`py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
                 tab === "login"
-                  ? "bg-white text-primary shadow-xs scale-[1.02]"
+                  ? "bg-white text-brand-deep shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -612,11 +546,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               type="button"
               onClick={() => {
                 setTab("register");
+                setLoginError("");
                 setRegisterError("");
               }}
-              className={`py-2 text-xs font-bold rounded-xl transition-all ${
+              className={`py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
                 tab === "register"
-                  ? "bg-white text-primary shadow-xs scale-[1.02]"
+                  ? "bg-white text-brand-deep shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -624,43 +559,27 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             </button>
           </div>
 
-          {/* Feedback Success Message */}
+          {/* Feedback message banner */}
           {feedbackSuccess && (
-            <div className="mb-4 flex items-center gap-2 rounded-2xl bg-emerald-50 border border-emerald-200 p-3.5 text-xs font-bold text-emerald-800 animate-in fade-in">
-              <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+            <div className="mb-4 rounded-2xl bg-emerald-50 border border-emerald-300 p-3 text-xs font-bold text-emerald-800 flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
               <span>{feedbackSuccess}</span>
             </div>
           )}
 
-          {/* Login Form */}
           {tab === "login" ? (
+            /* Login Form */
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               {loginError && (
-                <div className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl space-y-2">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="size-4 shrink-0 mt-0.5" />
-                    <span>{loginError}</span>
-                  </div>
-                  {loginError.includes("confirmar") && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOtpPendingEmail(loginEmail.trim());
-                        setOtpPendingName(loginEmail.trim().split("@")[0]);
-                        setOtpModalOpen(true);
-                      }}
-                      className="w-full py-1.5 px-3 rounded-lg bg-emerald-600 text-white font-black text-xs hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5 shadow-xs"
-                    >
-                      <Mail className="size-3.5" />
-                      <span>Ingresar código de 6 dígitos ahora</span>
-                    </button>
-                  )}
+                <div className="rounded-2xl bg-rose-50 border border-rose-300 p-3 text-xs font-bold text-rose-800 flex items-start gap-2 animate-in fade-in">
+                  <AlertCircle className="size-4 text-rose-600 shrink-0 mt-0.5" />
+                  <span>{loginError}</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">
-                  Correo electrónico
+                <label className="block text-xs font-black text-foreground mb-1.5">
+                  Correo Electrónico
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -669,14 +588,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     required
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="ejemplo@condirico.com"
+                    placeholder="tu.correo@ejemplo.com"
                     className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">
+                <label className="block text-xs font-black text-foreground mb-1.5">
                   Contraseña
                 </label>
                 <div className="relative">
@@ -692,24 +611,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-1">
-                <button
-                  type="button"
-                  onClick={handleQuickDemoFill}
-                  className="inline-flex items-center gap-1 font-bold text-primary hover:underline text-[11px]"
-                >
-                  <KeyRound className="size-3" />
-                  <span>Rellenar usuario demo</span>
-                </button>
+              <div className="flex items-center justify-end text-xs pt-1">
                 <span className="text-[11px] text-muted-foreground">
-                  Garantía de compra segura
+                  Garantía de compra segura SSL
                 </span>
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-lg shadow-primary/25 liquid-glass-button active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-lg shadow-primary/25 liquid-glass-button active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
@@ -728,15 +639,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             /* Register Form */
             <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
               {registerError && (
-                <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl flex items-start gap-2">
-                  <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                <div className="rounded-2xl bg-rose-50 border border-rose-300 p-3 text-xs font-bold text-rose-800 flex items-start gap-2 animate-in fade-in">
+                  <AlertCircle className="size-4 text-rose-600 shrink-0 mt-0.5" />
                   <span>{registerError}</span>
-                </p>
+                </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1">
-                  Nombre completo
+                <label className="block text-xs font-black text-foreground mb-1">
+                  Nombre Completo
                 </label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -745,16 +656,33 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     required
                     value={registerName}
                     onChange={(e) => setRegisterName(e.target.value)}
-                    placeholder="Ej. Carlos Mendoza"
-                    className="w-full h-10 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
+                    placeholder="Ej. Juan Pérez"
+                    className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-foreground mb-1">
+                  Correo Electrónico
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <input
+                    type="email"
+                    required
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    placeholder="juan.perez@ejemplo.com"
+                    className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">
-                    Teléfono
+                  <label className="block text-xs font-black text-foreground mb-1">
+                    Teléfono / WhatsApp
                   </label>
                   <div className="relative">
                     <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -763,90 +691,69 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                       value={registerPhone}
                       onChange={(e) => setRegisterPhone(e.target.value)}
                       placeholder="+34 600 000 000"
-                      className="w-full h-10 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
+                      className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">
-                    Correo electrónico
+                  <label className="block text-xs font-black text-foreground mb-1">
+                    Dirección de Entrega
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                     <input
-                      type="email"
-                      required
-                      value={registerEmail}
-                      onChange={(e) => setRegisterEmail(e.target.value)}
-                      placeholder="tu@correo.com"
-                      className="w-full h-10 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
+                      type="text"
+                      value={registerAddress}
+                      onChange={(e) => setRegisterAddress(e.target.value)}
+                      placeholder="Calle, número, piso"
+                      className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
                     />
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1">
-                  Dirección de entrega habitual
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={registerAddress}
-                    onChange={(e) => setRegisterAddress(e.target.value)}
-                    placeholder="Calle, número, piso o urbanización"
-                    className="w-full h-10 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1">
-                  Contraseña de acceso
+                <label className="block text-xs font-black text-foreground mb-1">
+                  Contraseña (mínimo 6 caracteres)
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                   <input
                     type="password"
                     required
+                    minLength={6}
                     value={registerPassword}
                     onChange={(e) => setRegisterPassword(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
-                    className="w-full h-10 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
+                    placeholder="••••••••"
+                    className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
                   />
                 </div>
               </div>
 
-              {/* Biometrics Opt-in feature */}
-              <label className="flex items-start gap-2.5 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 cursor-pointer">
+              {/* Biometrics Toggle Checkbox */}
+              <label className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/60 border border-white/80 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={enableBiometricsOnRegister}
                   onChange={(e) => setEnableBiometricsOnRegister(e.target.checked)}
-                  className="mt-0.5 size-4 text-emerald-600 rounded-md focus:ring-emerald-500"
+                  className="rounded text-primary focus:ring-primary size-4"
                 />
-                <div className="text-xs">
-                  <span className="font-extrabold text-emerald-950 flex items-center gap-1">
-                    <Fingerprint className="size-3.5 text-emerald-600" />
-                    Activar huella dactilar al entrar por primera vez
-                  </span>
-                  <p className="text-[11px] text-emerald-800/80 mt-0.5">
-                    Podrás ingresar en un toque mediante biometría fingerprint en tus próximas compras.
-                  </p>
-                </div>
+                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Fingerprint className="size-4 text-emerald-600" />
+                  <span>Activar acceso con huella dactilar al registrarme</span>
+                </span>
               </label>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-lg shadow-primary/25 liquid-glass-button active:scale-98 transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-60"
+                className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-lg shadow-primary/25 liquid-glass-button active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    <span>Registrando en Supabase...</span>
+                    <span>Creando cuenta en Supabase...</span>
                   </>
                 ) : (
                   <>
@@ -858,12 +765,49 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             </form>
           )}
 
-          {/* Safety note */}
-          <div className="mt-6 pt-4 border-t border-white/60 text-center">
-            <p className="text-[11px] text-muted-foreground flex items-center justify-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-emerald-600" />
-              <span>Compras protegidas con cifrado y verificación de identidad</span>
+          {/* Social OAuth Providers */}
+          <div className="mt-6 pt-5 border-t border-white/60">
+            <p className="text-center text-[11px] font-bold text-muted-foreground mb-3 uppercase tracking-wider">
+              o continúa con
             </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => signInWithSupabaseOAuth("google")}
+                className="h-11 rounded-2xl bg-white/80 border border-white hover:bg-white text-foreground text-xs font-bold flex items-center justify-center gap-2 shadow-2xs active:scale-95 transition-all cursor-pointer"
+              >
+                <svg className="size-4" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                <span>Google</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => signInWithSupabaseOAuth("github")}
+                className="h-11 rounded-2xl bg-white/80 border border-white hover:bg-white text-foreground text-xs font-bold flex items-center justify-center gap-2 shadow-2xs active:scale-95 transition-all cursor-pointer"
+              >
+                <svg className="size-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+                </svg>
+                <span>GitHub</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -874,43 +818,41 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         onClose={() => setBiometricModalOpen(false)}
         onSuccess={handleBiometricSuccess}
         mode={biometricMode}
-        userEmail={pendingUserForBio?.email || bioKeyInfo?.email}
-        userName={pendingUserForBio?.name}
+        userEmail={pendingUserForBio?.email || bioKeyInfo?.email || loginEmail}
+        userName={pendingUserForBio?.name || undefined}
+        currentUser={pendingUserForBio || null}
       />
 
-      {/* Supabase Email Confirmation Link Modal */}
+      {/* Supabase Config Modal (Settings & Diagnostics) */}
+      <SupabaseConfigModal
+        isOpen={supabaseModalOpen}
+        onClose={() => setSupabaseModalOpen(false)}
+        onConfigSaved={() => {
+          setFeedbackSuccess("Configuración de Supabase actualizada exitosamente.");
+        }}
+      />
+
+      {/* Email Confirmation Link Verification Modal */}
       <EmailConfirmationModal
         isOpen={otpModalOpen}
+        onClose={() => setOtpModalOpen(false)}
         email={otpPendingEmail}
         fullName={otpPendingName}
         phone={otpPendingPhone}
         address={otpPendingAddress}
-        onClose={() => setOtpModalOpen(false)}
         onSuccess={handleOtpSuccess}
-        onChangeEmail={() => {
-          setOtpModalOpen(false);
-          setTab("register");
-        }}
       />
 
-      {/* Supabase Config Modal */}
-      <SupabaseConfigModal
-        isOpen={supabaseModalOpen}
-        onClose={() => setSupabaseModalOpen(false)}
-      />
-
-      {/* Anti-Intruder IP Security Block Modal */}
+      {/* IP Security Anti-Intruder Alert Modal */}
       <SecurityIpBlockModal
         isOpen={securityBlockModalOpen}
         onClose={() => setSecurityBlockModalOpen(false)}
         userEmail={securityBlockedEmail}
         currentIp={securityCurrentIp}
         registeredIp={securityRegisteredIp}
-        onAuthorizeCurrentIp={async () => {
-          if (securityBlockedEmail && securityCurrentIp) {
-            await recordUserSecurityIP(securityBlockedEmail, securityCurrentIp);
-            setFeedbackSuccess("¡IP autorizada y actualizada en Supabase User_Sec!");
-          }
+        onAuthorizeCurrentIp={() => {
+          setLoginError("");
+          setFeedbackSuccess("¡Dirección IP autorizada! Ahora puedes iniciar sesión.");
         }}
       />
     </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { getProfile, checkIsAdmin } from "@/services/profiles";
 import { UserProfile } from "@/lib/auth";
@@ -13,14 +13,13 @@ export interface AdminRouteGuardProps {
 }
 
 /**
- * Robust Admin Route Guard based on active Supabase Auth session & public.profiles role
- * 1. Checks current active Supabase session (supabase.auth.getSession())
- * 2. Verifies public.profiles role === 'admin'
- * 3. Listens to real-time auth changes (onAuthStateChange)
- * 4. Automatically redirects unauthorized or unauthenticated users to login or home
+ * Robust, hardened Admin Route Guard based strictly on active Supabase Auth session & authoritative public.profiles role
+ * 1. Verifies real active Supabase Auth session (supabase.auth.getSession())
+ * 2. Queries public.profiles and runs checkIsAdmin RPC to verify role === 'admin'
+ * 3. Never trusts client-side state, user_metadata, or localStorage
+ * 4. Listens to real-time auth changes (onAuthStateChange)
  */
 export const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({
-  currentUser,
   onNavigateHome,
   onNavigateLogin,
   redirectTo = "login",
@@ -30,11 +29,11 @@ export const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const performRedirection = (reason: "unauthenticated" | "unauthorized") => {
+  const performRedirection = useCallback((reason: "unauthenticated" | "unauthorized") => {
     const notice =
       reason === "unauthenticated"
         ? "Inicia sesión con tu cuenta de administrador para acceder a esta sección."
-        : "Tu cuenta no tiene privilegios de administrador. Contacta al superusuario para obtener acceso.";
+        : "Tu cuenta no tiene privilegios de administrador. Se requiere rol 'admin' verificado en Supabase.";
 
     if (redirectTo === "login" && onNavigateLogin) {
       onNavigateLogin(notice);
@@ -46,20 +45,19 @@ export const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({
       return;
     }
 
-    // Default fallback via window hash navigation
     if (reason === "unauthenticated") {
       window.location.hash = "#auth";
     } else {
       window.location.hash = "#inicio";
     }
-  };
+  }, [onNavigateHome, onNavigateLogin, redirectTo]);
 
-  const verifySupabaseSessionAndRole = async () => {
+  const verifySupabaseSessionAndRole = useCallback(async () => {
     setIsVerifying(true);
     setErrorMessage(null);
 
     try {
-      // 1. Get real active session directly from Supabase Auth engine
+      // 1. Authoritative check: Get real active session directly from Supabase Auth engine
       const {
         data: { session },
         error: sessionError,
@@ -74,32 +72,19 @@ export const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({
 
       const userId = session.user.id;
 
-      // 2. Query public.profiles table for authoritative role verification
-      const profile = await getProfile(userId);
+      // 2. Authoritative check: Query public.profiles and run checkIsAdmin
+      const [profile, isAdminFromRpc] = await Promise.all([
+        getProfile(userId),
+        checkIsAdmin(userId),
+      ]);
 
-      if (profile && profile.role === "admin") {
+      if (isAdminFromRpc || profile?.role === "admin") {
         setIsAuthorized(true);
         setIsVerifying(false);
         return;
       }
 
-      // 3. Secondary check using checkIsAdmin helper
-      const isAdminRole = await checkIsAdmin(userId);
-      if (isAdminRole) {
-        setIsAuthorized(true);
-        setIsVerifying(false);
-        return;
-      }
-
-      // 4. Fallback check: user metadata or prop role
-      const userMetaRole = session.user.user_metadata?.role;
-      if (userMetaRole === "admin" || currentUser?.role === "admin") {
-        setIsAuthorized(true);
-        setIsVerifying(false);
-        return;
-      }
-
-      // If all checks fail -> User is authenticated but NOT an admin
+      // If checks fail -> User is authenticated but NOT an authorized admin
       setIsAuthorized(false);
       setErrorMessage("No tienes permisos de administrador para acceder al panel.");
       performRedirection("unauthorized");
@@ -110,12 +95,11 @@ export const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({
     } finally {
       setIsVerifying(false);
     }
-  };
+  }, [performRedirection]);
 
   useEffect(() => {
     verifySupabaseSessionAndRole();
 
-    // Listen to real-time Supabase auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -130,7 +114,7 @@ export const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({
     return () => {
       subscription.unsubscribe();
     };
-  }, [currentUser]);
+  }, [verifySupabaseSessionAndRole, performRedirection]);
 
   // Loading state
   if (isVerifying) {
@@ -139,15 +123,15 @@ export const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({
         <div className="size-14 rounded-2xl bg-emerald-950/90 border border-emerald-800/80 grid place-items-center text-emerald-400 mb-4 shadow-2xl animate-pulse">
           <RefreshCw className="size-7 animate-spin text-emerald-400" />
         </div>
-        <h2 className="text-lg font-bold text-white tracking-tight">Verificando Sesión Supabase</h2>
+        <h2 className="text-lg font-bold text-white tracking-tight">Verificando Credenciales de Administrador</h2>
         <p className="text-xs font-mono text-slate-400 mt-2 max-w-sm">
-          Validando token de sesión activa y rol 'admin' en public.profiles...
+          Validando token de sesión criptográfico y permisos en Supabase...
         </p>
       </div>
     );
   }
 
-  // Unauthorized state (if redirection is pending or manual override)
+  // Unauthorized state
   if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">

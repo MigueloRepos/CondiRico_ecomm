@@ -27,7 +27,7 @@ import {
   Server,
   AlertTriangle,
 } from "lucide-react";
-import { UserProfile, saveStoredUsers, getStoredUsers, setSessionUser } from "@/lib/auth";
+import { UserProfile } from "@/lib/auth";
 import { updateSupabaseUserProfile, signOutSupabase } from "@/lib/supabase";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
 import { BiometricFingerprintModal } from "@/components/BiometricFingerprintModal";
@@ -84,7 +84,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
 
   // User_Sec IP state
   const [userRegisteredIp, setUserRegisteredIp] = useState<string>("Cargando...");
-  const [currentNetworkIp, setCurrentNetworkIp] = useState<string>("186.32.115.42");
+  const [currentNetworkIp, setCurrentNetworkIp] = useState<string>("Cargando...");
   const [isUpdatingIp, setIsUpdatingIp] = useState(false);
 
   React.useEffect(() => {
@@ -176,14 +176,6 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
         },
       };
 
-      // 2. Persist locally in session and stored users
-      setSessionUser(updatedProfile);
-      const allUsers = getStoredUsers().map((u) =>
-        u.id === updatedProfile.id || u.email.toLowerCase() === updatedProfile.email.toLowerCase()
-          ? updatedProfile
-          : u
-      );
-      saveStoredUsers(allUsers);
       onUpdateUser(updatedProfile);
 
       setIsSaving(false);
@@ -722,7 +714,6 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
         onSuccess={() => {
           setBiometricModalOpen(false);
           const updated = { ...currentUser, hasBiometrics: true };
-          setSessionUser(updated);
           onUpdateUser(updated);
           setSaveSuccessMessage("¡Huella dactilar activada y sincronizada!");
           setTimeout(() => setSaveSuccessMessage(null), 3500);

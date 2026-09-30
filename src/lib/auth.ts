@@ -1,4 +1,6 @@
-// CondiRico Auth & Biometric Fingerprint Service
+// CondiRico Auth & WebAuthn Biometric Service
+// Authoritative sessions are managed exclusively by Supabase Auth (supabase.auth.getSession / onAuthStateChange)
+
 export interface UserPreferences {
   offersNewsletter?: boolean;
   whatsappUpdates?: boolean;
@@ -18,69 +20,27 @@ export interface UserProfile {
   biometricCredentialId?: string;
   createdAt: string;
   preferences?: UserPreferences;
-  role?: "customer" | "admin" | string;
+  role?: "customer" | "user" | "admin" | string;
 }
 
-const USERS_STORAGE_KEY = "condirico_users_v1";
-const SESSION_STORAGE_KEY = "condirico_session_user_v1";
-const BIOMETRIC_CRED_KEY = "condirico_biometric_data_v1";
+const BIOMETRIC_CRED_KEY = "condirico_biometric_device_v1";
 
-// Demo user seed if empty
-const DEFAULT_DEMO_USERS: UserProfile[] = [
-  {
-    id: "user_demo_1",
-    name: "Miguel González",
-    email: "miguelo.glez91@gmail.com",
-    phone: "+34 612 345 678",
-    address: "Calle Principal 24, 3ºB",
-    hasBiometrics: true,
-    createdAt: new Date().toISOString(),
-  },
-];
-
-export function getStoredUsers(): UserProfile[] {
-  try {
-    const raw = localStorage.getItem(USERS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_DEMO_USERS));
-      return DEFAULT_DEMO_USERS;
-    }
-    return JSON.parse(raw);
-  } catch {
-    return DEFAULT_DEMO_USERS;
-  }
+/**
+ * Check if the current browser and platform support native WebAuthn
+ */
+export function isWebAuthnSupported(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean(
+    window.PublicKeyCredential &&
+    typeof navigator?.credentials?.create === "function" &&
+    typeof navigator?.credentials?.get === "function" &&
+    window.isSecureContext
+  );
 }
 
-export function saveStoredUsers(users: UserProfile[]) {
-  try {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  } catch (err) {
-    console.error("Error saving users:", err);
-  }
-}
-
-export function getCurrentSessionUser(): UserProfile | null {
-  try {
-    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-export function setSessionUser(user: UserProfile | null) {
-  try {
-    if (user) {
-      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(SESSION_STORAGE_KEY);
-    }
-  } catch (err) {
-    console.error("Error setting session user:", err);
-  }
-}
-
+/**
+ * Check if device has a registered biometric credential locally
+ */
 export function hasDeviceBiometricKey(): boolean {
   try {
     return Boolean(localStorage.getItem(BIOMETRIC_CRED_KEY));
@@ -89,6 +49,9 @@ export function hasDeviceBiometricKey(): boolean {
   }
 }
 
+/**
+ * Get device biometric registration metadata
+ */
 export function getBiometricKeyInfo(): { email: string; credentialId: string } | null {
   try {
     const raw = localStorage.getItem(BIOMETRIC_CRED_KEY);
@@ -98,15 +61,28 @@ export function getBiometricKeyInfo(): { email: string; credentialId: string } |
   }
 }
 
+/**
+ * Store device biometric registration metadata
+ */
 export function setBiometricKey(email: string, credentialId: string) {
   try {
-    localStorage.setItem(BIOMETRIC_CRED_KEY, JSON.stringify({ email, credentialId }));
+    localStorage.setItem(BIOMETRIC_CRED_KEY, JSON.stringify({ email: email.toLowerCase().trim(), credentialId }));
   } catch (err) {
     console.error("Error setting biometric key:", err);
   }
 }
 
-// Convert string to ArrayBuffer for WebAuthn challenge
+/**
+ * Clear device biometric registration
+ */
+export function clearBiometricKey() {
+  try {
+    localStorage.removeItem(BIOMETRIC_CRED_KEY);
+  } catch (err) {
+    console.error("Error clearing biometric key:", err);
+  }
+}
+
 function bufferFromStr(str: string): BufferSource {
   const encoder = new TextEncoder();
   const uint8 = encoder.encode(str);
@@ -115,120 +91,116 @@ function bufferFromStr(str: string): BufferSource {
   return copy;
 }
 
-// Check whether native WebAuthn is safe and supported without hanging the browser IPC in iframes
-function canUseNativeWebAuthn(): boolean {
-  try {
-    // If inside an iframe (like AI Studio preview), WebAuthn hangs waiting for parent frame permissions
-    if (typeof window === "undefined" || window.self !== window.top) {
-      return false;
-    }
-    if (!window.isSecureContext) {
-      return false;
-    }
-    if (!window.PublicKeyCredential || typeof navigator?.credentials?.create !== "function") {
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
+/**
+ * WebAuthn Biometrics: Register fingerprint credential using real browser WebAuthn API
+ * Never returns false positives or fake successes.
+ */
+export async function registerWebAuthnBiometrics(
+  user: UserProfile
+): Promise<{ success: boolean; credentialId?: string; error?: string }> {
+  if (!isWebAuthnSupported()) {
+    return {
+      success: false,
+      error: "La autenticación biométrica (WebAuthn / Passkeys) no está disponible en este navegador o contexto.",
+    };
   }
-}
 
-// WebAuthn Biometrics: Register fingerprint credential
-export async function registerWebAuthnBiometrics(user: UserProfile): Promise<{ success: boolean; credentialId: string }> {
   try {
-    if (canUseNativeWebAuthn()) {
-      const controller = new AbortController();
-      const abortTimer = setTimeout(() => controller.abort(), 2000);
+    const challenge = new Uint8Array(32);
+    window.crypto.getRandomValues(challenge);
+    const userIdBuffer = bufferFromStr(user.id);
 
-      try {
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
-        const userIdBuffer = bufferFromStr(user.id);
+    const credential = (await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: {
+          name: "CondiRico Ecommerce",
+          id: window.location.hostname === "localhost" ? "localhost" : undefined,
+        },
+        user: {
+          id: userIdBuffer,
+          name: user.email,
+          displayName: user.name,
+        },
+        pubKeyCredParams: [
+          { alg: -7, type: "public-key" }, // ES256
+          { alg: -257, type: "public-key" }, // RS256
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: "platform", // Touch ID / Face ID / Windows Hello / Android Biometric
+          userVerification: "preferred",
+        },
+        timeout: 60000,
+      },
+    })) as PublicKeyCredential | null;
 
-        const credential = await navigator.credentials.create({
-          signal: controller.signal,
-          publicKey: {
-            challenge,
-            rp: {
-              name: "CondiRico Store",
-              id: window.location.hostname === "localhost" ? "localhost" : undefined,
-            },
-            user: {
-              id: userIdBuffer,
-              name: user.email,
-              displayName: user.name,
-            },
-            pubKeyCredParams: [
-              { alg: -7, type: "public-key" }, // ES256
-              { alg: -257, type: "public-key" }, // RS256
-            ],
-            authenticatorSelection: {
-              authenticatorAttachment: "platform", // Fingerprint / Touch ID / Face ID
-              userVerification: "preferred",
-            },
-            timeout: 2000,
-          },
-        });
-
-        clearTimeout(abortTimer);
-
-        if (credential && "id" in credential) {
-          setBiometricKey(user.email, credential.id);
-          return { success: true, credentialId: credential.id };
-        }
-      } catch (subErr) {
-        clearTimeout(abortTimer);
-        console.warn("Native WebAuthn biometric prompt bypassed or not supported in current environment:", subErr);
-      }
+    if (credential && credential.id) {
+      setBiometricKey(user.email, credential.id);
+      return { success: true, credentialId: credential.id };
     }
+
+    return {
+      success: false,
+      error: "No se recibió respuesta válida del sensor biométrico del dispositivo.",
+    };
   } catch (err: unknown) {
-    console.warn("Biometric initialization fallback:", err);
+    const msg = err instanceof Error ? err.message : "Error al registrar credencial biométrica.";
+    return {
+      success: false,
+      error: msg,
+    };
   }
-
-  // Seamless fallback: register device biometric key for instant touch access in preview/browser
-  const fallbackId = "bio_" + Math.random().toString(36).substring(2, 12);
-  setBiometricKey(user.email, fallbackId);
-  return { success: true, credentialId: fallbackId };
 }
 
-// WebAuthn Biometrics: Authenticate with fingerprint
-export async function verifyWebAuthnBiometrics(targetEmail?: string): Promise<{ success: boolean; email: string }> {
+/**
+ * WebAuthn Biometrics: Authenticate with fingerprint using real browser WebAuthn API
+ * If the user cancels or the biometric challenge fails, it strictly returns an error.
+ */
+export async function verifyWebAuthnBiometrics(
+  targetEmail?: string
+): Promise<{ success: boolean; email?: string; error?: string }> {
   const bioInfo = getBiometricKeyInfo();
-  const emailToVerify = targetEmail || bioInfo?.email;
+  const emailToVerify = (targetEmail || bioInfo?.email)?.toLowerCase().trim();
 
   if (!emailToVerify) {
-    throw new Error("No hay ninguna huella dactilar registrada en este dispositivo.");
+    return {
+      success: false,
+      error: "No hay ninguna credencial biométrica registrada en este dispositivo.",
+    };
+  }
+
+  if (!isWebAuthnSupported()) {
+    return {
+      success: false,
+      error: "La autenticación biométrica no es compatible con este navegador o dispositivo.",
+    };
   }
 
   try {
-    if (canUseNativeWebAuthn() && typeof navigator?.credentials?.get === "function") {
-      const controller = new AbortController();
-      const abortTimer = setTimeout(() => controller.abort(), 2000);
+    const challenge = new Uint8Array(32);
+    window.crypto.getRandomValues(challenge);
 
-      try {
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        userVerification: "preferred",
+        timeout: 60000,
+      },
+    });
 
-        await navigator.credentials.get({
-          signal: controller.signal,
-          publicKey: {
-            challenge,
-            userVerification: "preferred",
-            timeout: 2000,
-          },
-        });
-        clearTimeout(abortTimer);
-        return { success: true, email: emailToVerify };
-      } catch (subErr) {
-        clearTimeout(abortTimer);
-        console.warn("Native WebAuthn verify bypassed:", subErr);
-      }
+    if (assertion) {
+      return { success: true, email: emailToVerify };
     }
-  } catch (err: unknown) {
-    console.warn("Biometric verify fallback:", err);
-  }
 
-  // Fallback device verification
-  return { success: true, email: emailToVerify };
+    return {
+      success: false,
+      error: "Fallo de autenticación biométrica. No se pudo verificar la huella.",
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Fallo en la autenticación biométrica.";
+    return {
+      success: false,
+      error: msg,
+    };
+  }
 }

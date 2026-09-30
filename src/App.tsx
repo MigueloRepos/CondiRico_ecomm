@@ -56,7 +56,7 @@ import { VoiceSearchModal } from "@/components/VoiceSearchModal";
 import { ToastProvider, useToast } from "@/components/ui/ToastContext";
 import { BlurUpImage } from "@/components/BlurUpImage";
 import { CategoryBento } from "@/components/CategoryBento";
-import { UserProfile, getCurrentSessionUser, setSessionUser } from "@/lib/auth";
+import { UserProfile } from "@/lib/auth";
 import { supabase, mapSupabaseUserToProfile } from "@/lib/supabase";
 import {
   Fingerprint,
@@ -180,7 +180,7 @@ function AppContent() {
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentSessionUser());
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [intendedAuthNotice, setIntendedAuthNotice] = useState<string>("");
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
@@ -259,17 +259,54 @@ function AppContent() {
     };
   }, []);
 
-  // 1b. Listen for Supabase Auth state changes (e.g. clicking email confirmation link)
+  // 1b. Listen for Supabase Auth state changes and sync authoritative session
   useEffect(() => {
+    // Initial session hydration
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const profile = mapSupabaseUserToProfile(session.user);
+        try {
+          const dbProfile = await getProfile(session.user.id);
+          if (dbProfile?.role) {
+            profile.role = dbProfile.role;
+          } else {
+            const isAdmin = await checkIsAdmin(session.user.id);
+            if (isAdmin) profile.role = "admin";
+            else if (!profile.role) profile.role = "customer";
+          }
+        } catch (err) {
+          console.warn("[App] Initial auth role fetch error:", err);
+        }
+        setCurrentUser(profile);
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (session?.user) {
           const profile = mapSupabaseUserToProfile(session.user);
+          try {
+            const dbProfile = await getProfile(session.user.id);
+            if (dbProfile?.role) {
+              profile.role = dbProfile.role;
+            } else {
+              const isAdmin = await checkIsAdmin(session.user.id);
+              if (isAdmin) profile.role = "admin";
+              else if (!profile.role) profile.role = "customer";
+            }
+          } catch (err) {
+            console.warn("[App] Auth change role fetch error:", err);
+          }
           setCurrentUser(profile);
-          setSessionUser(profile);
           if (event === "USER_UPDATED") {
             showSuccessToast("¡Cuenta actualizada!", `Tus datos han sido actualizados.`);
           }
+        } else if (event === "SIGNED_OUT") {
+          setCurrentUser(null);
+          setCart({});
+          setFavorites(new Set());
         }
       }
     );
@@ -508,8 +545,12 @@ function AppContent() {
     }
   };
 
-  const handleLogout = () => {
-    setSessionUser(null);
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn("[handleLogout] Error signing out from Supabase:", err);
+    }
     setCurrentUser(null);
     setUserDropdownOpen(false);
     setCart({});
@@ -532,7 +573,6 @@ function AppContent() {
     }
 
     setCurrentUser(finalUser);
-    setSessionUser(finalUser);
 
     // Role-based automatic dashboard redirection
     if (finalUser.role === "admin") {

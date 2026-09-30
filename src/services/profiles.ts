@@ -15,7 +15,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
       .maybeSingle();
 
     if (error) {
-      console.error("[getProfile] Supabase error:", error);
+      console.warn("[getProfile] Supabase profile query:", error.message);
       return null;
     }
 
@@ -27,19 +27,24 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 }
 
 /**
- * Updates or creates a user profile in public.profiles
+ * Updates a user profile in public.profiles (strictly excludes role modification)
  */
 export async function updateProfile(
   userId: string,
-  profileData: Partial<Omit<Profile, "id" | "created_at">>
+  profileData: Partial<Omit<Profile, "id" | "created_at" | "role">>
 ): Promise<{ success: boolean; profile?: Profile; error?: string }> {
   if (!userId) {
     return { success: false, error: "Usuario no autenticado." };
   }
 
   try {
+    // Sanitize payload: strictly disallow role modification from frontend
+    const sanitizedData = { ...profileData };
+    delete (sanitizedData as Record<string, unknown>).role;
+    delete (sanitizedData as Record<string, unknown>).id;
+
     const payload = {
-      ...profileData,
+      ...sanitizedData,
       updated_at: new Date().toISOString(),
     };
 
@@ -66,11 +71,19 @@ export async function updateProfile(
 }
 
 /**
- * Checks if a user has admin privileges in public.profiles
+ * Authoritative check if a user has admin privileges in Supabase
+ * Tries secure public.is_admin() RPC first, then falls back to verified profiles.role
  */
 export async function checkIsAdmin(userId: string): Promise<boolean> {
   if (!userId) return false;
   try {
+    // 1. Try secure is_admin RPC function
+    const { data: rpcAdmin, error: rpcErr } = await supabase.rpc("is_admin");
+    if (!rpcErr && typeof rpcAdmin === "boolean") {
+      return rpcAdmin;
+    }
+
+    // 2. Query public.profiles directly
     const { data, error } = await supabase
       .from("profiles")
       .select("role")
@@ -84,23 +97,3 @@ export async function checkIsAdmin(userId: string): Promise<boolean> {
     return false;
   }
 }
-
-/**
- * Grants admin role in public.profiles
- */
-export async function promoteToAdmin(userId: string): Promise<{ success: boolean; error?: string }> {
-  if (!userId) return { success: false, error: "Usuario no autenticado." };
-  try {
-    const { error } = await supabase
-      .from("profiles")
-      .update({ role: "admin", updated_at: new Date().toISOString() })
-      .eq("id", userId);
-
-    if (error) return { success: false, error: error.message };
-    return { success: true };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Error al actualizar rol a admin.";
-    return { success: false, error: msg };
-  }
-}
-

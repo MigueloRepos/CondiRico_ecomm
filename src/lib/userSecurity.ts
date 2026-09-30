@@ -72,7 +72,7 @@ export async function getUserClientIP(forceRefresh = false): Promise<string> {
   // 1. Primary: ipify.org (IPv4 JSON)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 1200);
     const res = await fetch("https://api.ipify.org?format=json", {
       signal: controller.signal,
     });
@@ -92,7 +92,7 @@ export async function getUserClientIP(forceRefresh = false): Promise<string> {
   // 2. Fallback: ipapi.co
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 1200);
     const res = await fetch("https://ipapi.co/json/", {
       signal: controller.signal,
     });
@@ -111,7 +111,12 @@ export async function getUserClientIP(forceRefresh = false): Promise<string> {
 
   // 3. Fallback: api64.ipify.org
   try {
-    const res = await fetch("https://api64.ipify.org?format=json");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1200);
+    const res = await fetch("https://api64.ipify.org?format=json", {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
       if (data.ip) {
@@ -124,10 +129,10 @@ export async function getUserClientIP(forceRefresh = false): Promise<string> {
     // fallback
   }
 
-  // 4. Default / Simulated Network IP for environments without internet access
-  const fallbackIp = "186.32.115.42";
-  cachedClientIp = fallbackIp;
-  return fallbackIp;
+  // 4. Default clean fallback for offline/isolated/iframe environments
+  const defaultFallback = "127.0.0.1";
+  cachedClientIp = defaultFallback;
+  return defaultFallback;
 }
 
 // Local cache helpers
@@ -217,14 +222,14 @@ export async function recordUserSecurityIP(
 
     return { success: true, registeredIp: clientIp };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Error desconocido al registrar IP";
+    const msg = err instanceof Error ? err.message : "Error al registrar IP";
     return { success: true, registeredIp: clientIp, error: msg };
   }
 }
 
 /**
  * Verify user IP before allowing login.
- * If user has a registered IP in User_Sec and current IP is different, BLOCK access!
+ * If user has a registered IP in User_Sec and current IP is different, alert access.
  */
 export async function verifyUserSecurityIP(
   usernameOrEmail: string,

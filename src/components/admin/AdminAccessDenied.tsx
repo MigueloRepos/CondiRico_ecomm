@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import { ShieldAlert, ArrowLeft, LogIn, Sparkles, CheckCircle2, UserCheck } from "lucide-react";
+import { ShieldAlert, ArrowLeft, LogIn, RefreshCw, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
-import { promoteToAdmin } from "@/services/profiles";
 import { UserProfile } from "@/lib/auth";
 
 interface AdminAccessDeniedProps {
@@ -18,30 +17,18 @@ export const AdminAccessDenied: React.FC<AdminAccessDeniedProps> = ({
   onNavigateLogin,
   onRefreshRole,
 }) => {
-  const [isPromoting, setIsPromoting] = useState(false);
-  const [promoteSuccess, setPromoteSuccess] = useState(false);
-  const [promoteError, setPromoteError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  const handleSelfPromote = async () => {
-    if (!currentUser?.id) return;
-    setIsPromoting(true);
-    setPromoteError(null);
+  const handleVerifyRole = async () => {
+    setIsVerifying(true);
     try {
-      const res = await promoteToAdmin(currentUser.id);
-      if (res.success) {
-        setPromoteSuccess(true);
-        setTimeout(() => {
-          if (onRefreshRole) onRefreshRole();
-          else window.location.reload();
-        }, 1200);
+      if (onRefreshRole) {
+        await onRefreshRole();
       } else {
-        setPromoteError(res.error || "No se pudo otorgar el rol de administrador.");
+        window.location.reload();
       }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Error inesperado.";
-      setPromoteError(msg);
     } finally {
-      setIsPromoting(false);
+      setTimeout(() => setIsVerifying(false), 800);
     }
   };
 
@@ -72,38 +59,29 @@ export const AdminAccessDenied: React.FC<AdminAccessDeniedProps> = ({
 
           <p className="mt-3 text-xs sm:text-sm text-slate-400 leading-relaxed">
             {currentUser
-              ? `Has iniciado sesión como ${currentUser.email}, pero tu cuenta en la base de datos no tiene asignado el rol "admin" en public.profiles.`
+              ? `Has iniciado sesión como ${currentUser.email}, pero tu cuenta no cuenta con rol de "admin" verificado en la base de datos Supabase.`
               : "Esta sección es exclusiva para el equipo administrativo de CondiRico. Debes iniciar sesión con una cuenta autorizada."}
           </p>
 
-          {promoteSuccess && (
-            <div className="mt-4 p-3 rounded-2xl bg-emerald-950/70 border border-emerald-800/80 text-emerald-300 text-xs flex items-center justify-center gap-2">
-              <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
-              <span>¡Rol de administrador activado! Redirigiendo al panel...</span>
+          <div className="mt-5 p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-left text-xs text-slate-400 space-y-1.5">
+            <div className="flex items-center gap-2 text-slate-300 font-semibold">
+              <Lock className="size-3.5 text-amber-400" />
+              <span>Seguridad RLS Supabase</span>
             </div>
-          )}
-
-          {promoteError && (
-            <div className="mt-4 p-3 rounded-2xl bg-rose-950/70 border border-rose-800/80 text-rose-300 text-xs">
-              {promoteError}
-            </div>
-          )}
+            <p className="text-[11px] leading-normal text-slate-400">
+              Los roles administrativos son gestionados exclusivamente en la tabla <code className="text-emerald-400 bg-slate-900 px-1 py-0.5 rounded">public.profiles</code> y protegidos mediante políticas de seguridad Row Level Security.
+            </p>
+          </div>
 
           <div className="mt-8 space-y-3">
-            {currentUser && !promoteSuccess && (
+            {currentUser && (
               <Button
-                onClick={handleSelfPromote}
-                disabled={isPromoting}
+                onClick={handleVerifyRole}
+                disabled={isVerifying}
                 className="w-full h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2"
               >
-                {isPromoting ? (
-                  <span>Activando privilegios...</span>
-                ) : (
-                  <>
-                    <UserCheck className="size-4" />
-                    <span>Activar rol Administrador en Supabase</span>
-                  </>
-                )}
+                <RefreshCw className={`size-4 ${isVerifying ? "animate-spin" : ""}`} />
+                <span>{isVerifying ? "Verificando permisos..." : "Reintentar verificación de rol"}</span>
               </Button>
             )}
 

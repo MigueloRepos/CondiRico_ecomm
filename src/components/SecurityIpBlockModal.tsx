@@ -6,11 +6,12 @@ import {
   Globe,
   AlertTriangle,
   Server,
-  ArrowRight,
   ShieldCheck,
   CheckCircle2,
-  RefreshCw,
+  Loader2,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { recordUserSecurityIP } from "@/lib/userSecurity";
 
 interface SecurityIpBlockModalProps {
   isOpen: boolean;
@@ -30,25 +31,50 @@ export const SecurityIpBlockModal: React.FC<SecurityIpBlockModalProps> = ({
   onAuthorizeCurrentIp,
 }) => {
   const [showUnlockForm, setShowUnlockForm] = useState(false);
-  const [unlockCode, setUnlockCode] = useState("");
+  const [unlockPassword, setUnlockPassword] = useState("");
   const [unlockSuccess, setUnlockSuccess] = useState(false);
   const [unlockError, setUnlockError] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleUnlockSubmit = (e: React.FormEvent) => {
+  const handleUnlockSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUnlockError("");
 
-    // Simulate verification or password unlock
-    if (unlockCode.trim().length >= 4) {
+    if (!unlockPassword.trim()) {
+      setUnlockError("Ingresa tu contraseña para verificar tu identidad.");
+      return;
+    }
+
+    setIsVerifying(true);
+
+    try {
+      // Real cryptographic credential check with Supabase Auth
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: userEmail.trim().toLowerCase(),
+        password: unlockPassword,
+      });
+
+      if (error || !data.session) {
+        setUnlockError("Contraseña incorrecta. No se puede autorizar esta dirección IP.");
+        setIsVerifying(false);
+        return;
+      }
+
+      // Record authorized IP in Supabase User_Sec
+      await recordUserSecurityIP(userEmail, currentIp);
+
       setUnlockSuccess(true);
       setTimeout(() => {
         onAuthorizeCurrentIp?.();
         onClose();
       }, 1200);
-    } else {
-      setUnlockError("Ingresa tu código de seguridad o contraseña para autorizar esta red.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error al validar credenciales.";
+      setUnlockError(msg);
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -69,7 +95,7 @@ export const SecurityIpBlockModal: React.FC<SecurityIpBlockModalProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-5 top-5 grid size-9 place-items-center rounded-full bg-white/10 text-white/70 hover:text-white border border-white/10 shadow-xs transition-all active:scale-90"
+          className="absolute right-5 top-5 grid size-9 place-items-center rounded-full bg-white/10 text-white/70 hover:text-white border border-white/10 shadow-xs transition-all active:scale-90 cursor-pointer"
           aria-label="Cerrar aviso de seguridad"
         >
           <X className="size-4" />
@@ -134,26 +160,29 @@ export const SecurityIpBlockModal: React.FC<SecurityIpBlockModalProps> = ({
         {unlockSuccess ? (
           <div className="mt-5 p-4 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs flex items-center gap-3">
             <CheckCircle2 className="size-5 text-emerald-400 shrink-0" />
-            <span>¡Red autorizada con éxito! Actualizando registro en Supabase User_Sec...</span>
+            <span>¡Identidad confirmada! Red autorizada y sincronizada en Supabase User_Sec.</span>
           </div>
         ) : showUnlockForm ? (
           <form onSubmit={handleUnlockSubmit} className="mt-5 space-y-3">
             <label className="block text-xs font-bold text-stone-300">
-              ¿Eres el dueño de la cuenta? Ingresa tu contraseña o código de confirmación:
+              Ingresa la contraseña de tu cuenta para autorizar esta red en Supabase:
             </label>
             <div className="flex gap-2">
               <input
                 type="password"
-                value={unlockCode}
-                onChange={(e) => setUnlockCode(e.target.value)}
-                placeholder="Contraseña de la cuenta"
+                value={unlockPassword}
+                onChange={(e) => setUnlockPassword(e.target.value)}
+                placeholder="Contraseña de tu cuenta"
+                disabled={isVerifying}
                 className="flex-1 h-11 px-3.5 rounded-xl bg-stone-800 border border-white/20 text-xs text-white placeholder:text-stone-500 outline-none focus:border-emerald-500"
               />
               <button
                 type="submit"
-                className="h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all shrink-0"
+                disabled={isVerifying}
+                className="h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all shrink-0 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                Autorizar IP
+                {isVerifying ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                <span>Autorizar IP</span>
               </button>
             </div>
             {unlockError && <p className="text-[11px] text-red-400 font-bold">{unlockError}</p>}
@@ -163,7 +192,7 @@ export const SecurityIpBlockModal: React.FC<SecurityIpBlockModalProps> = ({
             <button
               type="button"
               onClick={() => setShowUnlockForm(true)}
-              className="w-full sm:flex-1 h-12 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-bold text-xs transition-all flex items-center justify-center gap-2"
+              className="w-full sm:flex-1 h-12 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <ShieldCheck className="size-4 text-emerald-400" />
               <span>Soy el titular (Autorizar esta red)</span>
@@ -172,7 +201,7 @@ export const SecurityIpBlockModal: React.FC<SecurityIpBlockModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-xs shadow-lg shadow-red-600/30 transition-all active:scale-95"
+              className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-xs shadow-lg shadow-red-600/30 transition-all active:scale-95 cursor-pointer"
             >
               Cerrar
             </button>

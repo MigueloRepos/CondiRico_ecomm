@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { UserProfile } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 import { checkIsAdmin, getProfile } from "@/services/profiles";
 import { getAdminSummary } from "@/services/admin/dashboard";
 import { AdminSidebar } from "./AdminSidebar";
@@ -83,31 +84,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Verify Role directly from Supabase
   const verifyAdminRole = async () => {
-    if (!currentUser) {
-      setHasAdminAccess(false);
-      setIsCheckingRole(false);
-      return;
-    }
-
-    setIsCheckingRole(true);
     try {
-      // 1. Fast local role check
-      if (currentUser.role === "admin") {
-        setHasAdminAccess(true);
+      setIsCheckingRole(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        setHasAdminAccess(false);
+        setIsCheckingRole(false);
+        return;
       }
 
-      // 2. Authoritative check in Supabase profiles
-      const dbProfile = await getProfile(currentUser.id);
-      if (dbProfile?.role === "admin") {
-        setHasAdminAccess(true);
-      } else {
-        // Double check using direct query function
-        const isAdmin = await checkIsAdmin(currentUser.id);
-        setHasAdminAccess(isAdmin);
-      }
+      const userId = session.user.id;
+      const [profile, isAdmin] = await Promise.all([
+        getProfile(userId),
+        checkIsAdmin(userId),
+      ]);
+
+      setHasAdminAccess(isAdmin || profile?.role === "admin");
     } catch (err) {
       console.error("[AdminDashboard] Error checking role:", err);
-      setHasAdminAccess(currentUser?.role === "admin");
+      setHasAdminAccess(false);
     } finally {
       setIsCheckingRole(false);
     }
