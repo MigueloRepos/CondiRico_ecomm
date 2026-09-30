@@ -16,6 +16,7 @@ import {
   Wheat,
   Soup,
   Package,
+  LayoutGrid,
   ArrowRight,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -32,67 +33,146 @@ interface CategoryBentoProps {
 }
 
 /**
- * Robust dynamic Lucide vectorial icon mapper for any Supabase category
- * Handles unknown categories with a reliable default Package icon.
+ * Standard category to Lucide icon dictionary
  */
-function getDynamicCategoryIcon(name: string = "", id: string = ""): React.ElementType {
-  const text = `${name} ${id}`
-    .toLowerCase()
+export const categoryIconMap: Record<string, React.ElementType> = {
+  alimentos: UtensilsCrossed,
+  "alimentos sellados": UtensilsCrossed,
+  "alimentos-sellados": UtensilsCrossed,
+  "primera-necesidad": ShoppingBasket,
+  "primera necesidad": ShoppingBasket,
+  "productos de primera necesidad": ShoppingBasket,
+  "productos-de-primera-necesidad": ShoppingBasket,
+  limpieza: Sparkles,
+  "limpieza del hogar": Sparkles,
+  "limpieza-del-hogar": Sparkles,
+  utiles: HomeIcon,
+  "útiles": HomeIcon,
+  "utiles del hogar": HomeIcon,
+  "útiles del hogar": HomeIcon,
+  "utiles-del-hogar": HomeIcon,
+  panaderia: Croissant,
+  "panadería": Croissant,
+  reposteria: Croissant,
+  "repostería": Croissant,
+  frutas: Apple,
+  verduras: Apple,
+  frescos: Apple,
+  lacteos: Milk,
+  "lácteos": Milk,
+  leche: Milk,
+  quesos: Milk,
+  carnes: Beef,
+  pollo: Beef,
+  pescados: Fish,
+  mariscos: Fish,
+  bebidas: Coffee,
+  cafes: Coffee,
+  "cafés": Coffee,
+  vinos: Wine,
+  licores: Wine,
+  bebes: Baby,
+  "bebés": Baby,
+  infantil: Baby,
+  mascotas: Dog,
+  cereales: Wheat,
+  pastas: Wheat,
+  harinas: Wheat,
+  sopas: Soup,
+  caldos: Soup,
+};
+
+// Generic default Lucide icon fallback when category is unknown or not present in categoryIconMap
+export const DEFAULT_CATEGORY_ICON: React.ElementType = LayoutGrid;
+export const FALLBACK_CATEGORY_ICON: React.ElementType = Package;
+
+/**
+ * Robust dynamic Lucide vectorial icon mapper for any Supabase category.
+ * If the category name or ID does not match any key in categoryIconMap,
+ * it returns a generic Lucide icon (LayoutGrid / Package) instead of breaking the render.
+ */
+export function getDynamicCategoryIcon(name?: string | null, id?: string | null): React.ElementType {
+  if (!name && !id) {
+    return DEFAULT_CATEGORY_ICON;
+  }
+
+  const rawName = (name || "").trim().toLowerCase();
+  const rawId = (id || "").trim().toLowerCase();
+
+  // 1. Direct match in categoryIconMap by id or name
+  if (categoryIconMap[rawId]) {
+    return categoryIconMap[rawId];
+  }
+  if (categoryIconMap[rawName]) {
+    return categoryIconMap[rawName];
+  }
+
+  // Normalize string (remove accents and special characters)
+  const normalized = `${rawName} ${rawId}`
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
-  if (text.includes("pan") || text.includes("reposteri") || text.includes("bolleria") || text.includes("bakery")) {
-    return Croissant;
-  }
-  if (text.includes("frut") || text.includes("verdur") || text.includes("hortaliz") || text.includes("produce")) {
-    return Apple;
-  }
-  if (text.includes("lacte") || text.includes("leche") || text.includes("queso") || text.includes("yogur") || text.includes("dairy")) {
-    return Milk;
-  }
-  if (text.includes("carne") || text.includes("pollo") || text.includes("res") || text.includes("cerdo") || text.includes("meat")) {
-    return Beef;
-  }
-  if (text.includes("pescad") || text.includes("marisc") || text.includes("mar") || text.includes("fish")) {
-    return Fish;
-  }
-  if (text.includes("bebid") || text.includes("refresc") || text.includes("jugo") || text.includes("agua") || text.includes("gaseos") || text.includes("drink")) {
-    return Coffee;
-  }
-  if (text.includes("vino") || text.includes("licor") || text.includes("cervez") || text.includes("alcohol") || text.includes("wine")) {
-    return Wine;
-  }
-  if (text.includes("limpiez") || text.includes("aseo") || text.includes("detergent") || text.includes("desinfect") || text.includes("clean")) {
-    return Sparkles;
-  }
-  if (text.includes("bebe") || text.includes("infantil") || text.includes("panal") || text.includes("baby")) {
-    return Baby;
-  }
-  if (text.includes("mascot") || text.includes("perro") || text.includes("gato") || text.includes("pet")) {
-    return Dog;
-  }
-  if (text.includes("util") || text.includes("hogar") || text.includes("casa") || text.includes("bazar") || text.includes("home")) {
-    return HomeIcon;
-  }
-  if (text.includes("primera") || text.includes("necesidad") || text.includes("cesta") || text.includes("despensa") || text.includes("basico") || text.includes("pantry")) {
-    return ShoppingBasket;
-  }
-  if (text.includes("aliment") || text.includes("comida") || text.includes("conserv") || text.includes("grano") || text.includes("enlatad") || text.includes("sella") || text.includes("food")) {
-    return UtensilsCrossed;
-  }
-  if (text.includes("sopa") || text.includes("caldo") || text.includes("soup")) {
-    return Soup;
-  }
-  if (text.includes("harin") || text.includes("cereal") || text.includes("pasta") || text.includes("trigo") || text.includes("grain")) {
-    return Wheat;
+  // 2. Normalized direct match
+  for (const [key, icon] of Object.entries(categoryIconMap)) {
+    const normKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (normalized === normKey || rawId === normKey) {
+      return icon;
+    }
   }
 
-  // Default fallback icon for unknown categories
-  return Package;
+  // 3. Keyword heuristic search against categoryIconMap keywords
+  if (normalized.includes("pan") || normalized.includes("reposteri") || normalized.includes("bolleria") || normalized.includes("bakery")) {
+    return categoryIconMap["panaderia"] || Croissant;
+  }
+  if (normalized.includes("frut") || normalized.includes("verdur") || normalized.includes("hortaliz") || normalized.includes("produce")) {
+    return categoryIconMap["frutas"] || Apple;
+  }
+  if (normalized.includes("lacte") || normalized.includes("leche") || normalized.includes("queso") || normalized.includes("yogur") || normalized.includes("dairy")) {
+    return categoryIconMap["lacteos"] || Milk;
+  }
+  if (normalized.includes("carne") || normalized.includes("pollo") || normalized.includes("res") || normalized.includes("cerdo") || normalized.includes("meat")) {
+    return categoryIconMap["carnes"] || Beef;
+  }
+  if (normalized.includes("pescad") || normalized.includes("marisc") || normalized.includes("mar") || normalized.includes("fish")) {
+    return categoryIconMap["pescados"] || Fish;
+  }
+  if (normalized.includes("bebid") || normalized.includes("refresc") || normalized.includes("jugo") || normalized.includes("agua") || normalized.includes("gaseos") || normalized.includes("drink")) {
+    return categoryIconMap["bebidas"] || Coffee;
+  }
+  if (normalized.includes("vino") || normalized.includes("licor") || normalized.includes("cervez") || normalized.includes("alcohol") || normalized.includes("wine")) {
+    return categoryIconMap["vinos"] || Wine;
+  }
+  if (normalized.includes("limpiez") || normalized.includes("aseo") || normalized.includes("detergent") || normalized.includes("desinfect") || normalized.includes("clean")) {
+    return categoryIconMap["limpieza"] || Sparkles;
+  }
+  if (normalized.includes("bebe") || normalized.includes("infantil") || normalized.includes("panal") || normalized.includes("baby")) {
+    return categoryIconMap["bebes"] || Baby;
+  }
+  if (normalized.includes("mascot") || normalized.includes("perro") || normalized.includes("gato") || normalized.includes("pet")) {
+    return categoryIconMap["mascotas"] || Dog;
+  }
+  if (normalized.includes("util") || normalized.includes("hogar") || normalized.includes("casa") || normalized.includes("bazar") || normalized.includes("home")) {
+    return categoryIconMap["utiles"] || HomeIcon;
+  }
+  if (normalized.includes("primera") || normalized.includes("necesidad") || normalized.includes("cesta") || normalized.includes("despensa") || normalized.includes("basico") || normalized.includes("pantry")) {
+    return categoryIconMap["primera-necesidad"] || ShoppingBasket;
+  }
+  if (normalized.includes("aliment") || normalized.includes("comida") || normalized.includes("conserv") || normalized.includes("grano") || normalized.includes("enlatad") || normalized.includes("sella") || normalized.includes("food")) {
+    return categoryIconMap["alimentos"] || UtensilsCrossed;
+  }
+  if (normalized.includes("sopa") || normalized.includes("caldo") || normalized.includes("soup")) {
+    return categoryIconMap["sopas"] || Soup;
+  }
+  if (normalized.includes("harin") || normalized.includes("cereal") || normalized.includes("pasta") || normalized.includes("trigo") || normalized.includes("grain")) {
+    return categoryIconMap["cereales"] || Wheat;
+  }
+
+  // 4. Safe fallback to generic Lucide icon
+  return DEFAULT_CATEGORY_ICON || FALLBACK_CATEGORY_ICON || Package;
 }
 
 /**
- * Returns cohesive visual color tokens per category
+ * Returns cohesive visual color tokens per category with safe fallback
  */
 function getCategoryPalette(id: string = "", name: string = "") {
   const text = `${name} ${id}`
@@ -283,9 +363,9 @@ export const CategoryBento: React.FC<CategoryBentoProps> = ({
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {categories.map((cat) => {
-              const IconComponent = getDynamicCategoryIcon(cat.name, cat.id);
-              const palette = getCategoryPalette(cat.id, cat.name);
-              const count = cat.productCount ?? 0;
+              const IconComponent = getDynamicCategoryIcon(cat?.name, cat?.id) || DEFAULT_CATEGORY_ICON || Package;
+              const palette = getCategoryPalette(cat?.id, cat?.name);
+              const count = cat?.productCount ?? 0;
 
               return (
                 <button
@@ -293,7 +373,7 @@ export const CategoryBento: React.FC<CategoryBentoProps> = ({
                   type="button"
                   onClick={() => onSelectCategory(cat.id as CategoryId)}
                   className="group relative flex flex-col items-center justify-center rounded-3xl bg-white border border-border hover:border-[#CBD5CE] p-6 sm:p-7 shadow-xs hover:shadow-md transition-all duration-300 active:scale-95 cursor-pointer text-center"
-                  aria-label={`Ver categoría ${cat.name}`}
+                  aria-label={`Ver categoría ${cat.name || "Categoría"}`}
                 >
                   {/* Dynamic Lucide Vectorial Icon Container */}
                   <div
@@ -304,7 +384,7 @@ export const CategoryBento: React.FC<CategoryBentoProps> = ({
 
                   {/* Dynamic Category Name from Supabase */}
                   <span className="mt-4 text-sm sm:text-base font-bold text-brand-deep group-hover:text-primary transition-colors line-clamp-1">
-                    {cat.short_name || cat.name}
+                    {cat.short_name || cat.name || "Categoría"}
                   </span>
 
                   {/* Dynamic Product Count */}

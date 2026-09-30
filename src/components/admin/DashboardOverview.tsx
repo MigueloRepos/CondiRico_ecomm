@@ -16,6 +16,13 @@ import {
   CheckCircle2,
   RefreshCw,
   ExternalLink,
+  PlusCircle,
+  FolderPlus,
+  Crown,
+  UserCheck,
+  Award,
+  DollarSign,
+  Tag,
 } from "lucide-react";
 import {
   DashboardSummary,
@@ -28,7 +35,11 @@ import {
   getDailySales,
   getTopProducts,
   getDashboardAlerts,
+  getRecentUsers,
+  getTopCustomers,
   DashboardAlert,
+  RecentUser,
+  TopCustomer,
 } from "@/services/admin/dashboard";
 import { getAdminOrders } from "@/services/admin/orders";
 
@@ -45,6 +56,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [dailySales, setDailySales] = useState<AdminDailySale[]>([]);
   const [topProducts, setTopProducts] = useState<AdminTopProduct[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
+  const [topCustomers, setTopCustomers] = useState<TopCustomer[]>([]);
   const [alerts, setAlerts] = useState<DashboardAlert[]>([]);
   const [chartPeriod, setChartPeriod] = useState<"7" | "30" | "90" | "365">("30");
   const [isLoading, setIsLoading] = useState(true);
@@ -62,12 +75,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         topProds,
         ordersRes,
         alertsData,
+        recUsers,
+        topCusts,
       ] = await Promise.all([
         getAdminSummary(),
         getDailySales(days),
-        getTopProducts(5),
-        getAdminOrders({ pageSize: 6 }),
+        getTopProducts(6),
+        getAdminOrders({ pageSize: 5 }),
         getDashboardAlerts(),
+        getRecentUsers(5),
+        getTopCustomers(5),
       ]);
 
       setSummary(sumData);
@@ -75,6 +92,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       setTopProducts(topProds);
       setRecentOrders(ordersRes.orders);
       setAlerts(alertsData);
+      setRecentUsers(recUsers);
+      setTopCustomers(topCusts);
     } catch (err) {
       console.error("[DashboardOverview] Error loading dashboard data:", err);
     } finally {
@@ -87,7 +106,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     loadData();
   }, [chartPeriod]);
 
-  // Chart data calculations
+  // Chart calculations
   const maxRevenue = useMemo(() => {
     if (dailySales.length === 0) return 100;
     const max = Math.max(...dailySales.map((s) => s.revenue));
@@ -102,280 +121,217 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     return dailySales.reduce((sum, d) => sum + d.orders_count, 0);
   }, [dailySales]);
 
-  const avgTicket = totalPeriodOrders > 0 ? totalPeriodRevenue / totalPeriodOrders : 0;
+  const avgTicket = useMemo(() => {
+    if (totalPeriodOrders === 0) return 0;
+    return totalPeriodRevenue / totalPeriodOrders;
+  }, [totalPeriodRevenue, totalPeriodOrders]);
 
   const getStatusBadge = (status: string) => {
-    const config: Record<string, { label: string; class: string }> = {
-      pending: { label: "Pendiente", class: "bg-amber-950/80 text-amber-400 border-amber-800" },
-      confirmed: { label: "Confirmado", class: "bg-blue-950/80 text-blue-400 border-blue-800" },
-      preparing: { label: "Preparando", class: "bg-purple-950/80 text-purple-400 border-purple-800" },
-      shipped: { label: "Enviado", class: "bg-teal-950/80 text-teal-400 border-teal-800" },
-      delivered: { label: "Entregado", class: "bg-emerald-950/80 text-emerald-400 border-emerald-800" },
-      cancelled: { label: "Cancelado", class: "bg-rose-950/80 text-rose-400 border-rose-800" },
-    };
-    const s = config[status] || { label: status, class: "bg-slate-800 text-slate-300 border-slate-700" };
-    return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${s.class}`}>
-        {s.label}
-      </span>
-    );
+    switch (status) {
+      case "completed":
+      case "delivered":
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950/60 border border-emerald-800/80 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+            <CheckCircle2 className="size-2.5" /> Entregado
+          </span>
+        );
+      case "pending":
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-950/60 border border-amber-800/80 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+            <Clock className="size-2.5" /> Pendiente
+          </span>
+        );
+      case "processing":
+      case "confirmed":
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-blue-950/60 border border-blue-800/80 px-2 py-0.5 text-[10px] font-bold text-blue-400">
+            En camino
+          </span>
+        );
+      case "cancelled":
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-rose-950/60 border border-rose-800/80 px-2 py-0.5 text-[10px] font-bold text-rose-400">
+            Cancelado
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+            {status}
+          </span>
+        );
+    }
   };
 
-  if (isLoading && !summary) {
-    return (
-      <div className="p-6 space-y-6">
-        <div className="h-8 w-48 bg-slate-800 rounded-xl animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-28 rounded-2xl bg-slate-900 border border-slate-800 animate-pulse p-4" />
-          ))}
-        </div>
-        <div className="h-80 rounded-3xl bg-slate-900 border border-slate-800 animate-pulse" />
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
-      {/* Page Title & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
+      {/* Top Banner / Welcome & Quick Actions */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-900/90 to-emerald-950/40 p-5 sm:p-6 rounded-3xl border border-slate-800 shadow-xl">
         <div>
-          <span className="text-[10px] font-mono tracking-wider uppercase text-emerald-400 font-bold">
-            Panel de Control
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            Resumen General del Negocio
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Métricas operativas y de ventas sincronizadas en tiempo real con Supabase.
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-bold">
+              <Sparkles className="size-3" /> Panel Administrativo
+            </span>
+            <span className="text-xs text-slate-400 font-mono">
+              CondiRico Cloud Supabase
+            </span>
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black text-white mt-1 tracking-tight">
+            Resumen General y Control Operativo
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Métricas de ventas, inventario, categorías y usuarios en tiempo real.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        {/* Action Shortcuts */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => onNavigateTab("products")}
+            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-950/50 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+          >
+            <PlusCircle className="size-4" />
+            <span>Publicar Producto</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigateTab("categories")}
+            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+          >
+            <FolderPlus className="size-4 text-amber-400" />
+            <span>Añadir Categoría</span>
+          </button>
+
           <button
             type="button"
             onClick={() => loadData(true)}
             disabled={isRefreshing}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-800 text-slate-300 text-xs font-semibold active:scale-95 transition-all"
+            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/80 active:scale-95 transition-all cursor-pointer"
+            title="Recargar métricas"
           >
-            <RefreshCw className={`size-3.5 ${isRefreshing ? "animate-spin text-emerald-400" : ""}`} />
-            <span>Actualizar datos</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigateTab("orders")}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-900/30 active:scale-95 transition-all"
-          >
-            <ShoppingBag className="size-3.5" />
-            <span>Gestionar pedidos</span>
+            <RefreshCw className={`size-4 ${isRefreshing ? "animate-spin text-emerald-400" : ""}`} />
           </button>
         </div>
       </div>
 
-      {/* Actionable Alerts Banner List (if any alerts) */}
+      {/* Operational Alerts if any */}
       {alerts.length > 0 && (
-        <div className="space-y-2.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {alerts.map((alert) => (
             <div
               key={alert.id}
-              className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+              onClick={() => onNavigateTab(alert.targetTab)}
+              className={`p-4 rounded-2xl border flex items-start gap-3 cursor-pointer transition-all hover:scale-[1.01] active:scale-95 ${
                 alert.type === "urgent"
-                  ? "bg-rose-950/30 border-rose-900/60 text-rose-200"
+                  ? "bg-rose-950/30 border-rose-800/60 text-rose-200 hover:bg-rose-950/50"
                   : alert.type === "warning"
-                  ? "bg-amber-950/30 border-amber-900/60 text-amber-200"
-                  : "bg-teal-950/30 border-teal-900/60 text-teal-200"
+                  ? "bg-amber-950/30 border-amber-800/60 text-amber-200 hover:bg-amber-950/50"
+                  : "bg-sky-950/30 border-sky-800/60 text-sky-200 hover:bg-sky-950/50"
               }`}
             >
-              <div className="flex items-start gap-3">
-                <AlertTriangle
-                  className={`size-5 shrink-0 mt-0.5 ${
-                    alert.type === "urgent" ? "text-rose-400" : alert.type === "warning" ? "text-amber-400" : "text-teal-400"
-                  }`}
-                />
-                <div>
-                  <h4 className="text-xs font-bold text-white">{alert.title}</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">{alert.message}</p>
-                </div>
+              <AlertTriangle className="size-5 shrink-0 mt-0.5 text-current" />
+              <div className="min-w-0 flex-1">
+                <h4 className="text-xs font-bold text-white truncate">{alert.title}</h4>
+                <p className="text-[11px] text-slate-300/80 mt-0.5 line-clamp-2">{alert.message}</p>
               </div>
-
-              <button
-                type="button"
-                onClick={() => onNavigateTab(alert.targetTab)}
-                className="self-end sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-900 border border-slate-700/80 text-xs font-bold text-white shrink-0 active:scale-95 transition-all"
-              >
-                <span>Resolver</span>
-                <ArrowRight className="size-3" />
-              </button>
+              <ChevronRight className="size-4 shrink-0 text-slate-400 self-center" />
             </div>
           ))}
         </div>
       )}
 
-      {/* 8 Primary KPIs Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      {/* Primary KPI Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Revenue */}
         <div
           onClick={() => onNavigateTab("orders")}
-          className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 cursor-pointer transition-all hover:shadow-lg group"
+          className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 cursor-pointer transition-all hover:shadow-xl group"
         >
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Ventas Totales</span>
-            <div className="size-8 rounded-xl bg-emerald-950/60 border border-emerald-800/60 text-emerald-400 grid place-items-center group-hover:scale-110 transition-transform">
-              <TrendingUp className="size-4" />
+            <span className="text-xs font-bold uppercase tracking-wider">Total Ventas</span>
+            <div className="size-9 rounded-2xl bg-emerald-950/60 border border-emerald-800/60 text-emerald-400 grid place-items-center group-hover:scale-110 transition-transform">
+              <DollarSign className="size-4.5" />
             </div>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-white">
-            ${(summary?.total_revenue || 0).toFixed(2)}
+          <p className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            ${summary?.total_revenue?.toFixed(2) || "0.00"}
           </p>
-          <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-            <span>Excluye cancelados</span>
+          <p className="text-[11px] text-emerald-400 font-semibold mt-1 flex items-center gap-1">
+            <TrendingUp className="size-3" /> Transacciones en Supabase
           </p>
         </div>
 
         {/* Total Orders */}
         <div
           onClick={() => onNavigateTab("orders")}
-          className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 cursor-pointer transition-all hover:shadow-lg group"
+          className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 hover:border-blue-500/40 cursor-pointer transition-all hover:shadow-xl group"
         >
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Pedidos</span>
-            <div className="size-8 rounded-xl bg-blue-950/60 border border-blue-800/60 text-blue-400 grid place-items-center group-hover:scale-110 transition-transform">
-              <ShoppingBag className="size-4" />
+            <span className="text-xs font-bold uppercase tracking-wider">Pedidos Totales</span>
+            <div className="size-9 rounded-2xl bg-blue-950/60 border border-blue-800/60 text-blue-400 grid place-items-center group-hover:scale-110 transition-transform">
+              <ShoppingBag className="size-4.5" />
             </div>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-white">
+          <p className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             {summary?.total_orders || 0}
           </p>
-          <p className="text-[10px] text-slate-500 mt-1">Registrados en el sistema</p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {summary?.pending_orders || 0} pendientes de despacho
+          </p>
         </div>
 
-        {/* Customers */}
+        {/* Total Customers */}
         <div
           onClick={() => onNavigateTab("customers")}
-          className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 cursor-pointer transition-all hover:shadow-lg group"
+          className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 cursor-pointer transition-all hover:shadow-xl group"
         >
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Clientes</span>
-            <div className="size-8 rounded-xl bg-purple-950/60 border border-purple-800/60 text-purple-400 grid place-items-center group-hover:scale-110 transition-transform">
-              <Users className="size-4" />
+            <span className="text-xs font-bold uppercase tracking-wider">Usuarios / Clientes</span>
+            <div className="size-9 rounded-2xl bg-indigo-950/60 border border-indigo-800/60 text-indigo-400 grid place-items-center group-hover:scale-110 transition-transform">
+              <Users className="size-4.5" />
             </div>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-white">
+          <p className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             {summary?.total_customers || 0}
           </p>
-          <p className="text-[10px] text-slate-500 mt-1">Perfiles en public.profiles</p>
+          <p className="text-[11px] text-indigo-400 font-semibold mt-1">
+            Perfiles registrados en DB
+          </p>
         </div>
 
         {/* Active Products */}
         <div
           onClick={() => onNavigateTab("products")}
-          className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 cursor-pointer transition-all hover:shadow-lg group"
+          className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 cursor-pointer transition-all hover:shadow-xl group"
         >
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Productos Activos</span>
-            <div className="size-8 rounded-xl bg-teal-950/60 border border-teal-800/60 text-teal-400 grid place-items-center group-hover:scale-110 transition-transform">
-              <Package className="size-4" />
+            <span className="text-xs font-bold uppercase tracking-wider">Catálogo Activo</span>
+            <div className="size-9 rounded-2xl bg-amber-950/60 border border-amber-800/60 text-amber-400 grid place-items-center group-hover:scale-110 transition-transform">
+              <Package className="size-4.5" />
             </div>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-white">
+          <p className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             {summary?.active_products || 0}
           </p>
-          <p className="text-[10px] text-slate-500 mt-1">is_active = true</p>
-        </div>
-
-        {/* Pending Orders */}
-        <div
-          onClick={() => onNavigateTab("orders", "pending")}
-          className={`p-4 sm:p-5 rounded-2xl border cursor-pointer transition-all hover:shadow-lg group ${
-            (summary?.pending_orders || 0) > 0
-              ? "bg-amber-950/20 border-amber-900/50 hover:border-amber-500/60"
-              : "bg-slate-900/80 border-slate-800"
-          }`}
-        >
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Pendientes</span>
-            <div className="size-8 rounded-xl bg-amber-950/60 border border-amber-800/60 text-amber-400 grid place-items-center group-hover:scale-110 transition-transform">
-              <Clock className="size-4" />
-            </div>
-          </div>
-          <p className="text-xl sm:text-2xl font-black text-amber-400">
-            {summary?.pending_orders || 0}
+          <p className="text-[11px] text-slate-400 mt-1">
+            {summary?.low_stock_products || 0} con stock bajo
           </p>
-          <p className="text-[10px] text-slate-500 mt-1">Requieren confirmación</p>
-        </div>
-
-        {/* Low Stock Products */}
-        <div
-          onClick={() => onNavigateTab("inventory")}
-          className={`p-4 sm:p-5 rounded-2xl border cursor-pointer transition-all hover:shadow-lg group ${
-            (summary?.low_stock_products || 0) > 0
-              ? "bg-rose-950/20 border-rose-900/50 hover:border-rose-500/60"
-              : "bg-slate-900/80 border-slate-800"
-          }`}
-        >
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Stock Bajo</span>
-            <div className="size-8 rounded-xl bg-rose-950/60 border border-rose-800/60 text-rose-400 grid place-items-center group-hover:scale-110 transition-transform">
-              <AlertTriangle className="size-4" />
-            </div>
-          </div>
-          <p className="text-xl sm:text-2xl font-black text-rose-400">
-            {summary?.low_stock_products || 0}
-          </p>
-          <p className="text-[10px] text-slate-500 mt-1">Stock ≤ 5 unidades</p>
-        </div>
-
-        {/* Unread Messages */}
-        <div
-          onClick={() => onNavigateTab("messages")}
-          className={`p-4 sm:p-5 rounded-2xl border cursor-pointer transition-all hover:shadow-lg group ${
-            (summary?.unread_messages || 0) > 0
-              ? "bg-sky-950/20 border-sky-900/50 hover:border-sky-500/60"
-              : "bg-slate-900/80 border-slate-800"
-          }`}
-        >
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Mensajes Nuevos</span>
-            <div className="size-8 rounded-xl bg-sky-950/60 border border-sky-800/60 text-sky-400 grid place-items-center group-hover:scale-110 transition-transform">
-              <MessageSquare className="size-4" />
-            </div>
-          </div>
-          <p className="text-xl sm:text-2xl font-black text-sky-400">
-            {summary?.unread_messages || 0}
-          </p>
-          <p className="text-[10px] text-slate-500 mt-1">status = new</p>
-        </div>
-
-        {/* Active Subscribers */}
-        <div
-          onClick={() => onNavigateTab("newsletter")}
-          className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 cursor-pointer transition-all hover:shadow-lg group"
-        >
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Suscriptores</span>
-            <div className="size-8 rounded-xl bg-emerald-950/60 border border-emerald-800/60 text-emerald-400 grid place-items-center group-hover:scale-110 transition-transform">
-              <Mail className="size-4" />
-            </div>
-          </div>
-          <p className="text-xl sm:text-2xl font-black text-white">
-            {summary?.active_subscribers || 0}
-          </p>
-          <p className="text-[10px] text-slate-500 mt-1">Boletín activo</p>
         </div>
       </div>
 
-      {/* Interactive Sales Chart */}
+      {/* Interactive Sales Chart (Estadísticas de ventas de productos) */}
       <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5 sm:p-6 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800/80">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Evolución</span>
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Estadísticas</span>
               <span className="text-slate-500 text-xs">&bull;</span>
-              <span className="text-xs text-slate-400">Ingresos vs. Pedidos</span>
+              <span className="text-xs text-slate-400">Rendimiento Comercial y Ventas</span>
             </div>
             <h3 className="text-lg sm:text-xl font-black text-white mt-0.5">
-              Rendimiento Comercial
+              Evolución de Ventas e Ingresos
             </h3>
           </div>
 
@@ -386,7 +342,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 key={period}
                 type="button"
                 onClick={() => setChartPeriod(period)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   chartPeriod === period
                     ? "bg-emerald-500 text-slate-950 font-bold shadow-xs"
                     : "text-slate-400 hover:text-white"
@@ -420,16 +376,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </div>
         </div>
 
-        {/* Visual Chart Canvas / SVG */}
+        {/* Visual Chart Canvas */}
         <div className="h-56 w-full pt-4 relative">
           {dailySales.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 rounded-2xl bg-slate-800/20 border border-slate-800">
               <Calendar className="size-8 text-slate-600 mb-2" />
               <p className="text-xs font-semibold text-slate-400">
-                No hay historial de ventas en este período
+                No hay ventas registradas en este período
               </p>
               <p className="text-[11px] text-slate-600 mt-0.5">
-                Las transacciones de la tienda se registrarán automáticamente aquí.
+                Las transacciones generadas en la tienda aparecerán aquí automáticamente.
               </p>
             </div>
           ) : (
@@ -458,7 +414,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       className="w-full max-w-[28px] rounded-t-lg bg-gradient-to-t from-emerald-600/40 to-emerald-400 hover:to-emerald-300 transition-all cursor-pointer shadow-xs"
                     />
 
-                    {/* X axis date (only show intermittently) */}
+                    {/* X axis date */}
                     {(dailySales.length <= 10 || idx % Math.ceil(dailySales.length / 8) === 0) && (
                       <span className="text-[9px] font-mono text-slate-500 mt-2 truncate max-w-full">
                         {dateLabel}
@@ -472,59 +428,187 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
       </div>
 
-      {/* Grid: Recent Orders & Top Selling Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Recent Orders (col 7) */}
-        <div className="lg:col-span-7 rounded-3xl border border-slate-800 bg-slate-900/90 p-5 sm:p-6 shadow-xl">
+      {/* Grid: Top Customers & Top Selling Products */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
+        {/* Top Purchasing Customers (Usuarios que más compran) */}
+        <div className="lg:col-span-6 rounded-3xl border border-slate-800 bg-slate-900/90 p-5 sm:p-6 shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="size-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 grid place-items-center">
+                  <Crown className="size-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Usuarios que Más Compran</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Top clientes por volumen de compras</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigateTab("customers")}
+                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Ver todos</span>
+                <ChevronRight className="size-3.5" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2.5">
+              {topCustomers.length === 0 ? (
+                <div className="py-10 text-center text-xs text-slate-400">
+                  Aún no hay compras registradas para calcular el top de clientes.
+                </div>
+              ) : (
+                topCustomers.map((c, rank) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between p-3 rounded-2xl bg-slate-800/40 hover:bg-slate-800/80 transition-colors border border-slate-800/60"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`size-6 rounded-lg font-mono text-xs font-bold grid place-items-center shrink-0 ${
+                        rank === 0
+                          ? "bg-amber-500 text-slate-950 font-black shadow-xs"
+                          : rank === 1
+                          ? "bg-slate-300 text-slate-950 font-black"
+                          : rank === 2
+                          ? "bg-amber-700 text-white"
+                          : "bg-slate-800 text-slate-400"
+                      }`}>
+                        {rank + 1}
+                      </span>
+                      <div className="truncate">
+                        <p className="text-xs font-bold text-white truncate">{c.name}</p>
+                        <p className="text-[10px] text-slate-400 truncate">
+                          {c.email || "Sin email"} &bull; {c.orders_count} {c.orders_count === 1 ? "pedido" : "pedidos"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-black text-emerald-400 block">
+                        ${c.total_spent.toFixed(2)}
+                      </span>
+                      <span className="text-[9px] text-slate-500">gastados</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Top Selling Products (Cuáles son los productos más comprados) */}
+        <div className="lg:col-span-6 rounded-3xl border border-slate-800 bg-slate-900/90 p-5 sm:p-6 shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="size-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 grid place-items-center">
+                  <Award className="size-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Productos Más Comprados</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Artículos de mayor demanda por unidades</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigateTab("products")}
+                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Inventario</span>
+                <ChevronRight className="size-3.5" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2.5">
+              {topProducts.length === 0 ? (
+                <div className="py-10 text-center text-xs text-slate-400">
+                  Aún no hay ventas acumuladas para listar el top de productos.
+                </div>
+              ) : (
+                topProducts.map((p, rank) => (
+                  <div
+                    key={p.product_id}
+                    className="flex items-center justify-between p-3 rounded-2xl bg-slate-800/40 hover:bg-slate-800/80 transition-colors border border-slate-800/60"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="size-6 rounded-lg bg-slate-800 text-slate-400 font-mono text-xs font-bold grid place-items-center shrink-0">
+                        {rank + 1}
+                      </span>
+                      <div className="truncate">
+                        <p className="text-xs font-bold text-white truncate">{p.product_name}</p>
+                        <p className="text-[10px] text-slate-400">{p.units_sold} unidades vendidas</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black text-emerald-400 shrink-0">
+                      ${Number(p.revenue).toFixed(2)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid: Recently Registered Users & Recent Orders */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
+        {/* Recently Registered Users (Control de usuarios registrados recientemente) */}
+        <div className="lg:col-span-6 rounded-3xl border border-slate-800 bg-slate-900/90 p-5 sm:p-6 shadow-xl">
           <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-            <div>
-              <h3 className="text-base font-bold text-white">Pedidos Recientes</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Últimas transacciones recibidas</p>
+            <div className="flex items-center gap-2.5">
+              <div className="size-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 grid place-items-center">
+                <UserCheck className="size-4" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Usuarios Recientes</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Nuevos registros en la plataforma</p>
+              </div>
             </div>
             <button
               type="button"
-              onClick={() => onNavigateTab("orders")}
-              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+              onClick={() => onNavigateTab("customers")}
+              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
             >
-              <span>Ver todos</span>
+              <span>Ver clientes</span>
               <ChevronRight className="size-3.5" />
             </button>
           </div>
 
           <div className="mt-4 overflow-x-auto">
-            {recentOrders.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400">
-                No hay pedidos registrados todavía en Supabase.
+            {recentUsers.length === 0 ? (
+              <div className="py-10 text-center text-xs text-slate-400">
+                No hay usuarios registrados recientemente en Supabase.
               </div>
             ) : (
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="text-slate-500 border-b border-slate-800/80 pb-2">
-                    <th className="pb-3 font-semibold">ID</th>
-                    <th className="pb-3 font-semibold">Cliente</th>
-                    <th className="pb-3 font-semibold">Total</th>
-                    <th className="pb-3 font-semibold">Estado</th>
-                    <th className="pb-3 font-semibold text-right">Acción</th>
+                    <th className="pb-2.5 font-semibold">Usuario</th>
+                    <th className="pb-2.5 font-semibold">Rol</th>
+                    <th className="pb-2.5 font-semibold text-right">Registro</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/40">
-                  {recentOrders.map((o) => (
-                    <tr key={o.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 font-mono font-bold text-slate-300">#{o.id}</td>
+                  {recentUsers.map((u) => (
+                    <tr key={u.id} className="hover:bg-slate-800/40 transition-colors">
                       <td className="py-3">
-                        <p className="font-semibold text-white truncate max-w-[140px]">{o.customer_name}</p>
-                        <p className="text-[10px] text-slate-500">{new Date(o.created_at || "").toLocaleDateString()}</p>
+                        <p className="font-semibold text-white truncate max-w-[170px]">{u.full_name}</p>
+                        <p className="text-[10px] text-slate-400 truncate max-w-[170px]">{u.email}</p>
                       </td>
-                      <td className="py-3 font-bold text-emerald-400">${Number(o.total).toFixed(2)}</td>
-                      <td className="py-3">{getStatusBadge(o.status)}</td>
-                      <td className="py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => onOpenOrderModal(o.id)}
-                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 transition-colors"
-                        >
-                          Ver detalle
-                        </button>
+                      <td className="py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          u.role === "admin"
+                            ? "bg-amber-950/60 border border-amber-800 text-amber-300"
+                            : "bg-slate-800 border border-slate-700 text-slate-300"
+                        }`}>
+                          {u.role === "admin" ? "Administrador" : "Cliente"}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right text-[11px] text-slate-400 font-mono">
+                        {new Date(u.created_at).toLocaleDateString([], {
+                          month: "short",
+                          day: "numeric",
+                        })}
                       </td>
                     </tr>
                   ))}
@@ -534,48 +618,62 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </div>
         </div>
 
-        {/* Top Selling Products (col 5) */}
-        <div className="lg:col-span-5 rounded-3xl border border-slate-800 bg-slate-900/90 p-5 sm:p-6 shadow-xl">
+        {/* Recent Orders */}
+        <div className="lg:col-span-6 rounded-3xl border border-slate-800 bg-slate-900/90 p-5 sm:p-6 shadow-xl">
           <div className="flex items-center justify-between pb-4 border-b border-slate-800">
             <div>
-              <h3 className="text-base font-bold text-white">Top Productos</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Más vendidos por volumen</p>
+              <h3 className="text-base font-bold text-white">Pedidos Recientes</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Últimas órdenes en proceso</p>
             </div>
             <button
               type="button"
-              onClick={() => onNavigateTab("products")}
-              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+              onClick={() => onNavigateTab("orders")}
+              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
             >
-              <span>Inventario</span>
+              <span>Ver todos</span>
               <ChevronRight className="size-3.5" />
             </button>
           </div>
 
-          <div className="mt-4 space-y-3">
-            {topProducts.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400">
-                Aún no hay ventas acumuladas para listar el top de productos.
+          <div className="mt-4 overflow-x-auto">
+            {recentOrders.length === 0 ? (
+              <div className="py-10 text-center text-xs text-slate-400">
+                No hay pedidos registrados todavía en Supabase.
               </div>
             ) : (
-              topProducts.map((p, rank) => (
-                <div
-                  key={p.product_id}
-                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-800/40 hover:bg-slate-800/80 transition-colors border border-slate-800/60"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="size-6 rounded-lg bg-slate-800 text-slate-400 font-mono text-xs font-bold grid place-items-center shrink-0">
-                      {rank + 1}
-                    </span>
-                    <div className="truncate">
-                      <p className="text-xs font-bold text-white truncate">{p.product_name}</p>
-                      <p className="text-[10px] text-slate-400">{p.units_sold} unidades vendidas</p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-black text-emerald-400 shrink-0">
-                    ${Number(p.revenue).toFixed(2)}
-                  </span>
-                </div>
-              ))
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="text-slate-500 border-b border-slate-800/80 pb-2">
+                    <th className="pb-2.5 font-semibold">ID</th>
+                    <th className="pb-2.5 font-semibold">Cliente</th>
+                    <th className="pb-2.5 font-semibold">Total</th>
+                    <th className="pb-2.5 font-semibold">Estado</th>
+                    <th className="pb-2.5 font-semibold text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/40">
+                  {recentOrders.map((o) => (
+                    <tr key={o.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 font-mono font-bold text-slate-300">#{o.id}</td>
+                      <td className="py-3">
+                        <p className="font-semibold text-white truncate max-w-[130px]">{o.customer_name}</p>
+                        <p className="text-[10px] text-slate-500">{new Date(o.created_at || "").toLocaleDateString()}</p>
+                      </td>
+                      <td className="py-3 font-bold text-emerald-400">${Number(o.total).toFixed(2)}</td>
+                      <td className="py-3">{getStatusBadge(o.status)}</td>
+                      <td className="py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => onOpenOrderModal(o.id)}
+                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 transition-colors cursor-pointer"
+                        >
+                          Detalle
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         </div>

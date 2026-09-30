@@ -276,3 +276,100 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
 
   return alerts;
 }
+
+export interface RecentUser {
+  id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  created_at: string;
+}
+
+export interface TopCustomer {
+  id: string;
+  name: string;
+  email: string;
+  orders_count: number;
+  total_spent: number;
+  last_order_date?: string;
+}
+
+/**
+ * Fetches recently registered users directly from Supabase profiles
+ */
+export async function getRecentUsers(limit = 6): Promise<RecentUser[]> {
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, phone, role, created_at")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (!error && data && data.length > 0) {
+      return data.map((u) => ({
+        id: u.id,
+        full_name: u.full_name || u.email?.split("@")[0] || "Usuario Registrado",
+        email: u.email || "",
+        phone: u.phone || undefined,
+        role: u.role || "customer",
+        created_at: u.created_at || new Date().toISOString(),
+      }));
+    }
+  } catch (err) {
+    console.warn("[getRecentUsers] Error fetching recent users from Supabase:", err);
+  }
+  return [];
+}
+
+/**
+ * Calculates top purchasing customers based on completed orders in Supabase
+ */
+export async function getTopCustomers(limit = 6): Promise<TopCustomer[]> {
+  try {
+    const { data: orders, error } = await supabase
+      .from("orders")
+      .select("user_id, customer_name, customer_email, total, created_at, status")
+      .neq("status", "cancelled")
+      .order("created_at", { ascending: false });
+
+    if (error || !orders || orders.length === 0) return [];
+
+    const customerMap = new Map<
+      string,
+      { name: string; email: string; count: number; total: number; lastDate: string }
+    >();
+
+    orders.forEach((o) => {
+      const key = (o.user_id || o.customer_email || o.customer_name || "cliente-anonimo").trim();
+      const curr = customerMap.get(key) || {
+        name: o.customer_name || "Cliente",
+        email: o.customer_email || "",
+        count: 0,
+        total: 0,
+        lastDate: o.created_at,
+      };
+      curr.count += 1;
+      curr.total += Number(o.total || 0);
+      if (new Date(o.created_at) > new Date(curr.lastDate)) {
+        curr.lastDate = o.created_at;
+      }
+      customerMap.set(key, curr);
+    });
+
+    return Array.from(customerMap.entries())
+      .map(([id, val]) => ({
+        id,
+        name: val.name,
+        email: val.email,
+        orders_count: val.count,
+        total_spent: Number(val.total.toFixed(2)),
+        last_order_date: val.lastDate,
+      }))
+      .sort((a, b) => b.total_spent - a.total_spent)
+      .slice(0, limit);
+  } catch (err) {
+    console.warn("[getTopCustomers] Error calculating top buyers:", err);
+    return [];
+  }
+}

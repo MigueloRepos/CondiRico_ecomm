@@ -280,6 +280,14 @@ function AppContent() {
           console.warn("[App] Initial auth role fetch error:", err);
         }
         setCurrentUser(profile);
+
+        // Automatically redirect admin to dashboard if accessing auth or home
+        if (profile.role === "admin") {
+          const currentHash = window.location.hash;
+          if (currentHash === "#auth" || currentHash === "" || currentHash === "#inicio") {
+            navigateTo("admin");
+          }
+        }
       } else {
         setCurrentUser(null);
       }
@@ -302,6 +310,14 @@ function AppContent() {
             console.warn("[App] Auth change role fetch error:", err);
           }
           setCurrentUser(profile);
+
+          if (profile.role === "admin") {
+            const currentHash = window.location.hash;
+            if (currentHash === "#auth" || currentHash === "" || currentHash === "#inicio") {
+              navigateTo("admin");
+            }
+          }
+
           if (event === "USER_UPDATED") {
             showSuccessToast("¡Cuenta actualizada!", `Tus datos han sido actualizados.`);
           }
