@@ -347,8 +347,6 @@ function AppContent() {
   const heroBgY = useTransform(heroScrollProgress, [0, 1], ["0%", "28%"]);
   const heroBgScale = useTransform(heroScrollProgress, [0, 1], [1, 1.15]);
   const heroTextY = useTransform(heroScrollProgress, [0, 1], ["0%", "14%"]);
-  const heroFloatY1 = useTransform(heroScrollProgress, [0, 1], ["0px", "-50px"]);
-  const heroFloatY2 = useTransform(heroScrollProgress, [0, 1], ["0px", "-30px"]);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -669,31 +667,13 @@ function AppContent() {
 
   return (
     <div id="inicio" className="relative min-h-screen w-full max-w-full overflow-x-hidden text-foreground flex flex-col selection:bg-sun selection:text-brand-deep pb-24 md:pb-0">
-      {/* Volumetric Ambient Mesh Lighting Layers for Glassmorphism */}
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        {/* Top-Right Emerald Aurora */}
-        <div className="absolute -top-32 right-10 h-[620px] w-[620px] rounded-full bg-gradient-to-br from-emerald-400/35 via-teal-300/25 to-transparent blur-[120px] animate-float-slow" />
-        {/* Top-Left Amber Gold Sun */}
-        <div className="absolute -top-20 -left-20 h-[580px] w-[580px] rounded-full bg-gradient-to-tr from-amber-300/35 via-orange-200/25 to-transparent blur-[130px] animate-float-reverse" />
-        {/* Center Mint Lime Prism */}
-        <div className="absolute top-1/3 left-1/4 h-[550px] w-[550px] rounded-full bg-gradient-to-r from-lime-300/30 via-emerald-200/25 to-teal-200/25 blur-[140px] animate-float-center" />
-        {/* Mid-Right Turquoise Glow */}
-        <div className="absolute top-1/2 -right-32 h-[600px] w-[600px] rounded-full bg-gradient-to-bl from-teal-300/35 via-cyan-200/25 to-transparent blur-[130px] animate-float-slow" />
-        {/* Bottom Emerald Radiance */}
-        <div className="absolute bottom-0 left-10 h-[650px] w-[650px] rounded-full bg-gradient-to-tr from-emerald-300/35 via-amber-200/25 to-transparent blur-[140px] animate-float-reverse" />
-      </div>
-
-
-      {/* Apple Liquid Glass 2026 Header */}
-      <header className="sticky top-0 z-40 border-b border-white/60 bg-white/70 backdrop-blur-2xl shadow-[0_4px_30px_rgba(0,0,0,0.03)] transition-all">
-        {/* Top specular highlight line */}
-        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90" />
-
+      {/* Header */}
+      <header className="sticky top-0 z-40 border-b border-border/80 bg-white/80 backdrop-blur-xl shadow-xs transition-all">
         <div className="mx-auto grid h-16 max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 sm:px-6 lg:px-8">
           <Brand onClick={() => navigateTo("inicio")} />
 
-          {/* Desktop Navigation with Magnetic Glass Pill Indicator */}
-          <nav className="mx-auto hidden items-center gap-1.5 text-[13px] font-semibold lg:flex p-1 rounded-full border border-white/70 bg-white/50 backdrop-blur-xl shadow-2xs">
+          {/* Desktop Navigation */}
+          <nav className="mx-auto hidden items-center gap-1.5 text-[13px] font-semibold lg:flex p-1 rounded-full border border-border bg-white/60 backdrop-blur-xl shadow-2xs">
             {/* 1. Inicio */}
             <button
               type="button"
@@ -756,9 +736,9 @@ function AppContent() {
                   document.querySelector("#ofertas")?.scrollIntoView({ behavior: "smooth" });
                 }
               }}
-              className="flex items-center gap-1 px-3.5 py-1.5 rounded-full text-foreground hover:bg-white/70 hover:text-primary transition-all duration-300 active:scale-95"
+              className="px-3.5 py-1.5 rounded-full text-foreground hover:bg-white/70 hover:text-primary transition-all duration-300 active:scale-95"
             >
-              Ofertas <ChevronDown className="size-3" />
+              Ofertas
             </button>
 
             {/* 5. Tienda */}
@@ -813,16 +793,6 @@ function AppContent() {
                 />
               </div>
             </div>
-
-            {/* Direct switch to Tienda on desktop */}
-            <button
-              type="button"
-              onClick={() => navigateTo(currentPage === "tienda" ? "inicio" : "tienda")}
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-bold text-primary shadow-xs backdrop-blur-md transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95"
-            >
-              <StoreIcon className="size-3.5" />
-              <span>{currentPage === "tienda" ? "Ver Inicio" : "Abrir Tienda"}</span>
-            </button>
 
             <button
               type="button"
@@ -1149,7 +1119,7 @@ function AppContent() {
             {/* Hero Section: Editorial with True Background & Foreground Parallax */}
             <section
               ref={heroRef}
-              className="relative overflow-hidden pt-8 pb-14 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28"
+              className="relative overflow-hidden pt-10 pb-16 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24"
             >
               {/* Parallax Background Media Layer */}
               <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
@@ -1168,13 +1138,9 @@ function AppContent() {
                   <div className="absolute inset-0 bg-gradient-to-r from-[#F8F7F2] via-[#F8F7F2]/90 to-[#F8F7F2]/55 backdrop-blur-[2px]" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#F8F7F2] via-transparent to-[#F8F7F2]/75" />
                 </motion.div>
-
-                {/* Subtle Ambient Refractions */}
-                <div className="pointer-events-none absolute -top-20 right-1/4 size-96 rounded-full bg-emerald-500/12 blur-[100px]" />
-                <div className="pointer-events-none absolute bottom-0 left-1/4 size-80 rounded-full bg-amber-400/10 blur-[90px]" />
               </div>
 
-              <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 relative">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
                 <div className="max-w-2xl">
                   <motion.div
                     style={{ y: heroTextY }}
@@ -1183,19 +1149,19 @@ function AppContent() {
                     transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                   >
                     {/* Eyebrow */}
-                    <div className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-bold tracking-[0.2em] uppercase text-primary mb-4 sm:mb-5">
+                    <div className="inline-flex items-center gap-2 text-xs font-bold tracking-wider uppercase text-primary mb-3 sm:mb-4">
                       <span className="size-1.5 rounded-full bg-primary" />
                       <span>Calidad · Frescura · Confianza</span>
                     </div>
 
                     {/* Headline */}
-                    <h1 className="text-2xl sm:text-5xl lg:text-6xl font-black tracking-tight text-brand-deep leading-[1.1] text-balance">
+                    <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-brand-deep leading-[1.12] text-balance">
                       Todo lo que necesitas.{" "}
                       <span className="text-primary block mt-1">En un solo lugar.</span>
                     </h1>
 
                     {/* Subtitle */}
-                    <p className="mt-3 sm:mt-5 text-sm sm:text-lg text-muted-foreground max-w-lg leading-relaxed font-normal">
+                    <p className="mt-3 sm:mt-5 text-sm sm:text-base lg:text-lg text-muted-foreground max-w-lg leading-relaxed font-normal">
                       Productos frescos, enlatados y de primera necesidad para tu hogar y tu negocio.
                     </p>
 
@@ -1215,7 +1181,7 @@ function AppContent() {
                       <button
                         type="button"
                         onClick={() => navigateTo("tienda")}
-                        className="min-h-[48px] h-12 w-full sm:w-auto px-6 sm:px-7 rounded-full bg-white/90 hover:bg-white text-brand-deep border border-white/80 shadow-xs text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:border-[#CBD5CE] active:scale-95 cursor-pointer backdrop-blur-md"
+                        className="min-h-[48px] h-12 w-full sm:w-auto px-6 sm:px-7 rounded-full bg-white hover:bg-white text-brand-deep border border-border shadow-2xs text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:border-[#CBD5CE] active:scale-95 cursor-pointer"
                       >
                         <span>Ver productos</span>
                         <ArrowRight className="size-4 text-muted-foreground" />
@@ -1223,45 +1189,18 @@ function AppContent() {
                     </div>
                   </motion.div>
                 </div>
-
-                {/* Floating Parallax Badges in Foreground */}
-                <motion.div
-                  style={{ y: heroFloatY1 }}
-                  className="hidden md:flex absolute top-12 right-6 lg:right-12 rounded-2xl border border-white/90 bg-white/85 backdrop-blur-xl px-4 py-3 shadow-lg items-center gap-3 z-10 max-w-xs"
-                >
-                  <div className="grid size-10 place-items-center rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
-                    <Truck className="size-5" />
-                  </div>
-                  <div>
-                    <strong className="block text-xs font-black text-brand-deep">Envíos Rápidos 24h</strong>
-                    <span className="text-[11px] text-muted-foreground">Directo a tu puerta o negocio</span>
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  style={{ y: heroFloatY2 }}
-                  className="hidden lg:flex absolute bottom-8 right-20 rounded-2xl border border-white/90 bg-white/85 backdrop-blur-xl px-4 py-2.5 shadow-lg items-center gap-2.5 z-10"
-                >
-                  <div className="grid size-9 place-items-center rounded-xl bg-sun/30 text-amber-800 shrink-0">
-                    <Sparkle className="size-4 text-offer" />
-                  </div>
-                  <div>
-                    <strong className="block text-xs font-black text-brand-deep">Abastecimiento Confiable</strong>
-                    <span className="text-[11px] text-muted-foreground">Frescura y calidad garantizada</span>
-                  </div>
-                </motion.div>
               </div>
             </section>
 
-            {/* Floating Glass Stats Bar */}
+            {/* Clean Stats Bar */}
             <motion.section
-              initial={{ opacity: 0, y: 25 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="relative z-10 mx-auto -mt-4 sm:-mt-6 max-w-4xl px-3 sm:px-6"
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="relative z-10 mx-auto -mt-6 max-w-4xl px-4 sm:px-6"
             >
-              <div className="grid grid-cols-3 divide-x divide-white/60 rounded-[22px] sm:rounded-[28px] liquid-glass-dock px-1.5 sm:px-10 py-3 sm:py-5 shadow-[0_20px_45px_-12px_rgba(0,0,0,0.08)]">
+              <div className="grid grid-cols-3 divide-x divide-border rounded-2xl sm:rounded-3xl bg-white/95 border border-border px-3 sm:px-10 py-4 sm:py-5 shadow-xs">
                 {[
                   ["+1.5K", "Productos"],
                   ["24h", "Entrega rápida"],
@@ -1269,16 +1208,16 @@ function AppContent() {
                 ].map(([value, label], idx) => (
                   <motion.div
                     key={label}
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: idx * 0.1 }}
+                    transition={{ duration: 0.4, delay: idx * 0.08 }}
                     className="text-center px-1"
                   >
-                    <strong className="block text-lg sm:text-3xl font-black text-primary tracking-tight">
+                    <strong className="block text-xl sm:text-3xl font-extrabold text-primary tracking-tight">
                       {value}
                     </strong>
-                    <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground block leading-tight mt-0.5">
+                    <span className="text-[11px] sm:text-xs font-semibold text-muted-foreground block leading-tight mt-0.5">
                       {label}
                     </span>
                   </motion.div>
@@ -1295,36 +1234,22 @@ function AppContent() {
               onExploreAll={() => navigateTo("tienda")}
             />
 
-            {/* Featured Products Bento Grid: Apple Liquid Glass */}
+            {/* Featured Products Bento Grid */}
             <motion.section
               id="destacados"
-              initial={{ opacity: 0, y: 35 }}
+              initial={{ opacity: 0, y: 25 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              className="relative py-16 lg:py-24 overflow-hidden"
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="relative py-12 sm:py-16 lg:py-20 overflow-hidden"
             >
-              {/* Subtle ambient lighting for frosted glassmorphic refraction */}
-              <div className="pointer-events-none absolute -top-12 left-10 -z-10 size-96 rounded-full bg-emerald-500/10 blur-[90px]" />
-              <div className="pointer-events-none absolute top-1/3 left-1/3 -z-10 size-80 rounded-full bg-primary/10 blur-[80px]" />
-              <div className="pointer-events-none absolute bottom-10 right-10 -z-10 size-80 rounded-full bg-amber-400/10 blur-[90px]" />
-
-              <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 {/* Header & Title */}
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                  <SectionTitle
-                    eyebrow="Últimas novedades"
-                    title="Productos más recientes"
-                    align="left"
-                  />
-
-                  <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-xs font-black text-primary backdrop-blur-md shadow-2xs">
-                      <Sparkles className="size-3.5" />
-                      <span>Catálogo Destacado</span>
-                    </span>
-                  </div>
-                </div>
+                <SectionTitle
+                  eyebrow="Últimas novedades"
+                  title="Productos más recientes"
+                  align="left"
+                />
 
                 {/* Filter Search Bar */}
                 <div className="relative mt-6 max-w-md sm:max-w-lg">
@@ -1334,13 +1259,13 @@ function AppContent() {
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Filtrar productos recientes..."
                     aria-label="Buscar productos recientes"
-                    className="h-12 w-full rounded-full border border-white/80 bg-white/75 pl-10 sm:pl-11 pr-20 text-xs sm:text-sm outline-none backdrop-blur-xl shadow-inner transition-all focus:bg-white focus:ring-4 focus:ring-primary/15 focus:border-primary/40"
+                    className="h-11 sm:h-12 w-full rounded-full border border-border bg-white pl-10 sm:pl-11 pr-20 text-xs sm:text-sm outline-none shadow-2xs transition-all focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                   />
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     {query ? (
                       <button
                         type="button"
-                        className="grid size-9 place-items-center rounded-full bg-muted text-muted-foreground hover:text-foreground active:scale-90 cursor-pointer"
+                        className="grid size-8 place-items-center rounded-full bg-muted text-muted-foreground hover:text-foreground active:scale-90 cursor-pointer"
                         onClick={() => setQuery("")}
                         aria-label="Borrar búsqueda"
                       >
@@ -1360,7 +1285,7 @@ function AppContent() {
                     {[...Array(6)].map((_, idx) => (
                       <div
                         key={idx}
-                        className={`rounded-[32px] liquid-glass p-5 sm:p-6 animate-pulse space-y-4 min-h-[260px] sm:min-h-0 ${
+                        className={`rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 animate-pulse space-y-4 min-h-[260px] sm:min-h-0 ${
                           idx === 0 ? "sm:col-span-2 sm:row-span-2 lg:col-span-2 lg:row-span-2" : ""
                         }`}
                       >
@@ -1389,33 +1314,27 @@ function AppContent() {
                         return (
                           <motion.article
                             key={product.id}
-                            initial={{ opacity: 0, scale: 0.96 }}
+                            initial={{ opacity: 0, scale: 0.98 }}
                             whileInView={{ opacity: 1, scale: 1 }}
                             viewport={{ once: true }}
-                            whileHover={{ y: -6 }}
-                            transition={{ duration: 0.4 }}
-                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[28px] sm:rounded-[36px] flagship-glassmorphic-card liquid-reflection p-4.5 sm:p-8 flex flex-col justify-between transition-all duration-500`}
+                            whileHover={{ y: -4 }}
+                            transition={{ duration: 0.3 }}
+                            className={`group relative ${gridSpanClass} overflow-hidden rounded-2xl sm:rounded-3xl flagship-glassmorphic-card p-5 sm:p-7 flex flex-col justify-between`}
                           >
-                            <div className="absolute inset-x-12 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary/80 to-transparent z-10" />
-                            <div className="absolute -left-16 -top-16 size-72 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-400/30 transition-all duration-700" />
-                            <div className="absolute -right-16 -bottom-16 size-80 bg-primary/15 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/25 transition-all duration-700" />
-                            <div className="absolute left-1/3 top-1/2 -translate-y-1/2 size-48 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
-
                             <div className="flex items-center justify-between gap-2 z-10">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 border border-primary/30 px-3 py-1 text-xs font-black text-primary backdrop-blur-md">
-                                  <Sparkles className="size-3.5" />
-                                  <span>{product.badge || "Recién Llegado #1"}</span>
+                                <span className="inline-flex items-center rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-bold text-primary">
+                                  <span>{product.badge || "Recién Llegado"}</span>
                                 </span>
                                 <StockBadge stockQuantity={product.stockQuantity} stock={product.stock} />
                               </div>
                               <button
                                 type="button"
                                 onClick={() => toggleFavorite(product.id)}
-                                className="grid size-11 place-items-center rounded-full bg-white/80 border border-white shadow-xs backdrop-blur-md hover:scale-110 active:scale-95 transition-all shrink-0 cursor-pointer"
+                                className="grid size-10 place-items-center rounded-full bg-white border border-border shadow-2xs hover:scale-105 active:scale-95 transition-all shrink-0 cursor-pointer"
                                 aria-label="Agregar a favoritos"
                               >
-                                <Heart className={`size-4.5 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
+                                <Heart className={`size-4 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
                               </button>
                             </div>
 
@@ -1464,14 +1383,14 @@ function AppContent() {
                               </div>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pt-3 border-t border-white/60 z-10">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pt-3 border-t border-border z-10">
                               <span className="text-xs font-bold text-muted-foreground hidden sm:inline">
                                 Código #{product.id}
                               </span>
                               <button
                                 type="button"
                                 onClick={() => changeCart(product.id, 1)}
-                                className={`inline-flex items-center justify-center gap-2 w-full sm:w-auto min-h-[48px] px-6 py-3 rounded-full text-xs font-black shadow-lg transition-all active:scale-95 hover:scale-105 cursor-pointer ${
+                                className={`inline-flex items-center justify-center gap-2 w-full sm:w-auto min-h-[48px] px-6 py-3 rounded-full text-xs font-bold shadow-sm transition-all active:scale-95 hover:scale-105 cursor-pointer ${
                                   inCart > 0
                                     ? "bg-offer text-offer-foreground shadow-offer/20"
                                     : "bg-primary text-primary-foreground shadow-primary/30"
@@ -1490,23 +1409,23 @@ function AppContent() {
                         return (
                           <motion.article
                             key={product.id}
-                            initial={{ opacity: 0, scale: 0.96 }}
+                            initial={{ opacity: 0, scale: 0.98 }}
                             whileInView={{ opacity: 1, scale: 1 }}
                             viewport={{ once: true }}
-                            whileHover={{ y: -6 }}
-                            transition={{ duration: 0.4, delay: 0.1 }}
-                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[28px] sm:rounded-[32px] liquid-glass-card liquid-reflection p-4.5 sm:p-6 flex flex-col justify-between border border-white/80 shadow-lg hover:shadow-xl transition-all duration-500`}
+                            whileHover={{ y: -4 }}
+                            transition={{ duration: 0.3, delay: 0.05 }}
+                            className={`group relative ${gridSpanClass} overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-border shadow-xs hover:shadow-md p-5 sm:p-6 flex flex-col justify-between transition-all`}
                           >
                             <div className="flex items-center justify-between gap-2 z-10">
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-extrabold text-primary">
-                                Novedad #{idx + 1}
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-primary">
+                                Novedad
                               </span>
                               <div className="flex items-center gap-1.5">
                                 <StockBadge stockQuantity={product.stockQuantity} stock={product.stock} />
                                 <button
                                   type="button"
                                   onClick={() => toggleFavorite(product.id)}
-                                  className="grid size-11 place-items-center rounded-full bg-white/80 border border-white shadow-2xs backdrop-blur-md hover:scale-110 active:scale-95 transition-all shrink-0 cursor-pointer"
+                                  className="grid size-10 place-items-center rounded-full bg-white border border-border shadow-2xs hover:scale-105 active:scale-95 transition-all shrink-0 cursor-pointer"
                                   aria-label="Agregar a favoritos"
                                 >
                                   <Heart className={`size-4 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
@@ -1514,7 +1433,7 @@ function AppContent() {
                               </div>
                             </div>
 
-                            <div className="relative aspect-square w-full my-auto rounded-2xl overflow-hidden bg-white/80 border border-white/90 shadow-md group-hover:scale-105 transition-transform duration-500 z-10">
+                            <div className="relative aspect-square w-full my-auto rounded-xl overflow-hidden bg-muted/40 border border-border shadow-2xs group-hover:scale-102 transition-transform duration-300 z-10">
                               {product.imageUrl ? (
                                 <BlurUpImage
                                   src={product.imageUrl}
@@ -1528,29 +1447,29 @@ function AppContent() {
                                   <ShoppingBasket className="size-12 text-primary/70" />
                                 </div>
                               )}
-                              <span className="absolute left-2.5 bottom-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-black text-brand-deep shadow-2xs backdrop-blur-md z-10">
+                              <span className="absolute left-2.5 bottom-2.5 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold text-brand-deep shadow-2xs z-10">
                                 <Star className="size-3 fill-amber-400 text-amber-400" />
                                 <span>{product.rating}</span>
                               </span>
                             </div>
 
                             <div className="z-10">
-                              <h3 className="font-black text-base text-brand-deep line-clamp-1 group-hover:text-primary transition-colors">
+                              <h3 className="font-bold text-base text-brand-deep line-clamp-1 group-hover:text-primary transition-colors">
                                 {product.name}
                               </h3>
                               <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{product.detail}</p>
                               
-                              <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-white/60">
-                                <strong className="text-lg font-black text-brand-deep">${product.price.toFixed(2)}</strong>
+                              <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-border">
+                                <strong className="text-lg font-extrabold text-brand-deep">${product.price.toFixed(2)}</strong>
                                 <button
                                   type="button"
                                   onClick={() => changeCart(product.id, 1)}
-                                  className={`grid size-11 place-items-center rounded-full shadow-md active:scale-90 transition-all hover:scale-108 cursor-pointer ${
+                                  className={`grid size-10 place-items-center rounded-full shadow-xs active:scale-90 transition-all hover:scale-105 cursor-pointer ${
                                     inCart > 0 ? "bg-offer text-offer-foreground" : "bg-primary text-primary-foreground"
                                   }`}
                                   aria-label="Agregar al carrito"
                                 >
-                                  <Plus className="size-4.5" />
+                                  <Plus className="size-4" />
                                 </button>
                               </div>
                             </div>
@@ -1563,15 +1482,15 @@ function AppContent() {
                         return (
                           <motion.article
                             key={product.id}
-                            initial={{ opacity: 0, scale: 0.96 }}
+                            initial={{ opacity: 0, scale: 0.98 }}
                             whileInView={{ opacity: 1, scale: 1 }}
                             viewport={{ once: true }}
-                            whileHover={{ y: -4 }}
-                            transition={{ duration: 0.4, delay: 0.25 }}
-                            className={`group relative ${gridSpanClass} overflow-hidden rounded-[28px] sm:rounded-[32px] liquid-glass-card liquid-reflection p-4.5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 border border-white/80 shadow-lg hover:shadow-xl transition-all duration-500`}
+                            whileHover={{ y: -3 }}
+                            transition={{ duration: 0.3, delay: 0.1 }}
+                            className={`group relative ${gridSpanClass} overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-border shadow-xs hover:shadow-md p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 transition-all`}
                           >
                             <div className="flex items-center gap-3.5 sm:gap-4 z-10 w-full sm:w-auto">
-                              <div className="relative size-18 sm:size-20 rounded-2xl overflow-hidden bg-white/80 border border-white/90 shadow-md shrink-0 group-hover:scale-105 transition-transform duration-500">
+                              <div className="relative size-16 sm:size-18 rounded-xl overflow-hidden bg-muted/40 border border-border shadow-2xs shrink-0 group-hover:scale-102 transition-transform duration-300">
                                 {product.imageUrl ? (
                                   <BlurUpImage
                                     src={product.imageUrl}
@@ -1588,27 +1507,27 @@ function AppContent() {
                               </div>
                               <div>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-primary tracking-wider bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
-                                    Novedad #{idx + 1}
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-primary tracking-wider bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
+                                    Novedad
                                   </span>
                                   <StockBadge stockQuantity={product.stockQuantity} stock={product.stock} />
                                 </div>
-                                <h3 className="font-black text-base sm:text-lg text-brand-deep group-hover:text-primary transition-colors mt-0.5">
+                                <h3 className="font-bold text-base sm:text-lg text-brand-deep group-hover:text-primary transition-colors mt-0.5">
                                   {product.name}
                                 </h3>
                                 <p className="text-xs text-muted-foreground line-clamp-1">{product.detail}</p>
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-5 w-full sm:w-auto z-10 border-t sm:border-t-0 border-white/60 pt-3 sm:pt-0">
+                            <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-5 w-full sm:w-auto z-10 border-t sm:border-t-0 border-border pt-3 sm:pt-0">
                               <div className="text-left sm:text-right">
                                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">{product.unit}</span>
-                                <strong className="text-lg sm:text-xl font-black text-brand-deep">${product.price.toFixed(2)}</strong>
+                                <strong className="text-lg sm:text-xl font-extrabold text-brand-deep">${product.price.toFixed(2)}</strong>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => changeCart(product.id, 1)}
-                                className={`inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-full text-xs font-black shadow-md transition-all active:scale-95 hover:scale-105 cursor-pointer ${
+                                className={`inline-flex items-center justify-center gap-2 min-h-[42px] px-5 py-2 rounded-full text-xs font-bold shadow-xs transition-all active:scale-95 hover:scale-102 cursor-pointer ${
                                   inCart > 0 ? "bg-offer text-offer-foreground" : "bg-primary text-primary-foreground"
                                 }`}
                               >
@@ -1624,15 +1543,15 @@ function AppContent() {
                       return (
                         <motion.article
                           key={product.id}
-                          initial={{ opacity: 0, scale: 0.96 }}
+                          initial={{ opacity: 0, scale: 0.98 }}
                           whileInView={{ opacity: 1, scale: 1 }}
                           viewport={{ once: true }}
-                          whileHover={{ y: -5 }}
-                          transition={{ duration: 0.4, delay: idx * 0.05 }}
-                          className={`group relative ${gridSpanClass} overflow-hidden rounded-[26px] sm:rounded-[28px] liquid-glass-card liquid-reflection p-4 sm:p-5 flex flex-col justify-between border border-white/80 shadow-md hover:shadow-lg transition-all duration-500`}
+                          whileHover={{ y: -3 }}
+                          transition={{ duration: 0.3, delay: idx * 0.04 }}
+                          className={`group relative ${gridSpanClass} overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-border shadow-xs hover:shadow-md p-4 sm:p-5 flex flex-col justify-between transition-all`}
                         >
                           <div className="flex items-start justify-between gap-2.5 z-10">
-                            <div className="relative size-16 rounded-xl overflow-hidden bg-white/80 border border-white/90 shadow-2xs shrink-0 group-hover:scale-105 transition-transform duration-500">
+                            <div className="relative size-16 rounded-xl overflow-hidden bg-muted/40 border border-border shadow-2xs shrink-0 group-hover:scale-102 transition-transform duration-300">
                               {product.imageUrl ? (
                                 <BlurUpImage
                                   src={product.imageUrl}
@@ -1652,7 +1571,7 @@ function AppContent() {
                               <button
                                 type="button"
                                 onClick={() => toggleFavorite(product.id)}
-                                className="grid size-11 place-items-center rounded-full bg-white/80 border border-white shadow-2xs backdrop-blur-md hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                                className="grid size-9 place-items-center rounded-full bg-white border border-border shadow-2xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
                                 aria-label="Agregar a favoritos"
                               >
                                 <Heart className={`size-4 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
@@ -1662,26 +1581,26 @@ function AppContent() {
                           </div>
 
                           <div className="my-2 z-10">
-                            <h3 className="font-black text-sm text-brand-deep line-clamp-1 group-hover:text-primary transition-colors">
+                            <h3 className="font-bold text-sm text-brand-deep line-clamp-1 group-hover:text-primary transition-colors">
                               {product.name}
                             </h3>
-                            <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{product.detail}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{product.detail}</p>
                           </div>
 
-                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/60 z-10">
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-border z-10">
                             <div>
                               <span className="text-[10px] text-muted-foreground block font-bold">{product.unit}</span>
-                              <strong className="text-base font-black text-brand-deep">${product.price.toFixed(2)}</strong>
+                              <strong className="text-base font-extrabold text-brand-deep">${product.price.toFixed(2)}</strong>
                             </div>
                             <button
                               type="button"
                               onClick={() => changeCart(product.id, 1)}
-                              className={`grid size-11 place-items-center rounded-full shadow-md active:scale-90 transition-all hover:scale-108 cursor-pointer ${
+                              className={`grid size-9 place-items-center rounded-full shadow-xs active:scale-90 transition-all hover:scale-105 cursor-pointer ${
                                 inCart > 0 ? "bg-offer text-offer-foreground" : "bg-primary text-primary-foreground"
                               }`}
                               aria-label="Agregar al carrito"
                             >
-                              <Plus className="size-4.5" />
+                              <Plus className="size-4" />
                             </button>
                           </div>
                         </motion.article>
@@ -1689,13 +1608,13 @@ function AppContent() {
                     })}
                   </div>
                 ) : (
-                  /* Empty State required by prompt if no products exist */
-                  <div className="mt-8 py-16 text-center rounded-[32px] liquid-glass max-w-lg mx-auto p-8 border border-white/80 shadow-lg">
-                    <div className="grid size-16 mx-auto place-items-center rounded-2xl bg-amber-500/10 text-amber-600 mb-4 border border-amber-500/20">
-                      <ShoppingBasket className="size-8" />
+                  /* Empty State */
+                  <div className="mt-8 py-12 text-center rounded-2xl sm:rounded-3xl bg-white border border-border max-w-lg mx-auto p-6 sm:p-8 shadow-xs">
+                    <div className="grid size-14 mx-auto place-items-center rounded-2xl bg-amber-500/10 text-amber-600 mb-3 border border-amber-500/20">
+                      <ShoppingBasket className="size-7" />
                     </div>
-                    <h3 className="text-xl font-black text-brand-deep">Catálogo Vacío</h3>
-                    <p className="mt-2 text-sm font-semibold text-muted-foreground">
+                    <h3 className="text-lg font-bold text-brand-deep">Catálogo Vacío</h3>
+                    <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
                       {query
                         ? `No se encontraron productos que coincidan con "${query}".`
                         : "no existen productos disponibles en la tienda"}
@@ -1704,7 +1623,7 @@ function AppContent() {
                       <Button
                         variant="outline"
                         onClick={() => setQuery("")}
-                        className="mt-5 rounded-full text-xs font-bold"
+                        className="mt-4 rounded-full text-xs font-bold"
                       >
                         Limpiar búsqueda
                       </Button>
@@ -1717,11 +1636,11 @@ function AppContent() {
                 )}
 
                 {/* Bottom Store Link */}
-                <div className="mt-12 text-center">
+                <div className="mt-10 sm:mt-12 text-center">
                   <button
                     type="button"
                     onClick={() => navigateTo("tienda")}
-                    className="rounded-full bg-primary px-8 py-3.5 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/25 liquid-glass-button active:scale-95 inline-flex items-center gap-2.5 transition-all hover:scale-105"
+                    className="rounded-full bg-primary hover:bg-primary/95 px-8 py-3.5 text-xs font-bold text-primary-foreground shadow-sm active:scale-95 inline-flex items-center gap-2.5 transition-all cursor-pointer"
                   >
                     <StoreIcon className="size-4" />
                     <span>Explorar catálogo completo en la Tienda</span>
@@ -1731,17 +1650,17 @@ function AppContent() {
               </div>
             </motion.section>
 
-            {/* Weekly Promo Banner: Frosted Glass Horizon */}
+            {/* Weekly Promo Banner */}
             <motion.section
               id="ofertas"
-              initial={{ opacity: 0, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.98 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20"
             >
-              <div className="relative min-h-[400px] overflow-hidden rounded-[36px] liquid-glass p-2 shadow-[0_25px_60px_-15px_rgba(20,83,45,0.15)]">
-                <div className="relative min-h-[390px] rounded-[30px] overflow-hidden bg-brand-deep">
+              <div className="relative min-h-[380px] overflow-hidden rounded-3xl sm:rounded-[32px] border border-border shadow-xs">
+                <div className="relative min-h-[380px] rounded-3xl overflow-hidden bg-brand-deep">
                   <img
                     src={promoImage}
                     loading="lazy"
@@ -1751,22 +1670,22 @@ function AppContent() {
                     className="absolute inset-0 h-full w-full object-cover object-[64%_center]"
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-brand-deep/95 via-brand-deep/80 to-transparent" />
-                  <div className="relative flex min-h-[390px] max-w-xl flex-col justify-center p-8 text-primary-foreground sm:p-14">
-                    <span className="w-fit rounded-full bg-sun px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider text-brand-deep shadow-xs">
+                  <div className="relative flex min-h-[380px] max-w-xl flex-col justify-center p-8 text-primary-foreground sm:p-14">
+                    <span className="w-fit rounded-full bg-sun px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-brand-deep shadow-2xs">
                       Oferta de la semana
                     </span>
-                    <h2 className="mt-5 text-3xl font-black leading-tight sm:text-5xl tracking-tight">
+                    <h2 className="mt-4 text-2xl sm:text-4xl lg:text-5xl font-extrabold leading-tight tracking-tight">
                       Llena tu carrito.
                       <br />
                       <span className="text-sun">Ahorra en grande.</span>
                     </h2>
-                    <p className="mt-4 max-w-sm text-sm leading-6 text-primary-foreground/80 sm:text-base">
+                    <p className="mt-3 max-w-sm text-sm sm:text-base leading-relaxed text-primary-foreground/85">
                       Hasta 30% de descuento en productos seleccionados de despensa y aseo.
                     </p>
                     <button
                       type="button"
                       onClick={() => navigateTo("tienda")}
-                      className="mt-8 w-fit rounded-full bg-offer px-8 py-3.5 font-bold text-offer-foreground text-sm shadow-xl shadow-offer/30 liquid-glass-button active:scale-95 flex items-center gap-2"
+                      className="mt-6 w-fit rounded-full bg-offer hover:bg-offer/95 px-7 py-3 font-bold text-offer-foreground text-sm shadow-md active:scale-95 flex items-center gap-2 cursor-pointer transition-all"
                     >
                       <span>Ver ofertas en la Tienda</span>
                       <ArrowRight className="size-4" />
@@ -1776,39 +1695,39 @@ function AppContent() {
               </div>
             </motion.section>
 
-            {/* Benefits: Floating Glass Pods */}
+            {/* Benefits */}
             <motion.section
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.6 }}
-              className="py-14"
+              transition={{ duration: 0.5 }}
+              className="py-12 sm:py-16 lg:py-20"
             >
-              <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 sm:gap-6 px-4 sm:px-6 md:grid-cols-5 lg:px-8">
+              <div className="mx-auto grid max-w-7xl grid-cols-2 gap-3.5 sm:gap-5 px-4 sm:px-6 md:grid-cols-5 lg:px-8">
                 {benefits.map(({ icon: Icon, title, text }, index) => (
                   <motion.div
                     key={title}
-                    initial={{ opacity: 0, y: 25 }}
+                    initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                    whileHover={{ y: -6, scale: 1.02 }}
-                    className={`flex flex-col items-center rounded-[28px] liquid-glass-card p-6 text-center ${
+                    transition={{ duration: 0.4, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                    whileHover={{ y: -3 }}
+                    className={`flex flex-col items-center rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 text-center shadow-xs transition-all hover:border-[#CBD5CE] ${
                       index === 4 ? "col-span-2 md:col-span-1" : ""
                     }`}
                   >
-                    <div className="grid size-14 place-items-center rounded-2xl border border-white/80 bg-white/80 text-primary shadow-xs">
-                      <Icon className="size-6" />
+                    <div className="grid size-12 place-items-center rounded-2xl border border-emerald-100 bg-emerald-50 text-primary shadow-2xs">
+                      <Icon className="size-5 sm:size-6" />
                     </div>
-                    <h3 className="mt-4 text-sm font-extrabold text-foreground">{title}</h3>
+                    <h3 className="mt-3.5 text-sm font-bold text-foreground">{title}</h3>
                     <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{text}</p>
                   </motion.div>
                 ))}
               </div>
             </motion.section>
 
-            {/* Testimonials: Apple Frosted Glass Cards */}
-            <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+            {/* Testimonials */}
+            <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 mb-8">
                 <SectionTitle
                   eyebrow="Clientes felices"
@@ -1818,7 +1737,7 @@ function AppContent() {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    className="grid size-10 place-items-center rounded-full border border-white/80 bg-white/70 text-foreground shadow-xs active:scale-90 hover:bg-white"
+                    className="grid size-10 place-items-center rounded-full border border-border bg-white text-foreground shadow-2xs active:scale-90 hover:bg-muted cursor-pointer transition-colors"
                     onClick={() => scroll(testimonialRail, -1)}
                     aria-label="Testimonio anterior"
                   >
@@ -1826,7 +1745,7 @@ function AppContent() {
                   </button>
                   <button
                     type="button"
-                    className="grid size-10 place-items-center rounded-full border border-white/80 bg-white/70 text-foreground shadow-xs active:scale-90 hover:bg-white"
+                    className="grid size-10 place-items-center rounded-full border border-border bg-white text-foreground shadow-2xs active:scale-90 hover:bg-muted cursor-pointer transition-colors"
                     onClick={() => scroll(testimonialRail, 1)}
                     aria-label="Testimonio siguiente"
                   >
@@ -1872,31 +1791,31 @@ function AppContent() {
               </div>
             </section>
 
-            {/* Newsletter: Frosted Glass Pod */}
+            {/* Newsletter */}
             <motion.section
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto max-w-5xl px-4 py-12 sm:px-6"
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:py-20"
             >
-              <div className="rounded-[36px] liquid-glass p-8 sm:p-14 text-center shadow-[0_20px_50px_-15px_rgba(20,83,45,0.08)]">
-                <span className="mx-auto grid size-13 place-items-center rounded-2xl bg-white/80 border border-white text-offer shadow-xs">
-                  <Mail className="size-6" />
+              <div className="rounded-3xl sm:rounded-[32px] bg-white border border-border p-6 sm:p-12 text-center shadow-xs">
+                <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-amber-50 border border-amber-200 text-offer shadow-2xs">
+                  <Mail className="size-5 sm:size-6" />
                 </span>
-                <h2 className="mt-5 text-3xl font-black text-brand-deep tracking-tight">
+                <h2 className="mt-4 text-2xl sm:text-3xl font-extrabold text-brand-deep tracking-tight">
                   Ofertas frescas en tu correo
                 </h2>
-                <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
                   Suscríbete y recibe cupones de descuento exclusivos, novedades y ofertas de temporada.
                 </p>
                 {subscribed ? (
-                  <p className="mt-7 font-bold text-primary animate-in fade-in">
+                  <p className="mt-6 font-bold text-primary animate-in fade-in">
                     ¡Listo! Pronto recibirás nuestras mejores ofertas.
                   </p>
                 ) : (
                   <form
-                    className="mx-auto mt-7 flex max-w-md flex-col gap-2.5 sm:flex-row"
+                    className="mx-auto mt-6 flex max-w-md flex-col gap-2.5 sm:flex-row"
                     onSubmit={(event: FormEvent) => {
                       event.preventDefault();
                       setSubscribed(true);
@@ -1907,11 +1826,11 @@ function AppContent() {
                       type="email"
                       placeholder="Tu correo electrónico"
                       aria-label="Correo electrónico"
-                      className="h-12 min-w-0 flex-1 rounded-full border border-white/80 bg-white/80 px-5 text-sm outline-none backdrop-blur-md shadow-inner focus:bg-white focus:ring-2 focus:ring-primary/20"
+                      className="h-11 sm:h-12 min-w-0 flex-1 rounded-full border border-border bg-muted/30 px-5 text-sm outline-none transition-all focus:bg-white focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                     />
                     <button
                       type="submit"
-                      className="h-12 rounded-full bg-primary px-7 text-xs font-bold text-primary-foreground shadow-md shadow-primary/25 liquid-glass-button active:scale-95"
+                      className="h-11 sm:h-12 rounded-full bg-primary hover:bg-primary/95 px-7 text-xs font-bold text-primary-foreground shadow-xs active:scale-95 transition-all cursor-pointer"
                     >
                       Suscribirme
                     </button>
@@ -1920,58 +1839,48 @@ function AppContent() {
               </div>
             </motion.section>
 
-            {/* Contactos Section (Apple Liquid Glass 2026) */}
+            {/* Contactos Section */}
             <motion.section
               id="contactos"
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              className="scroll-mt-24 mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="scroll-mt-24 mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20"
             >
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6 }}
-                className="text-center max-w-2xl mx-auto mb-12"
-              >
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-offer shadow-xs backdrop-blur-md">
-                  <MessageSquare className="size-3.5" />
-                  <span>Atención directa y cercana</span>
-                </span>
-                <h2 className="mt-4 text-3xl font-black text-brand-deep sm:text-5xl tracking-tight">
-                  Contáctanos
-                </h2>
-                <p className="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
-                  ¿Tienes alguna duda sobre tu compra, entregas, sugerencias o requieres atención personalizada? Nuestro equipo está listo para ayudarte todos los días.
-                </p>
-              </motion.div>
+              <div className="mb-10">
+                <SectionTitle
+                  eyebrow="Atención directa y cercana"
+                  title="Contáctanos"
+                  subtitle="¿Tienes alguna duda sobre tu compra, entregas, sugerencias o requieres atención personalizada? Nuestro equipo está listo para ayudarte todos los días."
+                  align="center"
+                />
+              </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                {/* Contact Cards Pods */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
+                {/* Contact Cards */}
                 <motion.div
-                  initial={{ opacity: 0, x: -30 }}
+                  initial={{ opacity: 0, x: -20 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                  className="lg:col-span-5 space-y-4"
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="lg:col-span-5 space-y-3.5"
                 >
-                  <div className="rounded-[28px] liquid-glass-card p-6 flex items-start gap-4">
-                    <div className="grid size-12 place-items-center rounded-2xl bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0 shadow-2xs">
+                  <div className="rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 flex items-start gap-4 shadow-xs">
+                    <div className="grid size-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-100 shrink-0 shadow-2xs">
                       <Phone className="size-5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-extrabold text-foreground">Teléfono & WhatsApp</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">Atención inmediata con un asesor</p>
-                      <a href="tel:+18002663474" className="mt-2 inline-block text-sm font-black text-primary hover:underline">
+                      <h3 className="text-sm font-bold text-foreground">Teléfono & WhatsApp</h3>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Atención inmediata con un asesor</p>
+                      <a href="tel:+18002663474" className="mt-1.5 inline-block text-sm font-bold text-primary hover:underline">
                         +1 800 CONDI RICO (266-3474)
                       </a>
                       <p className="text-[11px] text-muted-foreground mt-0.5">Lunes a Domingo: 8:00 AM – 8:00 PM</p>
                       <button
                         type="button"
                         onClick={() => setWhatsAppModalOpen(true)}
-                        className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 text-xs font-bold shadow-sm active:scale-95 transition-all"
+                        className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
                       >
                         <WhatsAppIcon className="size-3.5" />
                         <span>Hacer Pedido por WhatsApp</span>
@@ -1979,58 +1888,58 @@ function AppContent() {
                     </div>
                   </div>
 
-                  <div className="rounded-[28px] liquid-glass-card p-6 flex items-start gap-4">
-                    <div className="grid size-12 place-items-center rounded-2xl bg-amber-100 text-amber-700 border border-amber-200 shrink-0 shadow-2xs">
+                  <div className="rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 flex items-start gap-4 shadow-xs">
+                    <div className="grid size-11 place-items-center rounded-2xl bg-amber-50 text-amber-700 border border-amber-100 shrink-0 shadow-2xs">
                       <Mail className="size-5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-extrabold text-foreground">Correo Electrónico</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">Escríbenos para soporte, pedidos o facturación</p>
-                      <a href="mailto:hola@condirico.com" className="mt-2 inline-block text-sm font-black text-primary hover:underline">
+                      <h3 className="text-sm font-bold text-foreground">Correo Electrónico</h3>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Escríbenos para soporte, pedidos o facturación</p>
+                      <a href="mailto:hola@condirico.com" className="mt-1.5 inline-block text-sm font-bold text-primary hover:underline">
                         hola@condirico.com
                       </a>
                       <p className="text-[11px] text-muted-foreground mt-0.5">soporte@condirico.com</p>
                     </div>
                   </div>
 
-                  <div className="rounded-[28px] liquid-glass-card p-6 flex items-start gap-4">
-                    <div className="grid size-12 place-items-center rounded-2xl bg-teal-100 text-teal-700 border border-teal-200 shrink-0 shadow-2xs">
+                  <div className="rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 flex items-start gap-4 shadow-xs">
+                    <div className="grid size-11 place-items-center rounded-2xl bg-teal-50 text-teal-700 border border-teal-100 shrink-0 shadow-2xs">
                       <MapPin className="size-5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-extrabold text-foreground">Centro de Distribución & Tienda</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">Av. Principal Los Jardines #450, Ciudad Central</p>
-                      <p className="mt-2 text-xs font-bold text-teal-700">Envíos directos a todo el municipio en 24h</p>
+                      <h3 className="text-sm font-bold text-foreground">Centro de Distribución & Tienda</h3>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Av. Principal Los Jardines #450, Ciudad Central</p>
+                      <p className="mt-1.5 text-xs font-semibold text-teal-700">Envíos directos a todo el municipio en 24h</p>
                     </div>
                   </div>
 
-                  <div className="rounded-[28px] liquid-glass-card p-6 flex items-start gap-4">
-                    <div className="grid size-12 place-items-center rounded-2xl bg-orange-100 text-orange-700 border border-orange-200 shrink-0 shadow-2xs">
+                  <div className="rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 flex items-start gap-4 shadow-xs">
+                    <div className="grid size-11 place-items-center rounded-2xl bg-orange-50 text-orange-700 border border-orange-100 shrink-0 shadow-2xs">
                       <Clock className="size-5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-extrabold text-foreground">Horario de Entregas</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">Reparto continuo en turnos mañana y tarde</p>
+                      <h3 className="text-sm font-bold text-foreground">Horario de Entregas</h3>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Reparto continuo en turnos mañana y tarde</p>
                       <p className="mt-1 text-xs font-bold text-foreground">Lunes a Domingo: 7:00 AM – 10:00 PM</p>
                     </div>
                   </div>
                 </motion.div>
 
-                {/* Interactive Contact Form (Frosted Glass Container) */}
+                {/* Contact Form */}
                 <motion.div
-                  initial={{ opacity: 0, x: 30 }}
+                  initial={{ opacity: 0, x: 20 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                  className="lg:col-span-7 rounded-[36px] liquid-glass p-7 sm:p-10 shadow-[0_20px_50px_-15px_rgba(20,83,45,0.08)]"
+                  transition={{ duration: 0.5, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+                  className="lg:col-span-7 rounded-2xl sm:rounded-3xl bg-white border border-border p-6 sm:p-8 shadow-xs"
                 >
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-1.5">
                     <MessageSquare className="size-4 text-offer" />
-                    <span className="text-[11px] font-extrabold uppercase tracking-widest text-offer">
+                    <span className="text-xs font-bold uppercase tracking-wider text-offer">
                       Envíanos un mensaje directo
                     </span>
                   </div>
-                  <h3 className="text-2xl font-black text-brand-deep tracking-tight">
+                  <h3 className="text-xl sm:text-2xl font-bold text-brand-deep tracking-tight">
                     ¿En qué podemos ayudarte?
                   </h3>
                   <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
@@ -2038,14 +1947,14 @@ function AppContent() {
                   </p>
 
                   {contactSubmitted ? (
-                    <div className="mt-8 rounded-3xl bg-emerald-50/80 border border-emerald-200 p-8 text-center animate-in fade-in zoom-in-95 duration-300">
-                      <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30">
-                        <CheckCircle2 className="size-8" />
+                    <div className="mt-6 rounded-2xl bg-emerald-50/90 border border-emerald-200 p-6 sm:p-8 text-center animate-in fade-in zoom-in-95 duration-300">
+                      <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-emerald-600 text-white shadow-xs">
+                        <CheckCircle2 className="size-7" />
                       </div>
-                      <h4 className="mt-4 text-xl font-black text-emerald-950">
+                      <h4 className="mt-3.5 text-lg font-bold text-emerald-950">
                         ¡Mensaje enviado con éxito!
                       </h4>
-                      <p className="mt-2 text-sm text-emerald-800 max-w-md mx-auto leading-relaxed">
+                      <p className="mt-1.5 text-xs sm:text-sm text-emerald-800 max-w-md mx-auto leading-relaxed">
                         Gracias por escribirnos, <strong>{contactForm.name || "estimado cliente"}</strong>. Un asesor de CondiRico revisará tu consulta y se comunicará contigo al correo en menos de 2 horas.
                       </p>
                       <button
@@ -2054,7 +1963,7 @@ function AppContent() {
                           setContactSubmitted(false);
                           setContactForm({ name: "", email: "", phone: "", topic: "Consulta sobre un pedido", message: "" });
                         }}
-                        className="mt-6 rounded-full bg-emerald-700 text-white px-6 py-2.5 text-xs font-bold shadow-sm hover:bg-emerald-800 transition-colors"
+                        className="mt-5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white px-6 py-2 text-xs font-bold shadow-xs transition-colors cursor-pointer"
                       >
                         Enviar otro mensaje
                       </button>
@@ -2078,7 +1987,7 @@ function AppContent() {
                             placeholder="Ej. María González"
                             value={contactForm.name}
                             onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                            className="h-11 w-full rounded-2xl border border-white/80 bg-white/80 px-4 text-sm outline-none backdrop-blur-md shadow-inner transition-all focus:bg-white focus:ring-2 focus:ring-primary/20"
+                            className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-sm outline-none transition-all focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                           />
                         </div>
 
@@ -2092,7 +2001,7 @@ function AppContent() {
                             placeholder="correo@ejemplo.com"
                             value={contactForm.email}
                             onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                            className="h-11 w-full rounded-2xl border border-white/80 bg-white/80 px-4 text-sm outline-none backdrop-blur-md shadow-inner transition-all focus:bg-white focus:ring-2 focus:ring-primary/20"
+                            className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-sm outline-none transition-all focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                           />
                         </div>
                       </div>
@@ -2107,7 +2016,7 @@ function AppContent() {
                             placeholder="+1 (555) 000-0000"
                             value={contactForm.phone}
                             onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
-                            className="h-11 w-full rounded-2xl border border-white/80 bg-white/80 px-4 text-sm outline-none backdrop-blur-md shadow-inner transition-all focus:bg-white focus:ring-2 focus:ring-primary/20"
+                            className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-sm outline-none transition-all focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                           />
                         </div>
 
@@ -2118,7 +2027,7 @@ function AppContent() {
                           <select
                             value={contactForm.topic}
                             onChange={(e) => setContactForm({ ...contactForm, topic: e.target.value })}
-                            className="h-11 w-full rounded-2xl border border-white/80 bg-white/80 px-3.5 text-sm outline-none backdrop-blur-md shadow-inner transition-all focus:bg-white focus:ring-2 focus:ring-primary/20"
+                            className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none transition-all focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                           >
                             <option value="Consulta sobre un pedido">Consulta sobre un pedido</option>
                             <option value="Duda de entregas o envíos">Duda de entregas o envíos</option>
@@ -2139,14 +2048,14 @@ function AppContent() {
                           placeholder="Escribe aquí tu duda, sugerencia o detalle de tu compra..."
                           value={contactForm.message}
                           onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                          className="w-full rounded-2xl border border-white/80 bg-white/80 p-4 text-sm outline-none backdrop-blur-md shadow-inner transition-all focus:bg-white focus:ring-2 focus:ring-primary/20 resize-none"
+                          className="w-full rounded-xl border border-border bg-white p-3.5 text-sm outline-none transition-all focus:border-primary/40 focus:ring-4 focus:ring-primary/10 resize-none"
                         />
                       </div>
 
-                      <div className="pt-2">
+                      <div className="pt-1">
                         <button
                           type="submit"
-                          className="w-full sm:w-auto h-12 rounded-full bg-primary px-8 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/25 liquid-glass-button active:scale-95 flex items-center justify-center gap-2"
+                          className="w-full sm:w-auto h-11 sm:h-12 rounded-full bg-primary hover:bg-primary/95 px-8 text-xs font-bold text-primary-foreground shadow-xs active:scale-95 flex items-center justify-center gap-2 transition-all cursor-pointer"
                         >
                           <Send className="size-4" />
                           <span>Enviar mensaje</span>
@@ -2163,7 +2072,7 @@ function AppContent() {
 
       {/* Footer */}
       <footer className="relative bg-brand-deep/95 text-primary-foreground pb-24 md:pb-8 border-t border-white/10 backdrop-blur-xl">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
           <div>
             <Brand light onClick={() => navigateTo("inicio")} />
             <p className="mt-4 max-w-xs text-sm leading-6 text-primary-foreground/75">
@@ -2243,8 +2152,8 @@ function AppContent() {
             </p>
           </div>
         </div>
-        <div className="border-t border-white/10 px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-primary-foreground/50">
-          <span>© 2026 CondiRico · Diseñado con estilo Apple Liquid Glass 2026.</span>
+        <div className="border-t border-white/10 px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-primary-foreground/50">
+          <span>© 2026 CondiRico Supermercado · Calidad, frescura y confianza para tu hogar.</span>
           <button
             type="button"
             onClick={() => navigateTo("admin")}
@@ -2586,20 +2495,27 @@ function TestimonialCard({
 function SectionTitle({
   eyebrow,
   title,
+  subtitle,
   align = "center",
 }: {
   eyebrow: string;
   title: string;
+  subtitle?: string;
   align?: "center" | "left";
 }) {
   return (
-    <div className={align === "center" ? "text-center" : "min-w-0"}>
-      <p className="text-[11px] font-black uppercase tracking-widest text-offer">
+    <div className={align === "center" ? "text-center max-w-2xl mx-auto" : "min-w-0"}>
+      <p className="text-xs font-bold uppercase tracking-wider text-offer">
         {eyebrow}
       </p>
-      <h2 className="mt-1.5 text-2xl font-black text-brand-deep sm:text-4xl tracking-tight">
+      <h2 className="mt-1.5 text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-deep tracking-tight text-balance">
         {title}
       </h2>
+      {subtitle && (
+        <p className="mt-2 text-sm sm:text-base text-muted-foreground leading-relaxed">
+          {subtitle}
+        </p>
+      )}
     </div>
   );
 }

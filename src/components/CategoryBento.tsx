@@ -38,19 +38,19 @@ export const CategoryBento: React.FC<CategoryBentoProps> = ({
   onExploreAll,
 }) => {
   return (
-    <section id="categorias" className="py-12 sm:py-20 lg:py-24">
-      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+    <section id="categorias" className="py-12 sm:py-16 lg:py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 sm:mb-12">
           <div>
-            <span className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#0B7A45] block mb-2">
+            <span className="text-xs font-bold tracking-wider uppercase text-primary block mb-1.5">
               Catálogo Editorial
             </span>
-            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-[#12352C] tracking-tight text-balance">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-deep tracking-tight text-balance">
               Todo lo esencial, en un solo lugar
             </h2>
-            <p className="mt-2 text-sm sm:text-base text-[#66736D] max-w-md font-normal">
+            <p className="mt-2 text-sm sm:text-base text-muted-foreground max-w-lg font-normal leading-relaxed">
               Categorías esenciales siempre disponibles con la mayor frescura y calidad.
             </p>
           </div>

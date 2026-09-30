@@ -350,12 +350,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   return (
     <div className="relative min-h-screen py-8 px-4 sm:px-6 lg:px-8 flex flex-col justify-center selection:bg-sun selection:text-brand-deep">
-      {/* Volumetric background lights */}
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-1/4 -right-20 h-[520px] w-[520px] rounded-full bg-gradient-to-br from-emerald-400/35 via-teal-300/25 to-transparent blur-[120px] animate-float-slow" />
-        <div className="absolute bottom-1/4 -left-20 h-[500px] w-[500px] rounded-full bg-gradient-to-tr from-amber-300/35 via-orange-200/25 to-transparent blur-[120px] animate-float-reverse" />
-      </div>
-
       {/* Top back navigation */}
       <div className="mx-auto w-full max-w-md mb-6 flex items-center justify-between">
         <button

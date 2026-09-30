@@ -247,44 +247,30 @@ export const StorePage: React.FC<StorePageProps> = ({
 
   return (
     <div className="relative pb-28 md:pb-20 overflow-hidden">
-      {/* Volumetric Lighting Layers (Ambient Orbs behind glass) */}
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-32 left-1/4 h-[600px] w-[600px] rounded-full bg-gradient-to-br from-emerald-400/35 via-teal-300/25 to-transparent blur-[125px] animate-float-slow" />
-        <div className="absolute top-1/3 -right-28 h-[620px] w-[620px] rounded-full bg-gradient-to-bl from-amber-300/35 via-orange-200/25 to-transparent blur-[135px] animate-float-reverse" />
-        <div className="absolute top-2/3 left-10 h-[560px] w-[560px] rounded-full bg-gradient-to-tr from-teal-300/30 via-lime-200/25 to-transparent blur-[120px] animate-float-center" />
-      </div>
-
-      {/* Tienda Hero Header: Apple Liquid Glass Banner */}
-      <section className="relative pt-6 pb-8 sm:pt-14 sm:pb-16 px-3 sm:px-6 lg:px-8">
+      {/* Tienda Hero Header */}
+      <section className="relative pt-6 pb-8 sm:pt-12 sm:pb-14 px-3 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl">
-          <div className="relative rounded-[28px] sm:rounded-[36px] liquid-glass p-4 sm:p-8 lg:p-12 text-center shadow-[0_25px_60px_-15px_rgba(20,83,45,0.08)]">
-            {/* Subtle specular top highlight line */}
-            <div className="absolute inset-x-8 sm:inset-x-12 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90" />
-
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-3.5 py-1 text-[11px] sm:text-xs font-extrabold uppercase tracking-widest text-primary shadow-xs backdrop-blur-md">
-              <Sparkle className="size-3 text-offer animate-pulse" />
-              <span>Apple Liquid Glass 2026</span>
-            </div>
-
-            <h1 className="mt-3 sm:mt-4 text-2xl font-black tracking-tight text-brand-deep sm:text-5xl lg:text-6xl">
+          <div className="relative rounded-[28px] sm:rounded-[36px] liquid-glass p-5 sm:p-8 lg:p-10 text-center shadow-[0_20px_50px_-15px_rgba(20,83,45,0.06)]">
+            <h1 className="text-2xl font-black tracking-tight text-brand-deep sm:text-5xl lg:text-6xl">
               Tienda <span className="text-offer">CondiRico</span>
             </h1>
 
             <p className="mt-2 sm:mt-3 mx-auto max-w-2xl text-xs sm:text-base leading-relaxed text-muted-foreground">
-              Experiencia fluida de compra. Todos los productos del supermercado
-              organizados meticulosamente en secciones según su categoría.
+              Productos frescos, despensa y artículos de primera necesidad para tu hogar y negocio.
             </p>
 
-            {/* Micro Badges / Value Pillars */}
-            <div className="mt-4 sm:mt-6 flex flex-wrap justify-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-semibold text-foreground/85">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/60 px-3 py-1 sm:px-4 sm:py-1.5 backdrop-blur-md shadow-2xs">
-                <Truck className="size-3 sm:size-3.5 text-emerald-600" /> Envío gratis +$35
+            {/* Value Pillars - Clean Typography */}
+            <div className="mt-4 sm:mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground font-medium">
+              <span className="inline-flex items-center gap-1.5">
+                <Truck className="size-3.5 text-primary" /> Envío gratis +$35
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/60 px-3 py-1 sm:px-4 sm:py-1.5 backdrop-blur-md shadow-2xs">
-                <Check className="size-3 sm:size-3.5 text-emerald-600" /> Entrega hoy mismo
+              <span aria-hidden="true" className="text-muted-foreground/40 hidden sm:inline">·</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="size-3.5 text-primary" /> Entrega el mismo día
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/60 px-3 py-1 sm:px-4 sm:py-1.5 backdrop-blur-md shadow-2xs">
-                <ShieldCheck className="size-3 sm:size-3.5 text-emerald-600" /> Calidad certificada
+              <span aria-hidden="true" className="text-muted-foreground/40 hidden sm:inline">·</span>
+              <span className="inline-flex items-center gap-1.5">
+                <ShieldCheck className="size-3.5 text-primary" /> Calidad certificada
               </span>
             </div>
 
@@ -651,13 +637,6 @@ export const StorePage: React.FC<StorePageProps> = ({
                       {cat.description}
                     </p>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-xs font-black text-primary backdrop-blur-md shadow-2xs">
-                    <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Catálogo en Vivo</span>
-                  </span>
                 </div>
               </div>
 
