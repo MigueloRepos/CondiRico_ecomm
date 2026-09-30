@@ -75,6 +75,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (tab === "orders" && param) {
       setTargetOrderId(typeof param === "number" ? param : parseInt(param, 10));
       window.location.hash = `admin/orders/${param}`;
+    } else if (tab === "products" && param === "new") {
+      setTargetOrderId(null);
+      window.location.hash = `admin/products/new`;
     } else {
       setTargetOrderId(null);
       window.location.hash = `admin/${tab}`;
@@ -183,7 +186,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             />
           )}
 
-          {currentTab === "products" && <AdminProductsView />}
+          {currentTab === "products" && (
+            <AdminProductsView initialOpenCreate={window.location.hash.includes("/new")} />
+          )}
 
           {currentTab === "categories" && <AdminCategoriesView />}
 

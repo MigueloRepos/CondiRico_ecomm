@@ -32,7 +32,13 @@ import {
 import { getAdminCategories } from "@/services/admin/categories";
 import { Button } from "@/components/ui/button";
 
-export const AdminProductsView: React.FC = () => {
+export interface AdminProductsViewProps {
+  initialOpenCreate?: boolean;
+}
+
+export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
+  initialOpenCreate = false,
+}) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -97,8 +103,19 @@ export const AdminProductsView: React.FC = () => {
   };
 
   useEffect(() => {
-    getAdminCategories().then(setCategories);
+    getAdminCategories().then((cats) => {
+      setCategories(cats);
+      if (!formCategory && cats.length > 0) {
+        setFormCategory(cats[0].id);
+      }
+    });
   }, []);
+
+  useEffect(() => {
+    if (initialOpenCreate) {
+      handleOpenCreate();
+    }
+  }, [initialOpenCreate]);
 
   useEffect(() => {
     loadProducts();
@@ -163,16 +180,21 @@ export const AdminProductsView: React.FC = () => {
     const stockNum = parseInt(formStock, 10);
     const ratingNum = parseFloat(formRating);
 
+    // Basic required field validations
     if (!formName.trim()) {
       setFormError("El nombre del producto es obligatorio.");
       return;
     }
-    if (isNaN(priceNum) || priceNum < 0) {
-      setFormError("Ingresa un precio válido mayor o igual a 0.");
+    if (!formCategory) {
+      setFormError("Debes seleccionar una categoría obligatoria.");
+      return;
+    }
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setFormError("El precio es obligatorio y debe ser un número válido mayor a 0.");
       return;
     }
     if (isNaN(stockNum) || stockNum < 0) {
-      setFormError("Ingresa un stock válido mayor o igual a 0.");
+      setFormError("El stock es obligatorio y debe ser un número entero mayor o igual a 0.");
       return;
     }
 
@@ -736,16 +758,33 @@ export const AdminProductsView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Image URL */}
+              {/* Image URL with live preview */}
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">URL de Imagen</label>
-                <input
-                  type="url"
-                  value={formImageUrl}
-                  onChange={(e) => setFormImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full h-10 rounded-xl bg-slate-800 border border-slate-700 px-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
-                />
+                <div className="flex items-center gap-3">
+                  <input
+                    type="url"
+                    value={formImageUrl}
+                    onChange={(e) => setFormImageUrl(e.target.value)}
+                    placeholder="https://images.unsplash.com/..."
+                    className="flex-1 h-10 rounded-xl bg-slate-800 border border-slate-700 px-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  />
+                  {formImageUrl.trim() ? (
+                    <div className="size-10 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0">
+                      <img
+                        src={formImageUrl}
+                        alt="Vista previa"
+                        className="size-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Ingresa un enlace directo a la imagen del producto (JPG, PNG o WebP).
+                </p>
               </div>
 
               {/* Rating and reviews */}

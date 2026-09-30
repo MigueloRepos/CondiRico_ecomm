@@ -373,3 +373,42 @@ export async function getTopCustomers(limit = 6): Promise<TopCustomer[]> {
     return [];
   }
 }
+
+export interface LowStockProduct {
+  id: number;
+  name: string;
+  category_name?: string;
+  price: number;
+  stock: number;
+  unit?: string;
+  image_url?: string | null;
+}
+
+/**
+ * Fetches the 5 products with the lowest stock from Supabase to identify restocking needs
+ */
+export async function getLowStockProducts(limit = 5): Promise<LowStockProduct[]> {
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, name, price, stock, unit, image_url, category_id, categories (name)")
+      .eq("is_active", true)
+      .order("stock", { ascending: true })
+      .limit(limit);
+
+    if (!error && data) {
+      return data.map((p: any) => ({
+        id: Number(p.id),
+        name: String(p.name),
+        category_name: p.categories?.name || p.category_id || "General",
+        price: Number(p.price || 0),
+        stock: Number(p.stock || 0),
+        unit: p.unit || "unidad",
+        image_url: p.image_url || null,
+      }));
+    }
+  } catch (err) {
+    console.warn("[getLowStockProducts] Error fetching low stock products:", err);
+  }
+  return [];
+}
