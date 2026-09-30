@@ -1,244 +1,321 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
-  ArrowUpRight,
-  ShoppingBag,
   UtensilsCrossed,
   ShoppingBasket,
   Sparkles,
   Home as HomeIcon,
+  Apple,
+  Milk,
+  Coffee,
+  Wine,
+  Beef,
+  Fish,
+  Croissant,
+  Baby,
+  Dog,
+  Wheat,
+  Soup,
   Package,
-  Layers,
+  ArrowRight,
 } from "lucide-react";
-import { CategoryId, CategoryInfo, ProductItem } from "@/data/products";
-import { CategoryBentoSkeleton } from "@/components/CategoryBentoSkeleton";
-import { BlurUpImage } from "@/components/BlurUpImage";
+import { supabase } from "@/lib/supabase";
+import { Category } from "@/types/database";
+import { CategoryId } from "@/data/products";
 
-export { CategoryBentoSkeleton };
+interface CategoryWithCount extends Category {
+  productCount?: number;
+}
 
 interface CategoryBentoProps {
-  isLoading?: boolean;
-  categories?: CategoryInfo[];
-  products?: ProductItem[];
   onSelectCategory: (categoryId: CategoryId) => void;
   onExploreAll: () => void;
 }
 
-const CATEGORY_ICONS: Record<string, React.ElementType> = {
-  alimentos: UtensilsCrossed,
-  "primera-necesidad": ShoppingBasket,
-  limpieza: Sparkles,
-  utiles: HomeIcon,
-};
+/**
+ * Robust dynamic Lucide vectorial icon mapper for any Supabase category
+ * Handles unknown categories with a reliable default Package icon.
+ */
+function getDynamicCategoryIcon(name: string = "", id: string = ""): React.ElementType {
+  const text = `${name} ${id}`
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (text.includes("pan") || text.includes("reposteri") || text.includes("bolleria") || text.includes("bakery")) {
+    return Croissant;
+  }
+  if (text.includes("frut") || text.includes("verdur") || text.includes("hortaliz") || text.includes("produce")) {
+    return Apple;
+  }
+  if (text.includes("lacte") || text.includes("leche") || text.includes("queso") || text.includes("yogur") || text.includes("dairy")) {
+    return Milk;
+  }
+  if (text.includes("carne") || text.includes("pollo") || text.includes("res") || text.includes("cerdo") || text.includes("meat")) {
+    return Beef;
+  }
+  if (text.includes("pescad") || text.includes("marisc") || text.includes("mar") || text.includes("fish")) {
+    return Fish;
+  }
+  if (text.includes("bebid") || text.includes("refresc") || text.includes("jugo") || text.includes("agua") || text.includes("gaseos") || text.includes("drink")) {
+    return Coffee;
+  }
+  if (text.includes("vino") || text.includes("licor") || text.includes("cervez") || text.includes("alcohol") || text.includes("wine")) {
+    return Wine;
+  }
+  if (text.includes("limpiez") || text.includes("aseo") || text.includes("detergent") || text.includes("desinfect") || text.includes("clean")) {
+    return Sparkles;
+  }
+  if (text.includes("bebe") || text.includes("infantil") || text.includes("panal") || text.includes("baby")) {
+    return Baby;
+  }
+  if (text.includes("mascot") || text.includes("perro") || text.includes("gato") || text.includes("pet")) {
+    return Dog;
+  }
+  if (text.includes("util") || text.includes("hogar") || text.includes("casa") || text.includes("bazar") || text.includes("home")) {
+    return HomeIcon;
+  }
+  if (text.includes("primera") || text.includes("necesidad") || text.includes("cesta") || text.includes("despensa") || text.includes("basico") || text.includes("pantry")) {
+    return ShoppingBasket;
+  }
+  if (text.includes("aliment") || text.includes("comida") || text.includes("conserv") || text.includes("grano") || text.includes("enlatad") || text.includes("sella") || text.includes("food")) {
+    return UtensilsCrossed;
+  }
+  if (text.includes("sopa") || text.includes("caldo") || text.includes("soup")) {
+    return Soup;
+  }
+  if (text.includes("harin") || text.includes("cereal") || text.includes("pasta") || text.includes("trigo") || text.includes("grain")) {
+    return Wheat;
+  }
+
+  // Default fallback icon for unknown categories
+  return Package;
+}
+
+/**
+ * Returns cohesive visual color tokens per category
+ */
+function getCategoryPalette(id: string = "", name: string = "") {
+  const text = `${name} ${id}`
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (text.includes("aliment") || text.includes("sella") || text.includes("grano")) {
+    return {
+      bg: "bg-emerald-50",
+      text: "text-emerald-700",
+      border: "border-emerald-200/80",
+      hoverBg: "group-hover:bg-emerald-600",
+      hoverText: "group-hover:text-white",
+    };
+  }
+  if (text.includes("necesidad") || text.includes("primera") || text.includes("lacte") || text.includes("harin")) {
+    return {
+      bg: "bg-amber-50",
+      text: "text-amber-700",
+      border: "border-amber-200/80",
+      hoverBg: "group-hover:bg-amber-500",
+      hoverText: "group-hover:text-white",
+    };
+  }
+  if (text.includes("limpiez") || text.includes("aseo") || text.includes("detergent")) {
+    return {
+      bg: "bg-teal-50",
+      text: "text-teal-700",
+      border: "border-teal-200/80",
+      hoverBg: "group-hover:bg-teal-600",
+      hoverText: "group-hover:text-white",
+    };
+  }
+  if (text.includes("util") || text.includes("hogar") || text.includes("casa")) {
+    return {
+      bg: "bg-orange-50",
+      text: "text-orange-700",
+      border: "border-orange-200/80",
+      hoverBg: "group-hover:bg-orange-500",
+      hoverText: "group-hover:text-white",
+    };
+  }
+
+  return {
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    border: "border-emerald-200/80",
+    hoverBg: "group-hover:bg-emerald-600",
+    hoverText: "group-hover:text-white",
+  };
+}
 
 export const CategoryBento: React.FC<CategoryBentoProps> = ({
-  isLoading = false,
-  categories = [],
-  products = [],
   onSelectCategory,
   onExploreAll,
 }) => {
+  const [categories, setCategories] = useState<CategoryWithCount[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch real categories dynamically from Supabase database
+  const fetchCategoriesFromDatabase = async () => {
+    setIsLoading(true);
+    try {
+      const { data: dbCategories, error: catError } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+
+      if (catError) {
+        console.error("[CategoryBento] Error al consultar categories en Supabase:", catError);
+        setCategories([]);
+        return;
+      }
+
+      if (!dbCategories || dbCategories.length === 0) {
+        setCategories([]);
+        return;
+      }
+
+      // Fetch product counts dynamically from Supabase products table
+      const { data: dbProducts } = await supabase
+        .from("products")
+        .select("category_id")
+        .eq("is_active", true);
+
+      const countMap: Record<string, number> = {};
+      (dbProducts || []).forEach((p: { category_id: string }) => {
+        countMap[p.category_id] = (countMap[p.category_id] || 0) + 1;
+      });
+
+      const enriched: CategoryWithCount[] = dbCategories.map((cat) => ({
+        ...cat,
+        productCount: countMap[cat.id] ?? 0,
+      }));
+
+      setCategories(enriched);
+    } catch (err) {
+      console.error("[CategoryBento] Error inesperado conectando con Supabase:", err);
+      setCategories([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategoriesFromDatabase();
+
+    // Live Real-Time sync with Supabase tables
+    const channel = supabase
+      .channel("supabase-categories-live-sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "categories" },
+        () => {
+          fetchCategoriesFromDatabase();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "products" },
+        () => {
+          fetchCategoriesFromDatabase();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return (
     <section id="categorias" className="py-12 sm:py-16 lg:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 sm:mb-12">
           <div>
             <span className="text-xs font-bold tracking-wider uppercase text-primary block mb-1.5">
-              Catálogo Editorial
+              Explora por Categoría
             </span>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-deep tracking-tight text-balance">
-              Todo lo esencial, en un solo lugar
+              Categorías de Productos
             </h2>
             <p className="mt-2 text-sm sm:text-base text-muted-foreground max-w-lg font-normal leading-relaxed">
-              Categorías esenciales siempre disponibles con la mayor frescura y calidad.
+              Selecciona una categoría para explorar los productos de nuestro catálogo.
             </p>
           </div>
 
           <button
             type="button"
             onClick={onExploreAll}
-            className="self-start sm:self-auto inline-flex items-center gap-2 text-xs font-bold text-[#075B3A] hover:text-[#0B7A45] min-h-[44px] px-4.5 py-2.5 rounded-full border border-[#E5EAE6] bg-white hover:border-[#CBD5CE] transition-all shadow-2xs active:scale-95 cursor-pointer"
+            className="self-start sm:self-auto inline-flex items-center gap-2 text-xs font-bold text-primary hover:text-brand-deep min-h-[44px] px-5 py-2.5 rounded-full border border-border bg-white hover:border-[#CBD5CE] transition-all shadow-2xs active:scale-95 cursor-pointer"
           >
-            <span>Ver todas las categorías ({categories.length})</span>
-            <ArrowUpRight className="size-4" />
+            <span>Ver tienda completa</span>
+            <ArrowRight className="size-4" />
           </button>
         </div>
 
-        {/* Bento Grid Architecture with Skeleton Loader during initial data loading */}
+        {/* Dynamic Vectorial Icon Grid / Empty State Check */}
         {isLoading ? (
-          <CategoryBentoSkeleton />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+            {[...Array(4)].map((_, idx) => (
+              <div
+                key={idx}
+                className="flex flex-col items-center justify-center p-6 sm:p-7 rounded-3xl bg-white border border-border animate-pulse"
+              >
+                <div className="size-18 sm:size-20 rounded-2xl sm:rounded-3xl bg-muted/60 mb-3.5" />
+                <div className="h-4 w-24 bg-muted/60 rounded-full mb-1.5" />
+                <div className="h-3 w-16 bg-muted/40 rounded-full" />
+              </div>
+            ))}
+          </div>
         ) : categories.length === 0 ? (
-          /* Empty State if no categories in database */
-          <div className="rounded-[28px] sm:rounded-3xl border border-[#E5EAE6] bg-white p-8 sm:p-12 text-center shadow-xs">
-            <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-emerald-50 text-[#075B3A] mb-4">
-              <Layers className="size-8" />
+          /* Stylized Minimalist Empty State Container when categories array length is 0 */
+          <div className="rounded-3xl border border-border bg-white p-8 sm:p-12 text-center shadow-xs">
+            <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-muted/50 text-muted-foreground mb-3 border border-border/60">
+              <Package className="size-8" />
             </div>
-            <h3 className="text-xl font-bold text-[#12352C]">No hay categorías disponibles</h3>
-            <p className="text-sm text-[#66736D] mt-2 max-w-md mx-auto">
-              Las categorías de la tienda se cargarán automáticamente en unos momentos.
+            <p className="text-base font-bold text-brand-deep">
+              No existen categorías disponibles aún
             </p>
-            <button
-              type="button"
-              onClick={onExploreAll}
-              className="mt-6 inline-flex items-center gap-2 min-h-[44px] px-6 py-2.5 rounded-full bg-[#075B3A] text-white text-xs font-bold shadow-xs hover:bg-[#0B7A45] transition-all"
-            >
-              <ShoppingBag className="size-4" />
-              <span>Abrir Tienda</span>
-            </button>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Las categorías se actualizarán automáticamente desde la base de datos de Supabase.
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3.5 sm:gap-6 auto-rows-auto sm:auto-rows-[240px]">
-            {categories.map((cat, idx) => {
-              const Icon = CATEGORY_ICONS[cat.id] || Package;
-              
-              // Find real products in this category from Supabase
-              const catProducts = products.filter((p) => p.category === cat.id);
-              const catImage = catProducts.find((p) => Boolean(p.imageUrl))?.imageUrl;
-              const productCountText = cat.count || `${catProducts.length} productos`;
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+            {categories.map((cat) => {
+              const IconComponent = getDynamicCategoryIcon(cat.name, cat.id);
+              const palette = getCategoryPalette(cat.id, cat.name);
+              const count = cat.productCount ?? 0;
 
-              // Dynamic Bento Grid Layout Spans
-              const isHero = idx === 0;
-              const isMedium = idx === 1 || idx === 2;
-              const isWideBanner = idx === 3 && categories.length === 4;
-
-              let gridSpanClass = "sm:col-span-1 lg:col-span-4 lg:row-span-1 min-h-[160px] sm:min-h-0";
-              if (isHero) {
-                gridSpanClass = "min-h-[260px] sm:min-h-0 sm:col-span-2 lg:col-span-7 lg:row-span-2";
-              } else if (isMedium) {
-                gridSpanClass = "min-h-[160px] sm:min-h-0 sm:col-span-1 lg:col-span-5 lg:row-span-1";
-              } else if (isWideBanner) {
-                gridSpanClass = "min-h-[160px] sm:min-h-0 sm:col-span-2 lg:col-span-12 lg:row-span-1";
-              }
-
-              if (isHero) {
-                // Card 1: Flagship Hero Bento Card with real dynamic category data
-                return (
-                  <div
-                    key={cat.id}
-                    onClick={() => onSelectCategory(cat.id)}
-                    className={`relative rounded-[28px] sm:rounded-3xl bg-white border border-[#E5EAE6] overflow-hidden p-5 sm:p-8 flex flex-col justify-between cursor-pointer group shadow-sm hover:shadow-xl hover:border-[#CBD5CE] transition-all duration-300 ${gridSpanClass}`}
-                  >
-                    {/* Background image & gradient with progressive blur-up */}
-                    <div className="absolute inset-0 overflow-hidden">
-                      {catImage ? (
-                        <BlurUpImage
-                          src={catImage}
-                          alt={cat.name}
-                          priority={true}
-                          className="size-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="size-full bg-gradient-to-br from-[#12352C] via-[#075B3A] to-[#12352C] opacity-90" />
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#12352C]/95 via-[#12352C]/50 to-transparent pointer-events-none" />
-                    </div>
-
-                    {/* Top Badge & Action */}
-                    <div className="relative z-10 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-white/90 bg-black/35 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
-                          {cat.shortName || "Categoría Principal"}
-                        </span>
-                        <span className="text-[11px] font-bold text-emerald-300 bg-emerald-950/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-emerald-500/20">
-                          {productCountText}
-                        </span>
-                      </div>
-                      <div className="grid size-11 sm:size-9 place-items-center rounded-full bg-white/90 text-[#12352C] group-hover:bg-[#075B3A] group-hover:text-white transition-all shadow-xs">
-                        <ArrowUpRight className="size-4.5 sm:size-4" />
-                      </div>
-                    </div>
-
-                    {/* Bottom Content */}
-                    <div className="relative z-10 text-white">
-                      <span className="text-xs font-semibold text-emerald-200 uppercase tracking-widest flex items-center gap-1.5 mb-1">
-                        <Icon className="size-3.5" />
-                        <span>{cat.shortName}</span>
-                      </span>
-                      <h3 className="text-xl sm:text-3xl font-extrabold tracking-tight">
-                        {cat.name}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-white/80 mt-1.5 max-w-sm line-clamp-2">
-                        {cat.description || `Explora todos los productos disponibles en la categoría de ${cat.name}.`}
-                      </p>
-                    </div>
-                  </div>
-                );
-              }
-
-              if (isWideBanner) {
-                // Wide Banner Bento Card (full 12 columns) with dynamic data
-                return (
-                  <div
-                    key={cat.id}
-                    onClick={() => onSelectCategory(cat.id)}
-                    className={`relative rounded-[28px] sm:rounded-3xl bg-[#12352C] text-white p-5 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer group shadow-sm hover:shadow-xl hover:bg-[#075B3A] transition-all duration-300 overflow-hidden ${gridSpanClass}`}
-                  >
-                    {catImage && (
-                      <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-20 pointer-events-none overflow-hidden hidden sm:block">
-                        <BlurUpImage
-                          src={catImage}
-                          alt={cat.name}
-                          priority={false}
-                          className="size-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#12352C] to-transparent" />
-                      </div>
-                    )}
-                    <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-xs uppercase tracking-wider font-bold text-emerald-300 flex items-center gap-1.5">
-                          <Icon className="size-3.5" />
-                          <span>{cat.shortName}</span>
-                        </span>
-                        <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white/90">
-                          {productCountText}
-                        </span>
-                      </div>
-                      <h3 className="text-lg sm:text-2xl font-bold text-white">
-                        {cat.name}
-                      </h3>
-                      <p className="text-xs text-white/80 mt-1 max-w-lg">
-                        {cat.description || `Suministro de calidad garantizada para ${cat.name}.`}
-                      </p>
-                    </div>
-                    <div className="relative z-10 grid size-11 sm:size-10 place-items-center rounded-full bg-white/10 text-white group-hover:bg-white group-hover:text-[#12352C] transition-all shadow-2xs shrink-0 self-end sm:self-center">
-                      <ArrowUpRight className="size-4 sm:size-4" />
-                    </div>
-                  </div>
-                );
-              }
-
-              // Standard & Medium dynamic Bento cards
               return (
-                <div
+                <button
                   key={cat.id}
-                  onClick={() => onSelectCategory(cat.id)}
-                  className={`rounded-[28px] sm:rounded-3xl bg-white border border-[#E5EAE6] p-5 sm:p-6 flex flex-col justify-between cursor-pointer group shadow-xs hover:shadow-lg hover:border-[#CBD5CE] transition-all duration-300 relative overflow-hidden ${gridSpanClass}`}
+                  type="button"
+                  onClick={() => onSelectCategory(cat.id as CategoryId)}
+                  className="group relative flex flex-col items-center justify-center rounded-3xl bg-white border border-border hover:border-[#CBD5CE] p-6 sm:p-7 shadow-xs hover:shadow-md transition-all duration-300 active:scale-95 cursor-pointer text-center"
+                  aria-label={`Ver categoría ${cat.name}`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs uppercase tracking-wider font-bold text-[#0B7A45] flex items-center gap-1.5">
-                      <Icon className="size-3.5" />
-                      <span>{cat.shortName}</span>
-                    </span>
-                    <div className="grid size-11 sm:size-8 place-items-center rounded-full bg-[#F8F7F2] text-[#12352C] group-hover:bg-[#075B3A] group-hover:text-white transition-all shadow-2xs">
-                      <ArrowUpRight className="size-4 sm:size-3.5" />
-                    </div>
+                  {/* Dynamic Lucide Vectorial Icon Container */}
+                  <div
+                    className={`size-18 sm:size-20 rounded-2xl sm:rounded-3xl ${palette.bg} ${palette.text} ${palette.border} border ${palette.hoverBg} ${palette.hoverText} transition-all duration-300 shadow-2xs group-hover:shadow-md flex items-center justify-center group-hover:scale-105`}
+                  >
+                    <IconComponent className="size-8 sm:size-9 transition-transform duration-300 group-hover:scale-110" />
                   </div>
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-bold text-[#12352C] group-hover:text-[#075B3A] transition-colors">
-                      {cat.name}
-                    </h3>
-                    <p className="text-xs text-[#66736D] mt-1 line-clamp-2">
-                      {cat.description || `${productCountText} disponibles en catálogo.`}
-                    </p>
-                  </div>
-                </div>
+
+                  {/* Dynamic Category Name from Supabase */}
+                  <span className="mt-4 text-sm sm:text-base font-bold text-brand-deep group-hover:text-primary transition-colors line-clamp-1">
+                    {cat.short_name || cat.name}
+                  </span>
+
+                  {/* Dynamic Product Count */}
+                  <span className="mt-1 text-xs text-muted-foreground font-medium">
+                    {count} {count === 1 ? "producto" : "productos"}
+                  </span>
+                </button>
               );
             })}
           </div>
         )}
-
       </div>
     </section>
   );

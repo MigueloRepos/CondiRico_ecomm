@@ -1227,11 +1227,8 @@ function AppContent() {
               </div>
             </motion.section>
 
-            {/* Category Bento Grid: Apple Liquid Glass & Supabase Live Data with Skeleton Loader */}
+            {/* Category Vectorial Icon Showcase: Dynamic Real Supabase Data */}
             <CategoryBento
-              isLoading={isLoadingProducts && categories.length === 0}
-              categories={categories}
-              products={products}
               onSelectCategory={(categoryId) => navigateTo("tienda", categoryId)}
               onExploreAll={() => navigateTo("tienda")}
             />
