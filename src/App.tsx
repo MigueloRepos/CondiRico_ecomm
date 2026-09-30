@@ -47,6 +47,7 @@ import { ThumbSearchModal } from "@/components/ThumbSearchModal";
 import { StorePage } from "@/components/StorePage";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { WhatsAppOrderModal } from "@/components/WhatsAppOrderModal";
+import { WhatsAppInquiryModal } from "@/components/WhatsAppInquiryModal";
 import { FloatingWhatsAppButton } from "@/components/FloatingWhatsAppButton";
 import { AuthPage } from "@/components/AuthPage";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
@@ -178,6 +179,7 @@ function AppContent() {
   const [cart, setCart] = useState<Record<number, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
+  const [whatsAppInquiryOpen, setWhatsAppInquiryOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -1170,7 +1172,7 @@ function AppContent() {
                       {/* Primary CTA */}
                       <button
                         type="button"
-                        onClick={() => setWhatsAppModalOpen(true)}
+                        onClick={() => setWhatsAppInquiryOpen(true)}
                         className="min-h-[48px] h-12 w-full sm:w-auto px-6 sm:px-7 rounded-full bg-[#075B3A] hover:bg-primary text-white text-sm font-bold flex items-center justify-center gap-2.5 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 cursor-pointer"
                       >
                         <WhatsAppIcon className="size-4.5" />
@@ -1879,11 +1881,11 @@ function AppContent() {
                       <p className="text-[11px] text-muted-foreground mt-0.5">Lunes a Domingo: 8:00 AM – 8:00 PM</p>
                       <button
                         type="button"
-                        onClick={() => setWhatsAppModalOpen(true)}
+                        onClick={() => setWhatsAppInquiryOpen(true)}
                         className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
                       >
                         <WhatsAppIcon className="size-3.5" />
-                        <span>Hacer Pedido por WhatsApp</span>
+                        <span>Consultar por WhatsApp</span>
                       </button>
                     </div>
                   </div>
@@ -2193,18 +2195,18 @@ function AppContent() {
         }}
       />
 
-      {/* Floating WhatsApp Button */}
+      {/* Floating WhatsApp Button (Inquiries and Questions Only) */}
       <FloatingWhatsAppButton
-        onClick={() => {
-          if (!currentUser) {
-            setIntendedAuthNotice("Para comprar y tramitar tu pedido por WhatsApp debes iniciar sesión.");
-            navigateTo("auth");
-          } else {
-            setWhatsAppModalOpen(true);
-          }
-        }}
-        cartCount={cartCount}
+        onClick={() => setWhatsAppInquiryOpen(true)}
       />
+
+      {/* WhatsApp Inquiry Modal for Customer Inquiries and Questions */}
+      <WhatsAppInquiryModal
+        isOpen={whatsAppInquiryOpen}
+        onClose={() => setWhatsAppInquiryOpen(false)}
+      />
+
+      {/* WhatsApp Order Modal for Cart Checkout */}
 
       {/* WhatsApp Order Modal */}
       <WhatsAppOrderModal
