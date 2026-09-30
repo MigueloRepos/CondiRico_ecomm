@@ -407,62 +407,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           {/* Specular Highlight line */}
           <div className="absolute inset-x-12 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90" />
 
-          {/* Supabase Cloud Connection Status Badge & Settings Trigger */}
-          <div className="flex flex-col gap-2 mb-4 border-b border-white/60 pb-3">
-            <div className="flex items-center justify-between">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-extrabold text-emerald-800 backdrop-blur-md">
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Supabase Cloud Auth</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSupabaseModalOpen(true)}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors bg-white/60 border border-white/80 px-2.5 py-1 rounded-full shadow-2xs active:scale-95 cursor-pointer"
-                title="Configurar proyecto Supabase (URL + Anon Key)"
-              >
-                <Database className="size-3 text-emerald-600" />
-                <span>Conexión BD</span>
-              </button>
-            </div>
-
-            {/* IP Security Shield Indicator (User_Sec) */}
-            <div className="flex items-center justify-between rounded-xl bg-stone-900/85 text-stone-200 px-3 py-2 text-[11px] border border-white/10 shadow-xs">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="size-4 text-emerald-400 shrink-0" />
-                <div>
-                  <span className="font-extrabold text-white">Escudo IP User_Sec:</span>{" "}
-                  <span className="font-mono text-emerald-400 font-bold">{isSimulatingIntruder ? simulatedIntruderIp : (detectedClientIp || "Verificando red...")}</span>
-                </div>
-              </div>
-
-              {/* Simulation test button */}
-              <button
-                type="button"
-                onClick={() => setIsSimulatingIntruder(!isSimulatingIntruder)}
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
-                  isSimulatingIntruder
-                    ? "bg-red-500/20 text-red-300 border-red-500/40 animate-pulse"
-                    : "bg-white/10 text-stone-300 border-white/20 hover:bg-white/20"
-                }`}
-                title="Probar qué sucede si un intruso intenta acceder desde otra IP no autorizada"
-              >
-                {isSimulatingIntruder ? "🔴 Modo Intruso ON" : "🛡️ Probar Intruso"}
-              </button>
-            </div>
-
-            {isSimulatingIntruder && (
-              <div className="rounded-lg bg-red-950/70 border border-red-500/40 p-2 text-[11px] text-red-200">
-                <p className="font-bold flex items-center gap-1 text-red-300">
-                  <AlertCircle className="size-3 text-red-400 shrink-0" />
-                  Simulación de intruso activa: IP no autorizada <code className="font-mono text-white">{simulatedIntruderIp}</code>
-                </p>
-                <p className="text-[10px] text-red-200/80 mt-0.5">
-                  Si intentas iniciar sesión con una cuenta registrada, el sistema la bloqueará automáticamente por seguridad.
-                </p>
-              </div>
-            )}
-          </div>
-
           {/* Logo & Heading */}
           <div className="text-center">
             <div className="mx-auto flex justify-center mb-3">
@@ -473,8 +417,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             </h1>
             <p className="mt-1 text-xs text-muted-foreground">
               {tab === "login"
-                ? "Accede a tu cuenta de Supabase para confirmar tu pedido y envíos en 24h"
-                : "Regístrate en Supabase para comprar en CondiRico y habilitar acceso biométrico"}
+                ? "Accede a tu cuenta de CondiRico para confirmar tu pedido y envíos en 24h"
+                : "Regístrate en CondiRico para comprar y habilitar acceso biométrico"}
             </p>
           </div>
 
@@ -518,7 +462,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </div>
                 <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
                   <span className="bg-white/80 px-3 rounded-full backdrop-blur-xs">
-                    o con Supabase Auth
+                    o con tu cuenta
                   </span>
                 </div>
               </div>
@@ -625,7 +569,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    <span>Conectando con Supabase...</span>
+                    <span>Iniciando sesión...</span>
                   </>
                 ) : (
                   <>
@@ -753,11 +697,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    <span>Creando cuenta en Supabase...</span>
+                    <span>Creando cuenta...</span>
                   </>
                 ) : (
                   <>
-                    <span>Crear Cuenta en Supabase</span>
+                    <span>Crear Cuenta en CondiRico</span>
                     <ArrowRight className="size-4" />
                   </>
                 )}

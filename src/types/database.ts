@@ -38,6 +38,9 @@ export interface Product {
   } | null;
 }
 
+export type UserRole = "customer" | "user" | "admin";
+export type PreferredInvoiceType = "boleta" | "factura" | "ticket";
+
 export interface Profile {
   id: string;
   full_name: string | null;
@@ -48,9 +51,9 @@ export interface Profile {
   delivery_instructions: string | null;
   offers_newsletter: boolean;
   whatsapp_updates: boolean;
-  preferred_invoice_type: "boleta" | "factura" | "ticket" | string;
+  preferred_invoice_type: PreferredInvoiceType | string;
   has_biometrics: boolean;
-  role: "customer" | "admin" | string;
+  role: UserRole | string;
   created_at?: string;
   updated_at?: string;
 }
@@ -72,6 +75,10 @@ export interface Favorite {
   product?: Product;
 }
 
+export type PaymentStatus = "pending" | "paid" | "failed" | "cancelled";
+export type OrderStatus = "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+export type ContactMessageStatus = "new" | "read" | "replied" | "archived";
+
 export interface Order {
   id: number;
   user_id: string | null;
@@ -85,8 +92,8 @@ export interface Order {
   shipping_cost: number;
   total: number;
   payment_method: string;
-  payment_status: "pending" | "paid" | "failed" | "cancelled" | string;
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | string;
+  payment_status: PaymentStatus | string;
+  status: OrderStatus | string;
   whatsapp_sent: boolean;
   notes: string | null;
   created_at?: string;
@@ -118,6 +125,6 @@ export interface ContactMessage {
   phone: string | null;
   topic: string;
   message: string;
-  status: "new" | "read" | "replied" | "archived" | string;
+  status: ContactMessageStatus | string;
   created_at?: string;
 }

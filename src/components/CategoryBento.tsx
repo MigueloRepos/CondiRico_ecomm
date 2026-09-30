@@ -51,7 +51,7 @@ export const CategoryBento: React.FC<CategoryBentoProps> = ({
               Todo lo esencial, en un solo lugar
             </h2>
             <p className="mt-2 text-sm sm:text-base text-[#66736D] max-w-md font-normal">
-              Categorías activas sincronizadas en tiempo real directamente desde Supabase.
+              Categorías esenciales siempre disponibles con la mayor frescura y calidad.
             </p>
           </div>
 
@@ -69,14 +69,14 @@ export const CategoryBento: React.FC<CategoryBentoProps> = ({
         {isLoading ? (
           <CategoryBentoSkeleton />
         ) : categories.length === 0 ? (
-          /* Empty State if no categories in Supabase */
+          /* Empty State if no categories in database */
           <div className="rounded-[28px] sm:rounded-3xl border border-[#E5EAE6] bg-white p-8 sm:p-12 text-center shadow-xs">
             <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-emerald-50 text-[#075B3A] mb-4">
               <Layers className="size-8" />
             </div>
             <h3 className="text-xl font-bold text-[#12352C]">No hay categorías disponibles</h3>
             <p className="text-sm text-[#66736D] mt-2 max-w-md mx-auto">
-              Las categorías de la tienda se cargarán en tiempo real cuando estén creadas en la base de datos de Supabase.
+              Las categorías de la tienda se cargarán automáticamente en unos momentos.
             </p>
             <button
               type="button"

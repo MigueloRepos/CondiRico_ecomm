@@ -21,7 +21,7 @@ import {
   applyStockMovement,
   InventoryItem,
 } from "@/services/admin/inventory";
-import { StockMovement } from "@/types/admin";
+import { StockMovement, StockMovementType } from "@/types/admin";
 import { Button } from "@/components/ui/button";
 
 export const AdminInventoryView: React.FC = () => {
@@ -482,7 +482,7 @@ export const AdminInventoryView: React.FC = () => {
                 </label>
                 <select
                   value={movementType}
-                  onChange={(e) => setMovementType(e.target.value as any)}
+                  onChange={(e) => setMovementType(e.target.value as StockMovementType)}
                   className="w-full h-11 px-3 rounded-xl bg-slate-950 border border-slate-800 text-xs sm:text-sm text-white focus:outline-hidden focus:border-emerald-500"
                 >
                   <option value="entrada">Entrada (Reabastecimiento de proveedor)</option>

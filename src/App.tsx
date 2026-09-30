@@ -1321,7 +1321,7 @@ function AppContent() {
                   <div className="flex items-center gap-2 self-start sm:self-auto">
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-xs font-black text-primary backdrop-blur-md shadow-2xs">
                       <Sparkles className="size-3.5" />
-                      <span>Bento Grid • Supabase Live</span>
+                      <span>Catálogo Destacado</span>
                     </span>
                   </div>
                 </div>
@@ -1422,13 +1422,13 @@ function AppContent() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center my-4 z-10">
                               <div>
                                 <span className="text-xs font-black uppercase text-primary tracking-wider">
-                                  {product.unit} • Producto Supabase
+                                  {product.unit} • Selección Fresca
                                 </span>
                                 <h3 className="text-xl sm:text-3xl font-black text-brand-deep mt-1 leading-tight group-hover:text-primary transition-colors">
                                   {product.name}
                                 </h3>
                                 <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 sm:mt-2 line-clamp-2">
-                                  {product.detail || "Calidad superior garantizada desde nuestro catálogo activo en Supabase."}
+                                  {product.detail || "Calidad superior garantizada en CondiRico."}
                                 </p>
                                 
                                 <div className="mt-3 sm:mt-4 flex items-baseline gap-2">
@@ -1466,7 +1466,7 @@ function AppContent() {
 
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pt-3 border-t border-white/60 z-10">
                               <span className="text-xs font-bold text-muted-foreground hidden sm:inline">
-                                Supabase ID #{product.id}
+                                Código #{product.id}
                               </span>
                               <button
                                 type="button"

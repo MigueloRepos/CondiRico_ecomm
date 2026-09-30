@@ -349,7 +349,7 @@ export const AdminProductsView: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => {
-                setStatusFilter(e.target.value as any);
+                setStatusFilter(e.target.value as "all" | "active" | "inactive");
                 setPage(1);
               }}
               className="w-full h-10 rounded-2xl bg-slate-800/80 border border-slate-700/80 px-3 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"

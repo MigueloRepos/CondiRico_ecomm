@@ -315,22 +315,39 @@ export async function verifyUserSecurityIP(
   }
 }
 
+export interface UserSecurityRecord {
+  usuario: string;
+  ip: string;
+  numericIp: number;
+  createdAt?: string;
+}
+
+interface UserSecDbRecord {
+  Usuario: string;
+  IP: number | string;
+  created_at?: string;
+}
+
 /**
  * Fetch all security records for diagnostic / admin display
  */
-export async function getSecurityRecords(): Promise<Array<{ usuario: string; ip: string; numericIp: number; createdAt?: string }>> {
+export async function getSecurityRecords(): Promise<UserSecurityRecord[]> {
   const supabase = getSupabase();
   try {
     const { data, error } = await supabase.from("User_Sec").select("*").order("created_at", { ascending: false });
-    if (!error && data) {
-      return data.map((r: any) => ({
-        usuario: r.Usuario,
-        ip: numericToIp(r.IP),
-        numericIp: Number(r.IP),
-        createdAt: r.created_at,
-      }));
+    if (!error && Array.isArray(data)) {
+      return data
+        .filter((item): item is UserSecDbRecord =>
+          typeof item === "object" && item !== null && "Usuario" in item && "IP" in item
+        )
+        .map((r) => ({
+          usuario: String(r.Usuario),
+          ip: numericToIp(Number(r.IP)),
+          numericIp: Number(r.IP),
+          createdAt: r.created_at,
+        }));
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.warn("Could not fetch User_Sec records:", err);
   }
 

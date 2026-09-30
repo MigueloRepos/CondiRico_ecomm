@@ -574,7 +574,7 @@ export const StorePage: React.FC<StorePageProps> = ({
               <Sparkles className="size-7" />
             </div>
             <p className="text-sm font-semibold text-muted-foreground">
-              Cargando catálogo en tiempo real desde Supabase...
+              Cargando catálogo en tiempo real...
             </p>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-5xl mx-auto pt-6">
               {[...Array(8)].map((_, i) => (
@@ -656,7 +656,7 @@ export const StorePage: React.FC<StorePageProps> = ({
                 <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 text-xs font-black text-primary backdrop-blur-md shadow-2xs">
                     <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Supabase Live Realtime</span>
+                    <span>Catálogo en Vivo</span>
                   </span>
                 </div>
               </div>
@@ -820,7 +820,7 @@ export const StorePage: React.FC<StorePageProps> = ({
                       : "no existen productos disponibles en esta sección de la tienda"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Conectado en tiempo real a la tabla public.products en Supabase
+                    Sincronizado en tiempo real con inventario disponible
                   </p>
                 </div>
               )}

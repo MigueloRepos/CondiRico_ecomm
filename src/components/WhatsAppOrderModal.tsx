@@ -161,8 +161,9 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
         setConfirmedOrderId(result.order.id);
         createdId = result.order.id;
       }
-    } catch (err: any) {
-      console.warn("[WhatsAppOrderModal] Error persisting order:", err);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Error desconocido al procesar el pedido";
+      console.warn("[WhatsAppOrderModal] Error persisting order:", errMsg);
     } finally {
       setIsSubmitting(false);
       window.open(whatsappUrl, "_blank", "noopener,noreferrer");
@@ -264,7 +265,7 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
             </h3>
             {confirmedOrderId && (
               <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold">
-                <span>Registrado en Supabase: <strong>Pedido #{confirmedOrderId}</strong></span>
+                <span>Registrado con éxito: <strong>Pedido #{confirmedOrderId}</strong></span>
               </div>
             )}
             <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">

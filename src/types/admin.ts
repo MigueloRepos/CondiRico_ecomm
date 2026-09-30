@@ -1,4 +1,8 @@
-import { Category, Product, Profile, Order, OrderItem, ContactMessage, NewsletterSubscriber } from "./database";
+import type { Profile } from "./database";
+export type { Category, Product, Profile, Order, OrderItem, ContactMessage, NewsletterSubscriber } from "./database";
+
+export type PromotionDiscountType = "percentage" | "fixed";
+export type StockMovementType = "entrada" | "salida" | "ajuste" | "devolucion" | "danado";
 
 export interface AdminSettings {
   id: string | number;
@@ -23,7 +27,7 @@ export interface Promotion {
   code: string;
   name: string;
   description: string | null;
-  discount_type: "percentage" | "fixed" | string;
+  discount_type: PromotionDiscountType | string;
   discount_value: number;
   usage_limit: number | null;
   expires_at: string | null;
@@ -80,7 +84,7 @@ export interface AdminNotification {
 export interface StockMovement {
   id: string | number;
   product_id: number;
-  movement_type: "entrada" | "salida" | "ajuste" | "devolucion" | "danado" | string;
+  movement_type: StockMovementType | string;
   quantity: number;
   previous_stock?: number;
   new_stock?: number;

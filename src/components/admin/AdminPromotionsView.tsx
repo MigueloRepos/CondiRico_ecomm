@@ -15,7 +15,7 @@ import {
   Copy,
   Clock,
 } from "lucide-react";
-import { Promotion } from "@/types/admin";
+import { Promotion, PromotionDiscountType } from "@/types/admin";
 import {
   getPromotions,
   createPromotion,
@@ -523,7 +523,7 @@ export const AdminPromotionsView: React.FC = () => {
                   </label>
                   <select
                     value={formType}
-                    onChange={(e) => setFormType(e.target.value as any)}
+                    onChange={(e) => setFormType(e.target.value as PromotionDiscountType)}
                     className="w-full h-11 px-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-hidden focus:border-emerald-500"
                   >
                     <option value="percentage">Porcentaje (%)</option>
