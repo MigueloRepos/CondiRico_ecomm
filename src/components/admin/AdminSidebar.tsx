@@ -17,6 +17,7 @@ import {
   Store,
   ChevronRight,
   ShieldCheck,
+  CreditCard,
 } from "lucide-react";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
 
@@ -73,7 +74,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       ],
     },
     {
-      title: "Ventas",
+      title: "Ventas & Finanzas",
       items: [
         {
           id: "orders",
@@ -81,6 +82,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           icon: ShoppingBag,
           badge: counts?.pendingOrders && counts.pendingOrders > 0 ? counts.pendingOrders : null,
           badgeColor: "danger",
+        },
+        {
+          id: "payments",
+          label: "Pagos & Pasarelas",
+          icon: CreditCard,
         },
       ],
     },

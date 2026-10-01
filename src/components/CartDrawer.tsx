@@ -1,5 +1,5 @@
 import React from "react";
-import { X, ShoppingCart, Plus, Minus, Trash2, ArrowRight } from "lucide-react";
+import { X, ShoppingCart, Plus, Minus, Trash2, ArrowRight, CreditCard } from "lucide-react";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { ProductItem } from "@/data/products";
 
@@ -10,6 +10,7 @@ interface CartDrawerProps {
   products: ProductItem[];
   onUpdateQuantity: (productId: number, delta: number) => void;
   onRemoveItem: (productId: number) => void;
+  onProceedToCheckout?: () => void;
   onProceedToWhatsApp: () => void;
   onExploreStore: () => void;
 }
@@ -21,6 +22,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   products,
   onUpdateQuantity,
   onRemoveItem,
+  onProceedToCheckout,
   onProceedToWhatsApp,
   onExploreStore,
 }) => {
@@ -179,20 +181,36 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </span>
             </div>
 
-            <p className="text-[11px] text-[#66736D] leading-tight">
-              Envío y confirmación coordinados directamente por WhatsApp con nuestro equipo.
+            <p className="text-[11px] text-[#66736D] leading-tight flex items-center gap-1">
+              <span>Envío seguro y protegido con cifrado SSL & Supabase.</span>
             </p>
 
+            {/* Primary Action: Online Checkout (Cards, PayPal, Google Pay) */}
+            {onProceedToCheckout && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onProceedToCheckout();
+                }}
+                className="w-full h-12 rounded-full bg-[#075B3A] hover:bg-[#0B7A45] text-white text-xs font-black flex items-center justify-center gap-2 shadow-lg shadow-[#075B3A]/25 active:scale-98 transition-all cursor-pointer"
+              >
+                <CreditCard className="size-4" />
+                <span>Pagar con Tarjeta, PayPal o GPay</span>
+              </button>
+            )}
+
+            {/* Secondary Option: WhatsApp Order */}
             <button
               type="button"
               onClick={() => {
                 onClose();
                 onProceedToWhatsApp();
               }}
-              className="w-full h-12 rounded-full bg-[#075B3A] hover:bg-[#0B7A45] text-white text-xs font-bold flex items-center justify-center gap-2.5 shadow-md active:scale-98 transition-all cursor-pointer"
+              className="w-full h-10 rounded-full bg-emerald-50 hover:bg-emerald-100 text-[#075B3A] border border-emerald-200 text-xs font-bold flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
             >
-              <WhatsAppIcon className="size-4" />
-              <span>Tramitar pedido por WhatsApp</span>
+              <WhatsAppIcon className="size-3.5" />
+              <span>Pedir por WhatsApp</span>
             </button>
 
             <button
@@ -201,7 +219,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 onClose();
                 onExploreStore();
               }}
-              className="w-full py-1.5 text-center text-xs font-semibold text-[#075B3A] hover:underline cursor-pointer"
+              className="w-full py-1 text-center text-xs font-semibold text-[#075B3A] hover:underline cursor-pointer"
             >
               Continuar viendo productos
             </button>

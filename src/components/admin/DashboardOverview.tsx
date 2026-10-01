@@ -26,7 +26,20 @@ import {
   Boxes,
   AlertOctagon,
   ArrowDownRight,
+  LineChart as LineChartIcon,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  Area,
+  AreaChart,
+} from "recharts";
 import {
   DashboardSummary,
   AdminDailySale,
@@ -53,6 +66,44 @@ interface DashboardOverviewProps {
   onOpenOrderModal: (orderId: number) => void;
 }
 
+// Custom Recharts Tooltip Component
+const CustomSalesTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const revenueVal = payload.find((p: any) => p.dataKey === "revenue")?.value || 0;
+    const ordersVal = payload.find((p: any) => p.dataKey === "orders_count")?.value || 0;
+
+    return (
+      <div className="rounded-2xl border border-slate-750 bg-slate-900/95 p-3.5 shadow-2xl backdrop-blur-md">
+        <p className="text-xs font-bold text-slate-300 pb-2 mb-2 border-b border-slate-800 flex items-center gap-1.5">
+          <Calendar className="size-3.5 text-emerald-400" />
+          <span>{label}</span>
+        </p>
+        <div className="space-y-1.5 text-xs">
+          <div className="flex items-center justify-between gap-5">
+            <span className="flex items-center gap-1.5 text-slate-400">
+              <span className="size-2 rounded-full bg-emerald-400" />
+              Ingresos:
+            </span>
+            <span className="font-extrabold text-emerald-400">
+              ${Number(revenueVal).toFixed(2)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-5">
+            <span className="flex items-center gap-1.5 text-slate-400">
+              <span className="size-2 rounded-full bg-sky-400" />
+              Pedidos:
+            </span>
+            <span className="font-extrabold text-sky-400">
+              {ordersVal} {ordersVal === 1 ? "pedido" : "pedidos"}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onNavigateTab,
   onOpenOrderModal,
@@ -65,7 +116,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [topCustomers, setTopCustomers] = useState<TopCustomer[]>([]);
   const [alerts, setAlerts] = useState<DashboardAlert[]>([]);
-  const [chartPeriod, setChartPeriod] = useState<"7" | "30" | "90" | "365">("30");
+  // Default to 7 days as requested
+  const [chartPeriod, setChartPeriod] = useState<"7" | "30" | "90" | "365">("7");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -74,7 +126,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     else setIsLoading(true);
 
     try {
-      const days = parseInt(chartPeriod, 10) || 30;
+      const days = parseInt(chartPeriod, 10) || 7;
       const [
         sumData,
         salesData,
@@ -115,20 +167,55 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     loadData();
   }, [chartPeriod]);
 
-  // Chart calculations
-  const maxRevenue = useMemo(() => {
-    if (dailySales.length === 0) return 100;
-    const max = Math.max(...dailySales.map((s) => s.revenue));
-    return max > 0 ? max * 1.15 : 100;
-  }, [dailySales]);
+  // Transform daily sales to ensure complete 7-day timeline for recharts line chart
+  const formattedChartData = useMemo(() => {
+    if (chartPeriod === "7") {
+      const result: { sale_date: string; formattedDate: string; revenue: number; orders_count: number }[] = [];
+      const salesMap = new Map(dailySales.map((s) => [s.sale_date, s]));
+
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split("T")[0];
+        const found = salesMap.get(dateStr);
+        const rawFormatted = d.toLocaleDateString("es-ES", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+        });
+
+        result.push({
+          sale_date: dateStr,
+          formattedDate: rawFormatted.charAt(0).toUpperCase() + rawFormatted.slice(1),
+          revenue: found ? Number(found.revenue || 0) : 0,
+          orders_count: found ? Number(found.orders_count || 0) : 0,
+        });
+      }
+      return result;
+    }
+
+    // Other periods (30, 90, 365 days)
+    return dailySales.map((d) => {
+      const dateObj = new Date(d.sale_date);
+      return {
+        sale_date: d.sale_date,
+        formattedDate: dateObj.toLocaleDateString("es-ES", {
+          day: "numeric",
+          month: "short",
+        }),
+        revenue: Number(d.revenue || 0),
+        orders_count: Number(d.orders_count || 0),
+      };
+    });
+  }, [dailySales, chartPeriod]);
 
   const totalPeriodRevenue = useMemo(() => {
-    return dailySales.reduce((sum, d) => sum + d.revenue, 0);
-  }, [dailySales]);
+    return formattedChartData.reduce((sum, d) => sum + d.revenue, 0);
+  }, [formattedChartData]);
 
   const totalPeriodOrders = useMemo(() => {
-    return dailySales.reduce((sum, d) => sum + d.orders_count, 0);
-  }, [dailySales]);
+    return formattedChartData.reduce((sum, d) => sum + d.orders_count, 0);
+  }, [formattedChartData]);
 
   const avgTicket = useMemo(() => {
     if (totalPeriodOrders === 0) return 0;
@@ -332,17 +419,21 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
       </div>
 
-      {/* Interactive Sales Chart */}
+      {/* Interactive Sales Line Chart (Recharts) */}
       <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5 sm:p-6 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800/80">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Estadísticas</span>
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                <LineChartIcon className="size-3.5" /> Gráfica de Tendencia
+              </span>
               <span className="text-slate-500 text-xs">&bull;</span>
-              <span className="text-xs text-slate-400">Rendimiento Comercial y Ventas</span>
+              <span className="text-xs text-slate-400">
+                {chartPeriod === "7" ? "Últimos 7 Días de Ventas" : `Período de ${chartPeriod} días`}
+              </span>
             </div>
             <h3 className="text-lg sm:text-xl font-black text-white mt-0.5">
-              Evolución de Ventas e Ingresos
+              Tendencia de Ventas Diarias
             </h3>
           </div>
 
@@ -353,13 +444,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 key={period}
                 type="button"
                 onClick={() => setChartPeriod(period)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   chartPeriod === period
                     ? "bg-emerald-500 text-slate-950 font-bold shadow-xs"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
-                {period === "7" ? "7 días" : period === "30" ? "30 días" : period === "90" ? "90 días" : "12 meses"}
+                {period === "7" ? "Últimos 7 días" : period === "30" ? "30 días" : period === "90" ? "90 días" : "12 meses"}
               </button>
             ))}
           </div>
@@ -368,28 +459,28 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         {/* Chart Summary Stats */}
         <div className="grid grid-cols-3 gap-4 pt-5 pb-6">
           <div>
-            <span className="text-[10px] text-slate-500 uppercase font-bold">Ingresos del período</span>
+            <span className="text-[10px] text-slate-500 uppercase font-bold">Ingresos ({chartPeriod === "7" ? "7 días" : `${chartPeriod}d`})</span>
             <p className="text-xl sm:text-2xl font-black text-emerald-400 mt-0.5">
               ${totalPeriodRevenue.toFixed(2)}
             </p>
           </div>
           <div>
-            <span className="text-[10px] text-slate-500 uppercase font-bold">Pedidos completados</span>
+            <span className="text-[10px] text-slate-500 uppercase font-bold">Pedidos Registrados</span>
             <p className="text-xl sm:text-2xl font-black text-white mt-0.5">
               {totalPeriodOrders}
             </p>
           </div>
           <div>
-            <span className="text-[10px] text-slate-500 uppercase font-bold">Ticket promedio</span>
-            <p className="text-xl sm:text-2xl font-black text-blue-400 mt-0.5">
+            <span className="text-[10px] text-slate-500 uppercase font-bold">Ticket Promedio</span>
+            <p className="text-xl sm:text-2xl font-black text-sky-400 mt-0.5">
               ${avgTicket.toFixed(2)}
             </p>
           </div>
         </div>
 
-        {/* Visual Chart Canvas */}
-        <div className="h-56 w-full pt-4 relative">
-          {dailySales.length === 0 ? (
+        {/* Recharts Line Chart Visualization */}
+        <div className="h-64 sm:h-72 w-full pt-2">
+          {formattedChartData.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 rounded-2xl bg-slate-800/20 border border-slate-800">
               <Calendar className="size-8 text-slate-600 mb-2" />
               <p className="text-xs font-semibold text-slate-400">
@@ -400,41 +491,88 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               </p>
             </div>
           ) : (
-            <div className="h-full flex items-end gap-1.5 sm:gap-2 pt-6">
-              {dailySales.map((d, idx) => {
-                const heightPercent = Math.min(100, Math.max(8, (d.revenue / maxRevenue) * 100));
-                const dateLabel = new Date(d.sale_date).toLocaleDateString([], {
-                  month: "short",
-                  day: "numeric",
-                });
-
-                return (
-                  <div
-                    key={idx}
-                    className="flex-1 flex flex-col items-center justify-end h-full group relative"
-                  >
-                    {/* Tooltip on hover */}
-                    <div className="absolute -top-12 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-800 border border-slate-700 p-2 rounded-xl text-center shadow-2xl z-20 whitespace-nowrap">
-                      <p className="text-[10px] font-bold text-emerald-400">${d.revenue.toFixed(2)}</p>
-                      <p className="text-[9px] text-slate-400">{d.orders_count} pedidos &bull; {d.sale_date}</p>
-                    </div>
-
-                    {/* Bar */}
-                    <div
-                      style={{ height: `${heightPercent}%` }}
-                      className="w-full max-w-[28px] rounded-t-lg bg-gradient-to-t from-emerald-600/40 to-emerald-400 hover:to-emerald-300 transition-all cursor-pointer shadow-xs"
-                    />
-
-                    {/* X axis date */}
-                    {(dailySales.length <= 10 || idx % Math.ceil(dailySales.length / 8) === 0) && (
-                      <span className="text-[9px] font-mono text-slate-500 mt-2 truncate max-w-full">
-                        {dateLabel}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={formattedChartData}
+                margin={{ top: 10, right: 10, left: -15, bottom: 5 }}
+              >
+                <defs>
+                  <linearGradient id="revenueLineGrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#10b981" />
+                    <stop offset="100%" stopColor="#34d399" />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#334155"
+                  opacity={0.35}
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="formattedDate"
+                  stroke="#94a3b8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={{ stroke: "#334155", opacity: 0.6 }}
+                  dy={6}
+                />
+                <YAxis
+                  stroke="#94a3b8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={{ stroke: "#334155", opacity: 0.6 }}
+                  tickFormatter={(val) => `$${val}`}
+                  dx={-2}
+                />
+                <Tooltip content={<CustomSalesTooltip />} />
+                <Legend
+                  verticalAlign="top"
+                  align="right"
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ paddingBottom: "12px", fontSize: "11px" }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="revenue"
+                  name="Ventas Diarias ($)"
+                  stroke="url(#revenueLineGrad)"
+                  strokeWidth={3}
+                  dot={{
+                    r: 4.5,
+                    fill: "#10b981",
+                    stroke: "#0f172a",
+                    strokeWidth: 2,
+                  }}
+                  activeDot={{
+                    r: 7,
+                    fill: "#34d399",
+                    stroke: "#047857",
+                    strokeWidth: 2.5,
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="orders_count"
+                  name="Pedidos Realizados (#)"
+                  stroke="#38bdf8"
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  dot={{
+                    r: 3.5,
+                    fill: "#38bdf8",
+                    stroke: "#0f172a",
+                    strokeWidth: 1.5,
+                  }}
+                  activeDot={{
+                    r: 6,
+                    fill: "#7dd3fc",
+                    stroke: "#0284c7",
+                    strokeWidth: 2,
+                  }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           )}
         </div>
       </div>

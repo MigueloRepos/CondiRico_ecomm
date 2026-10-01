@@ -19,6 +19,7 @@ import { AdminMessagesView } from "./AdminMessagesView";
 import { AdminNotificationsView } from "./AdminNotificationsView";
 import { AdminActivityView } from "./AdminActivityView";
 import { AdminSettingsView } from "./AdminSettingsView";
+import { AdminPaymentsView } from "./AdminPaymentsView";
 import { RefreshCw } from "lucide-react";
 
 interface AdminDashboardProps {
@@ -195,6 +196,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {currentTab === "orders" && (
             <AdminOrdersView initialOrderId={targetOrderId} />
           )}
+
+          {currentTab === "payments" && <AdminPaymentsView />}
 
           {currentTab === "customers" && <AdminCustomersView />}
 

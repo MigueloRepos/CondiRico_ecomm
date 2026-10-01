@@ -37,6 +37,7 @@ import {
   UtensilsCrossed,
   X,
   Sparkle,
+  CreditCard,
 } from "lucide-react";
 import { FormEvent, useMemo, useRef, useState, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
@@ -54,6 +55,7 @@ import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { AdminProtectedRoute, AdminRouteGuard } from "@/components/admin/AdminProtectedRoute";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { VoiceSearchModal } from "@/components/VoiceSearchModal";
+import { CheckoutModal } from "@/components/checkout/CheckoutModal";
 import { ToastProvider, useToast } from "@/components/ui/ToastContext";
 import { BlurUpImage } from "@/components/BlurUpImage";
 import { CategoryBento } from "@/components/CategoryBento";
@@ -178,6 +180,7 @@ function AppContent() {
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [cart, setCart] = useState<Record<number, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
   const [whatsAppInquiryOpen, setWhatsAppInquiryOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -2378,34 +2381,73 @@ function AppContent() {
                   </div>
                 )}
 
+                {/* Primary Action: Online Checkout */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCartOpen(false);
+                    setCheckoutModalOpen(true);
+                  }}
+                  className="mt-3.5 h-13 w-full rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/30 liquid-glass-button active:scale-95 cursor-pointer"
+                >
+                  <CreditCard className="size-5" />
+                  <span>
+                    Pagar con Tarjeta, PayPal o GPay (${(cartTotal >= 30 ? cartTotal : cartTotal + 3.5).toFixed(2)})
+                  </span>
+                </button>
+
+                {/* Secondary Option: WhatsApp */}
                 <button
                   type="button"
                   onClick={handleProceedToCheckout}
-                  className="mt-3.5 h-13 w-full rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/30 liquid-glass-button active:scale-95"
+                  className="mt-2 h-11 w-full rounded-2xl border border-emerald-300 bg-emerald-50/90 text-emerald-800 font-bold text-xs flex items-center justify-center gap-2 hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer"
                 >
-                  <WhatsAppIcon className="size-5" />
-                  <span>
-                    {currentUser
-                      ? `Confirmar y Pedir (${(cartTotal >= 35 ? cartTotal : cartTotal + 3.5).toFixed(2)}$)`
-                      : "Iniciar Sesión para Comprar"}
-                  </span>
+                  <WhatsAppIcon className="size-4" />
+                  <span>Pedir por WhatsApp</span>
                 </button>
 
                 <button
                   type="button"
-                  className="mt-2 h-10 w-full rounded-2xl border border-white/80 bg-white/70 text-foreground font-bold text-xs shadow-xs hover:bg-white active:scale-95"
+                  className="mt-2 h-10 w-full rounded-2xl border border-white/80 bg-white/70 text-foreground font-bold text-xs shadow-xs hover:bg-white active:scale-95 cursor-pointer"
                   onClick={() => setCartOpen(false)}
                 >
                   Seguir explorando
                 </button>
-                <p className="mt-2.5 text-center text-[11px] text-muted-foreground">
-                  Atención directa y confirmación en tiempo real por WhatsApp
+                <p className="mt-2 text-center text-[11px] text-muted-foreground flex items-center justify-center gap-1">
+                  <ShieldCheck className="size-3 text-emerald-600" />
+                  <span>Pasarelas protegidas con cifrado bancario SSL</span>
                 </p>
               </div>
             )}
           </aside>
         </div>
       )}
+
+      {/* Professional Payments Checkout Modal (PayPal, Stripe, Google Pay) */}
+      <CheckoutModal
+        isOpen={checkoutModalOpen}
+        onClose={() => setCheckoutModalOpen(false)}
+        cart={cart}
+        productsList={products}
+        currentUser={currentUser}
+        onClearCart={() => setCart({})}
+        onViewOrders={() => navigateTo("auth")}
+      />
+
+      {/* WhatsApp Order Modal */}
+      <WhatsAppOrderModal
+        isOpen={whatsAppModalOpen}
+        onClose={() => setWhatsAppModalOpen(false)}
+        cart={cart}
+        onClearCart={() => setCart({})}
+        currentUser={currentUser}
+        onRequireLogin={() => {
+          setWhatsAppModalOpen(false);
+          setIntendedAuthNotice("Inicia sesión para confirmar tu pedido.");
+          navigateTo("auth");
+        }}
+        productsList={products}
+      />
 
       {/* Voice Search Modal */}
       <VoiceSearchModal
