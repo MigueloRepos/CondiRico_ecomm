@@ -152,6 +152,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         );
       case "processing":
       case "confirmed":
+      case "preparing":
+      case "shipped":
         return (
           <span className="inline-flex items-center gap-1 rounded-full bg-blue-950/60 border border-blue-800/80 px-2 py-0.5 text-[10px] font-bold text-blue-400">
             En camino

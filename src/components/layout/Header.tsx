@@ -200,17 +200,19 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>Mi Perfil</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUserDropdownOpen(false);
-                    onNavigate("admin");
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-[#075B3A] bg-[#F0F6F2] hover:bg-[#E5EFE8] transition-colors my-1"
-                >
-                  <ShieldCheckIcon className="size-4" />
-                  <span>Panel Administrativo</span>
-                </button>
+                {currentUser.role === "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserDropdownOpen(false);
+                      onNavigate("admin");
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-[#075B3A] bg-[#F0F6F2] hover:bg-[#E5EFE8] transition-colors my-1"
+                  >
+                    <ShieldCheckIcon className="size-4" />
+                    <span>Panel Administrativo</span>
+                  </button>
+                )}
 
                 <button
                   type="button"

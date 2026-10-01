@@ -301,3 +301,153 @@ export async function getOrderById(
     return { order: null, items: [] };
   }
 }
+
+export interface CustomerPurchaseStats {
+  totalSpent: number;
+  totalOrders: number;
+  averageTicket: number;
+  deliveredOrders: number;
+  pendingOrders: number;
+  recentOrders: Order[];
+  topProducts: {
+    product_id: number;
+    product_name: string;
+    image_url?: string | null;
+    units_bought: number;
+    total_spent: number;
+    last_purchased: string;
+  }[];
+}
+
+/**
+ * Calculates comprehensive purchase statistics, recent orders, and top bought products for a customer
+ */
+export async function getCustomerPurchaseStats(
+  userId?: string,
+  userEmail?: string
+): Promise<CustomerPurchaseStats> {
+  const defaultStats: CustomerPurchaseStats = {
+    totalSpent: 0,
+    totalOrders: 0,
+    averageTicket: 0,
+    deliveredOrders: 0,
+    pendingOrders: 0,
+    recentOrders: [],
+    topProducts: [],
+  };
+
+  if (!userId && !userEmail) return defaultStats;
+
+  try {
+    // 1. Fetch orders for this customer (by user_id or customer_email)
+    let query = supabase.from("orders").select("*");
+    if (userId && userEmail) {
+      query = query.or(`user_id.eq.${userId},customer_email.ilike.${userEmail}`);
+    } else if (userId) {
+      query = query.eq("user_id", userId);
+    } else if (userEmail) {
+      query = query.ilike("customer_email", userEmail);
+    }
+
+    const { data: orders, error: ordersErr } = await query.order("created_at", { ascending: false });
+
+    if (ordersErr || !orders || orders.length === 0) {
+      return defaultStats;
+    }
+
+    const orderIds = orders.map((o) => o.id);
+
+    // 2. Fetch order items for these orders
+    const { data: items } = await supabase
+      .from("order_items")
+      .select("order_id, product_id, product_name, quantity, unit_price, subtotal")
+      .in("order_id", orderIds);
+
+    // Also fetch product images from catalog
+    const productImagesMap = new Map<number, string | null>();
+    if (items && items.length > 0) {
+      const productIds = Array.from(new Set(items.map((i) => i.product_id)));
+      const { data: prods } = await supabase
+        .from("products")
+        .select("id, image_url")
+        .in("id", productIds);
+      if (prods) {
+        prods.forEach((p) => productImagesMap.set(p.id, p.image_url));
+      }
+    }
+
+    // 3. Compute metrics
+    let totalSpent = 0;
+    let deliveredCount = 0;
+    let pendingCount = 0;
+
+    orders.forEach((o) => {
+      if (o.status !== "cancelled") {
+        totalSpent += Number(o.total || 0);
+      }
+      if (o.status === "delivered" || o.status === "completed") {
+        deliveredCount += 1;
+      } else if (o.status === "pending" || o.status === "processing") {
+        pendingCount += 1;
+      }
+    });
+
+    const totalOrders = orders.length;
+    const averageTicket = totalOrders > 0 ? totalSpent / totalOrders : 0;
+
+    // 4. Group top products bought by this customer
+    const productStatsMap = new Map<
+      number,
+      { name: string; image_url?: string | null; units: number; total: number; lastDate: string }
+    >();
+
+    if (items && items.length > 0) {
+      const orderDateMap = new Map<number, string>();
+      orders.forEach((o) => orderDateMap.set(o.id, o.created_at || new Date().toISOString()));
+
+      items.forEach((item) => {
+        const pId = item.product_id;
+        const oDate = orderDateMap.get(item.order_id) || new Date().toISOString();
+        const curr = productStatsMap.get(pId) || {
+          name: item.product_name,
+          image_url: productImagesMap.get(pId) || null,
+          units: 0,
+          total: 0,
+          lastDate: oDate,
+        };
+
+        curr.units += Number(item.quantity || 0);
+        curr.total += Number(item.subtotal || Number(item.quantity || 0) * Number(item.unit_price || 0));
+        if (new Date(oDate) > new Date(curr.lastDate)) {
+          curr.lastDate = oDate;
+        }
+        productStatsMap.set(pId, curr);
+      });
+    }
+
+    const topProducts = Array.from(productStatsMap.entries())
+      .map(([id, val]) => ({
+        product_id: id,
+        product_name: val.name,
+        image_url: val.image_url,
+        units_bought: val.units,
+        total_spent: Number(val.total.toFixed(2)),
+        last_purchased: val.lastDate,
+      }))
+      .sort((a, b) => b.units_bought - a.units_bought)
+      .slice(0, 6);
+
+    return {
+      totalSpent: Number(totalSpent.toFixed(2)),
+      totalOrders,
+      averageTicket: Number(averageTicket.toFixed(2)),
+      deliveredOrders: deliveredCount,
+      pendingOrders: pendingCount,
+      recentOrders: orders.slice(0, 6),
+      topProducts,
+    };
+  } catch (err) {
+    console.error("[getCustomerPurchaseStats] Unexpected error:", err);
+    return defaultStats;
+  }
+}
