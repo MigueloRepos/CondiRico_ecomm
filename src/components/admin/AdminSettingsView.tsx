@@ -95,11 +95,11 @@ export const AdminSettingsView: React.FC = () => {
         showToast("Configuración guardada exitosamente en Supabase.");
         if (res.data) setSettings(res.data);
       } else {
-        alert(res.error || "No se pudo guardar la configuración.");
+        showToast(res.error || "No se pudo guardar la configuración.");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error inesperado.";
-      alert(msg);
+      showToast(msg);
     } finally {
       setIsSaving(false);
     }

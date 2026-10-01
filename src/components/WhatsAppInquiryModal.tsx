@@ -32,7 +32,6 @@ export const WhatsAppInquiryModal: React.FC<WhatsAppInquiryModalProps> = ({
   )}`;
 
   const handleOpenWhatsApp = () => {
-    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
     onClose();
   };
 

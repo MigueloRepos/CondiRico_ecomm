@@ -1,16 +1,23 @@
 import express, { Request, Response } from "express";
-import path from "path";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
 dotenv.config();
 
-const app = express();
-const port = process.env.PORT || 3000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
+const app = express();
+const port = Number(process.env.PORT) || 3000;
+
+const defaultSupabaseUrl = "https://wcgwttjnvyeibxdnhqfl.supabase.co";
+const defaultAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndjZ3d0dGpudnllaWJ4ZG5ocWZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0NjA5NTYsImV4cCI6MjEwNjAzNjk1Nn0.iE3Felsr8MQ7GYnMGGGMLexs8358nVTzzKJOgEq70vs";
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || defaultSupabaseUrl;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || defaultAnonKey;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey;
 
 const paypalClientId = process.env.PAYPAL_CLIENT_ID || process.env.VITE_PAYPAL_CLIENT_ID || "";
@@ -99,8 +106,7 @@ app.use(express.json());
 
 // Public payment configuration endpoint
 app.get("/api/payments/config", (_req: Request, res: Response) => {
-  const supportedProviders: string[] = [];
-  if (paypalClientId) supportedProviders.push("paypal");
+  const supportedProviders: string[] = ["paypal"];
   if (stripePublishableKey) supportedProviders.push("stripe");
   if (googlePayMerchantId || stripePublishableKey) supportedProviders.push("google_pay");
 
@@ -111,6 +117,7 @@ app.get("/api/payments/config", (_req: Request, res: Response) => {
     googlePayMerchantId: googlePayMerchantId || null,
     isSandbox: paypalEnv !== "production",
     supportedProviders,
+    supportedMethods: ["paypal", "card", "google_pay"],
   });
 });
 
@@ -391,24 +398,28 @@ app.post("/api/payments/stripe/create-payment-intent", async (req: Request, res:
 
 // Vite Middleware integration in Development
 async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
-    const { createServer: createViteServer } = await import("vite");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.resolve(__dirname, "dist");
-    app.use(express.static(distPath));
-    app.get("*", (_req, res) => {
-      res.sendFile(path.resolve(distPath, "index.html"));
-    });
-  }
+  try {
+    if (process.env.NODE_ENV !== "production") {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.resolve(__dirname, "dist");
+      app.use(express.static(distPath));
+      app.get("*", (_req, res) => {
+        res.sendFile(path.resolve(distPath, "index.html"));
+      });
+    }
 
-  app.listen(port, () => {
-    console.log(`[CondiRico Server] Payments engine & App running on port ${port}`);
-  });
+    app.listen(port, "0.0.0.0", () => {
+      console.log(`[CondiRico Server] Payments engine & App running on http://0.0.0.0:${port}`);
+    });
+  } catch (err) {
+    console.error("[CondiRico Server] Failed to start server:", err);
+  }
 }
 
 startServer();

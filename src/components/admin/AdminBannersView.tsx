@@ -216,11 +216,11 @@ export const AdminBannersView: React.FC = () => {
         setBannerToDelete(null);
         loadData();
       } else {
-        alert(res.error || "No se pudo eliminar el banner.");
+        showToast(res.error || "No se pudo eliminar el banner.");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error al eliminar.";
-      alert(msg);
+      showToast(msg);
     } finally {
       setIsDeleting(false);
     }

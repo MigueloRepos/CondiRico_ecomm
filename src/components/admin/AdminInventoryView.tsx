@@ -86,7 +86,7 @@ export const AdminInventoryView: React.FC = () => {
 
     const qty = parseInt(movementQty, 10);
     if (isNaN(qty) || qty < 0) {
-      alert("Por favor introduce una cantidad válida.");
+      showToast("Por favor introduce una cantidad válida.");
       return;
     }
 
@@ -104,11 +104,11 @@ export const AdminInventoryView: React.FC = () => {
         setSelectedProduct(null);
         loadData();
       } else {
-        alert(res.error || "No se pudo actualizar el stock.");
+        showToast(res.error || "No se pudo actualizar el stock.");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error inesperado.";
-      alert(msg);
+      showToast(msg);
     } finally {
       setIsSubmittingMovement(false);
     }

@@ -184,11 +184,11 @@ export const AdminPromotionsView: React.FC = () => {
         setPromoToDelete(null);
         loadData();
       } else {
-        alert(res.error || "No se pudo eliminar.");
+        showToast(res.error || "No se pudo eliminar.");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error al eliminar.";
-      alert(msg);
+      showToast(msg);
     } finally {
       setIsDeleting(false);
     }

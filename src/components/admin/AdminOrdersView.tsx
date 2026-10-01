@@ -165,7 +165,7 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({ initialOrderId
     fetchDetail();
   }, [selectedOrderId]);
 
-  const { showDeliveryStatusToast, showSuccessToast } = useToast();
+  const { showDeliveryStatusToast, showSuccessToast, showErrorToast } = useToast();
 
   const handleUpdateStatus = async () => {
     if (!selectedOrderDetail || !newStatusSelect) return;
@@ -191,11 +191,11 @@ export const AdminOrdersView: React.FC<AdminOrdersViewProps> = ({ initialOrderId
         // Refresh orders list
         loadOrders();
       } else {
-        alert(res.error || "No se pudo actualizar el pedido.");
+        showErrorToast("Error", res.error || "No se pudo actualizar el pedido.");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error al actualizar estado.";
-      alert(msg);
+      showErrorToast("Error", msg);
     } finally {
       setIsUpdatingStatus(false);
     }

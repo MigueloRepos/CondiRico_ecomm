@@ -284,10 +284,10 @@ function AppContent() {
         }
         setCurrentUser(profile);
 
-        // Automatically redirect admin to dashboard if accessing auth or home
+        // Automatically redirect admin to dashboard if accessing auth page
         if (profile.role === "admin") {
           const currentHash = window.location.hash;
-          if (currentHash === "#auth" || currentHash === "" || currentHash === "#inicio") {
+          if (currentHash === "#auth") {
             navigateTo("admin");
           }
         }
@@ -316,7 +316,7 @@ function AppContent() {
 
           if (profile.role === "admin") {
             const currentHash = window.location.hash;
-            if (currentHash === "#auth" || currentHash === "" || currentHash === "#inicio") {
+            if (currentHash === "#auth") {
               navigateTo("admin");
             }
           }

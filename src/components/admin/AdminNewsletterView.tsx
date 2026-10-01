@@ -77,11 +77,11 @@ export const AdminNewsletterView: React.FC = () => {
         setSubscriberToDelete(null);
         loadData();
       } else {
-        alert(res.error || "No se pudo eliminar.");
+        showToast(res.error || "No se pudo eliminar.");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error al eliminar.";
-      alert(msg);
+      showToast(msg);
     } finally {
       setIsDeleting(false);
     }
@@ -89,7 +89,7 @@ export const AdminNewsletterView: React.FC = () => {
 
   const handleExportCSV = () => {
     if (subscribers.length === 0) {
-      alert("No hay suscriptores para exportar.");
+      showToast("No hay suscriptores para exportar.");
       return;
     }
 

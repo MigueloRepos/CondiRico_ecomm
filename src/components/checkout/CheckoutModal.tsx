@@ -205,30 +205,49 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6">
-          {/* Order Brief Summary Bar (visible in shipping & payment steps) */}
-          {step !== "status" && (
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="flex items-center gap-1.5 text-brand-deep">
-                  <ShoppingBag className="size-4 text-primary" />
-                  <span>Resumen del Carrito ({cartItems.length} {cartItems.length === 1 ? "artículo" : "artículos"})</span>
-                </span>
-                <span className="font-mono text-sm text-primary font-black">
-                  ${total.toFixed(2)} USD
-                </span>
+          {cartItems.length === 0 && step !== "status" ? (
+            <div className="py-12 text-center space-y-4">
+              <div className="size-16 rounded-3xl bg-slate-100 grid place-items-center mx-auto text-slate-400">
+                <ShoppingBag className="size-8" />
               </div>
-
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-slate-200/60">
-                <span>Subtotal: ${subtotal.toFixed(2)}</span>
-                <span>
-                  Envío: {shipping === 0 ? <strong className="text-emerald-700">¡GRATIS!</strong> : `$${shipping.toFixed(2)}`}
-                </span>
+              <div>
+                <h3 className="text-base font-black text-brand-deep">Tu carrito está vacío</h3>
+                <p className="text-xs text-muted-foreground mt-1">Agrega productos frescos y de despensa antes de finalizar tu compra.</p>
               </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-6 h-11 rounded-2xl bg-primary text-white text-xs font-black shadow-md hover:bg-primary/90 cursor-pointer"
+              >
+                Explorar Productos
+              </button>
             </div>
-          )}
+          ) : (
+            <>
+              {/* Order Brief Summary Bar (visible in shipping & payment steps) */}
+              {step !== "status" && (
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="flex items-center gap-1.5 text-brand-deep">
+                      <ShoppingBag className="size-4 text-primary" />
+                      <span>Resumen del Carrito ({cartItems.length} {cartItems.length === 1 ? "artículo" : "artículos"})</span>
+                    </span>
+                    <span className="font-mono text-sm text-primary font-black">
+                      ${total.toFixed(2)} USD
+                    </span>
+                  </div>
 
-          {/* STEP 1: SHIPPING & CONTACT DETAILS */}
-          {step === "shipping" && (
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-slate-200/60">
+                    <span>Subtotal: ${subtotal.toFixed(2)}</span>
+                    <span>
+                      Envío: {shipping === 0 ? <strong className="text-emerald-700">¡GRATIS!</strong> : `$${shipping.toFixed(2)}`}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 1: SHIPPING & CONTACT DETAILS */}
+              {step === "shipping" && (
             <form onSubmit={handleProceedToPayment} className="space-y-4 animate-in fade-in">
               <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
                 <span className="grid size-5 place-items-center rounded-full bg-primary text-white text-[10px] font-black">
@@ -376,27 +395,29 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
           )}
 
-          {/* STEP 3: PAYMENT STATUS / CONFIRMATION */}
-          {step === "status" && (
-            <PaymentStatusView
-              status={paymentStatus}
-              orderId={confirmedOrderId}
-              provider={activeProvider}
-              amount={confirmedAmount || total}
-              errorMessage={paymentError}
-              onRetry={() => {
-                setStep("payment");
-                setPaymentStatus("pending");
-                setPaymentError(null);
-              }}
-              onClose={onClose}
-              onViewOrders={() => {
-                onClose();
-                if (onViewOrders) {
-                  onViewOrders();
-                }
-              }}
-            />
+              {/* STEP 3: PAYMENT STATUS / CONFIRMATION */}
+              {step === "status" && (
+                <PaymentStatusView
+                  status={paymentStatus}
+                  orderId={confirmedOrderId}
+                  provider={activeProvider}
+                  amount={confirmedAmount || total}
+                  errorMessage={paymentError}
+                  onRetry={() => {
+                    setStep("payment");
+                    setPaymentStatus("pending");
+                    setPaymentError(null);
+                  }}
+                  onClose={onClose}
+                  onViewOrders={() => {
+                    onClose();
+                    if (onViewOrders) {
+                      onViewOrders();
+                    }
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
       </div>

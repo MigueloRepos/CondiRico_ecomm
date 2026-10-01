@@ -269,19 +269,28 @@ export const WhatsAppOrderModal: React.FC<WhatsAppOrderModalProps> = ({
               </div>
             )}
             <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-              Hemos guardado tu pedido en el sistema y abierto tu chat con <strong>CondiRico</strong>. Nuestro equipo te responderá enseguida para confirmar el despacho.
+              Hemos guardado tu pedido en el sistema y preparado tu chat con <strong>CondiRico</strong>. Nuestro equipo te responderá enseguida para confirmar el despacho.
             </p>
 
             <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-11 rounded-full bg-emerald-600 hover:bg-emerald-500 px-6 text-xs font-bold text-white shadow-md flex items-center gap-2 cursor-pointer"
+              >
+                <WhatsAppIcon className="size-4" />
+                <span>Reabrir Chat en WhatsApp</span>
+              </a>
               <button
                 type="button"
                 onClick={() => {
                   if (onClearCart) onClearCart();
                   onClose();
                 }}
-                className="h-11 rounded-full bg-primary px-6 text-xs font-bold text-primary-foreground shadow-md shadow-primary/20 liquid-glass-button"
+                className="h-11 rounded-full bg-primary px-6 text-xs font-bold text-primary-foreground shadow-md shadow-primary/20 cursor-pointer"
               >
-                Vaciar carrito y volver a la tienda
+                Volver a la tienda
               </button>
               <button
                 type="button"

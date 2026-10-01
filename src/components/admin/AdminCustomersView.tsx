@@ -100,11 +100,11 @@ export const AdminCustomersView: React.FC = () => {
         const updated = await getCustomerDetails(selectedCustomerId);
         setCustomerDetail(updated);
       } else {
-        alert(res.error || "No se pudo guardar la nota.");
+        showToast(res.error || "No se pudo guardar la nota.");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error inesperado.";
-      alert(msg);
+      showToast(msg);
     } finally {
       setIsAddingNote(false);
     }

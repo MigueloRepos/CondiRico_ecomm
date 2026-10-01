@@ -119,17 +119,16 @@ export const AdminMessagesView: React.FC = () => {
           prev.map((m) => (m.id === selectedMessage.id ? { ...m, status: newStatus } : m))
         );
       } else {
-        alert(res.error || "No se pudo actualizar el estado.");
+        showToast(res.error || "No se pudo actualizar el estado.");
       }
     } catch {
-      alert("Error al actualizar estado.");
+      showToast("Error al actualizar estado.");
     } finally {
       setIsUpdatingStatus(false);
     }
   };
 
   const handleDeleteMessage = async (id: number) => {
-    if (!confirm("¿Deseas eliminar este mensaje definitivamente?")) return;
     try {
       const res = await deleteMessage(id);
       if (res.success) {
@@ -138,7 +137,7 @@ export const AdminMessagesView: React.FC = () => {
         setMessages((prev) => prev.filter((m) => m.id !== id));
       }
     } catch {
-      alert("Error al eliminar mensaje.");
+      showToast("Error al eliminar mensaje.");
     }
   };
 
