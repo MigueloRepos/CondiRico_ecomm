@@ -843,7 +843,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                         required
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+34 600 000 000"
+                        placeholder="+56 9 1234 5678 / +53 5 1234567"
                         className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/75 text-xs text-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 shadow-inner transition-all font-semibold"
                       />
                     </div>

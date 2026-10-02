@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { verifyPhoneOtp, signInWithPhoneOtp } from "@/lib/supabase";
 import { UserProfile } from "@/lib/auth";
+import { findCountryByCode } from "@/data/countryCodes";
 
 interface PhoneOtpModalProps {
   isOpen: boolean;
@@ -187,6 +188,9 @@ export const PhoneOtpModal: React.FC<PhoneOtpModalProps> = ({
             Ingresa el código de 6 dígitos que enviamos por mensaje de texto al número:
           </p>
           <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-3 py-1 text-xs font-bold text-brand-deep">
+            {findCountryByCode(countryCode)?.flag && (
+              <span className="text-sm">{findCountryByCode(countryCode)?.flag}</span>
+            )}
             <span>{countryCode} {phone}</span>
             {onBackToEditPhone && (
               <button

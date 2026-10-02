@@ -40,19 +40,11 @@ import { UserProfileView } from "@/components/UserProfileView";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
 import { getProfile, checkIsAdmin } from "@/services";
 
-const COUNTRY_CODES = [
-  { code: "+56", country: "Chile", flag: "🇨🇱" },
-  { code: "+58", country: "Venezuela", flag: "🇻🇪" },
-  { code: "+57", country: "Colombia", flag: "🇨🇴" },
-  { code: "+51", country: "Perú", flag: "🇵🇪" },
-  { code: "+54", country: "Argentina", flag: "🇦🇷" },
-  { code: "+52", country: "México", flag: "🇲🇽" },
-  { code: "+1", country: "EE.UU. / Canadá", flag: "🇺🇸" },
-  { code: "+34", country: "España", flag: "🇪🇸" },
-  { code: "+593", country: "Ecuador", flag: "🇪🇨" },
-  { code: "+591", country: "Bolivia", flag: "🇧🇴" },
-  { code: "+507", country: "Panamá", flag: "🇵🇦" },
-];
+import {
+  COUNTRY_CODES,
+  POPULAR_COUNTRY_CODES,
+  ALL_WORLD_COUNTRY_CODES,
+} from "@/data/countryCodes";
 
 interface AuthPageProps {
   onSuccessAuth: (user: UserProfile) => void;
@@ -87,6 +79,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   // Register form state
   const [registerName, setRegisterName] = useState("");
+  const [registerCountryCode, setRegisterCountryCode] = useState("+56");
   const [registerPhone, setRegisterPhone] = useState("");
   const [registerAddress, setRegisterAddress] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
@@ -281,12 +274,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setIsSubmitting(true);
 
     try {
+      const fullPhone = registerPhone.trim()
+        ? normalizePhoneNumber(registerPhone.trim(), registerCountryCode)
+        : "";
+
       // 1. Sign up on Supabase Cloud
       const { error: sbError } = await signUpWithSupabase({
         email: registerEmail.trim(),
         password: registerPassword,
         fullName: registerName.trim(),
-        phone: registerPhone.trim(),
+        phone: fullPhone,
         address: registerAddress.trim(),
       });
 
@@ -301,7 +298,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       // Open Confirmation Link Modal
       setOtpPendingEmail(registerEmail.trim());
       setOtpPendingName(registerName.trim());
-      setOtpPendingPhone(registerPhone.trim());
+      setOtpPendingPhone(fullPhone);
       setOtpPendingAddress(registerAddress.trim());
       setOtpPendingEnableBio(enableBiometricsOnRegister);
       setOtpModalOpen(true);
@@ -648,17 +645,26 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     </label>
                     <div className="flex gap-2">
                       {/* Country code selector */}
-                      <div className="relative w-32 shrink-0">
+                      <div className="relative w-36 sm:w-44 shrink-0">
                         <select
                           value={loginCountryCode}
                           onChange={(e) => setLoginCountryCode(e.target.value)}
                           className="w-full h-11 px-2.5 rounded-2xl border border-white/80 bg-white/80 text-xs font-bold text-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner cursor-pointer"
                         >
-                          {COUNTRY_CODES.map((c) => (
-                            <option key={c.code} value={c.code}>
-                              {c.flag} {c.code}
-                            </option>
-                          ))}
+                          <optgroup label="América Latina e Iberoamérica">
+                            {POPULAR_COUNTRY_CODES.map((c) => (
+                              <option key={`pop-login-${c.iso}-${c.code}`} value={c.code}>
+                                {c.flag} {c.country} ({c.code})
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="Todos los Países del Mundo">
+                            {ALL_WORLD_COUNTRY_CODES.map((c) => (
+                              <option key={`all-login-${c.iso}-${c.code}`} value={c.code}>
+                                {c.flag} {c.country} ({c.code})
+                              </option>
+                            ))}
+                          </optgroup>
                         </select>
                       </div>
 
@@ -799,15 +805,39 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   <label className="block text-xs font-black text-foreground mb-1">
                     Teléfono / WhatsApp
                   </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                    <input
-                      type="tel"
-                      value={registerPhone}
-                      onChange={(e) => setRegisterPhone(e.target.value)}
-                      placeholder="+34 600 000 000"
-                      className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
-                    />
+                  <div className="flex gap-1.5">
+                    <div className="relative w-28 sm:w-32 shrink-0">
+                      <select
+                        value={registerCountryCode}
+                        onChange={(e) => setRegisterCountryCode(e.target.value)}
+                        className="w-full h-11 px-2 rounded-2xl border border-white/80 bg-white/80 text-xs font-bold text-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner cursor-pointer"
+                      >
+                        <optgroup label="América Latina e Iberoamérica">
+                          {POPULAR_COUNTRY_CODES.map((c) => (
+                            <option key={`pop-reg-${c.iso}-${c.code}`} value={c.code}>
+                              {c.flag} {c.code}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Todos los Países del Mundo">
+                          {ALL_WORLD_COUNTRY_CODES.map((c) => (
+                            <option key={`all-reg-${c.iso}-${c.code}`} value={c.code}>
+                              {c.flag} {c.code}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </div>
+                    <div className="relative flex-1">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                      <input
+                        type="tel"
+                        value={registerPhone}
+                        onChange={(e) => setRegisterPhone(e.target.value)}
+                        placeholder="9 1234 5678"
+                        className="w-full h-11 pl-9 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
+                      />
+                    </div>
                   </div>
                 </div>
 
