@@ -94,6 +94,7 @@ export function mapSupabaseUserToProfile(sbUser: SupabaseUser): UserProfile {
     phone: meta.phone || "+34 600 000 000",
     address: meta.address || "Dirección principal",
     hasBiometrics: Boolean(meta.hasBiometrics),
+    avatarUrl: meta.avatar_url || meta.avatarUrl || meta.picture || null,
     createdAt: sbUser.created_at || new Date().toISOString(),
     preferences: {
       offersNewsletter: meta.offersNewsletter ?? true,
@@ -216,6 +217,194 @@ export async function signInWithSupabase(params: {
   }
 }
 
+// Helper to format phone numbers cleanly with country prefix
+export function normalizePhoneNumber(rawPhone: string, defaultCode = "+56"): string {
+  if (!rawPhone) return "";
+  const cleaned = rawPhone.trim().replace(/[\s\-()]/g, "");
+  if (cleaned.startsWith("+")) {
+    return cleaned;
+  }
+  if (cleaned.startsWith("00")) {
+    return "+" + cleaned.slice(2);
+  }
+  // If user provided 9 digits (standard Chile/Latin America local), prepend default code
+  const codeClean = defaultCode.startsWith("+") ? defaultCode : `+${defaultCode}`;
+  return `${codeClean}${cleaned.replace(/^0+/, "")}`;
+}
+
+// Supabase Cloud Sign In with Phone & Password
+export async function signInWithPhonePassword(params: {
+  phone: string;
+  password: string;
+  defaultCountryCode?: string;
+}): Promise<{ user: UserProfile | null; error: string | null }> {
+  const supabase = getSupabase();
+  const rawPhone = params.phone.trim();
+  const password = params.password;
+  const formattedPhone = normalizePhoneNumber(rawPhone, params.defaultCountryCode || "+56");
+
+  try {
+    // 1. Try native Supabase Phone Auth
+    const { data: phoneAuthData, error: phoneAuthError } = await supabase.auth.signInWithPassword({
+      phone: formattedPhone,
+      password,
+    });
+
+    if (!phoneAuthError && phoneAuthData.user) {
+      const profile = mapSupabaseUserToProfile(phoneAuthData.user);
+      return { user: profile, error: null };
+    }
+
+    // 2. If phone provider is disabled or account was registered with email + phone in profile:
+    // Lookup associated profile by phone
+    try {
+      const cleanDigits = rawPhone.replace(/[^\d]/g, "");
+      const { data: profileByRpc, error: rpcError } = await supabase.rpc("get_profile_by_phone", {
+        lookup_phone: formattedPhone,
+      });
+
+      let matchedEmail: string | null = null;
+      if (!rpcError && profileByRpc && profileByRpc.length > 0 && profileByRpc[0].email) {
+        matchedEmail = profileByRpc[0].email;
+      } else {
+        // Fallback search in public.profiles
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("email, phone")
+          .not("email", "is", null)
+          .limit(20);
+
+        if (profileRows && profileRows.length > 0) {
+          const found = profileRows.find((p) => {
+            if (!p.phone) return false;
+            const pDigits = p.phone.replace(/[^\d]/g, "");
+            return (
+              p.phone === formattedPhone ||
+              p.phone === rawPhone ||
+              pDigits === cleanDigits ||
+              pDigits.endsWith(cleanDigits) ||
+              cleanDigits.endsWith(pDigits)
+            );
+          });
+          if (found?.email) {
+            matchedEmail = found.email;
+          }
+        }
+      }
+
+      // If we found an account email with this phone, authenticate with it
+      if (matchedEmail) {
+        const { data: emailAuthData, error: emailAuthError } = await supabase.auth.signInWithPassword({
+          email: matchedEmail,
+          password,
+        });
+
+        if (!emailAuthError && emailAuthData.user) {
+          const profile = mapSupabaseUserToProfile(emailAuthData.user);
+          return { user: profile, error: null };
+        } else if (emailAuthError) {
+          let msg = emailAuthError.message;
+          if (msg.includes("Invalid login credentials") || msg.includes("invalid_grant")) {
+            msg = "Contraseña incorrecta para la cuenta vinculada a este número.";
+          }
+          return { user: null, error: msg };
+        }
+      }
+    } catch (lookupErr) {
+      console.warn("[signInWithPhonePassword] Lookup fallback error:", lookupErr);
+    }
+
+    // If native error was provided, show friendly message
+    if (phoneAuthError) {
+      let msg = phoneAuthError.message;
+      if (msg.includes("Invalid login credentials") || msg.includes("invalid_grant")) {
+        msg = "Número de teléfono o contraseña incorrectos. Verifica tus datos o regístrate si no tienes cuenta.";
+      } else if (msg.includes("Phone provider") || msg.includes("disabled")) {
+        msg = "No encontramos una cuenta vinculada a este número de teléfono. Si tu cuenta usa correo, ingresa con tu correo o crea una cuenta.";
+      }
+      return { user: null, error: msg };
+    }
+
+    return {
+      user: null,
+      error: "No se encontró ningún usuario con este número de teléfono. Regístrate para crear tu cuenta.",
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Error al conectar con Supabase.";
+    return { user: null, error: msg };
+  }
+}
+
+// Supabase Cloud Phone OTP (SMS verification code)
+export async function signInWithPhoneOtp(params: {
+  phone: string;
+  defaultCountryCode?: string;
+}): Promise<{ error: string | null; formattedPhone: string }> {
+  const supabase = getSupabase();
+  const formattedPhone = normalizePhoneNumber(params.phone.trim(), params.defaultCountryCode || "+56");
+
+  try {
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: formattedPhone,
+      options: {
+        channel: "sms",
+      },
+    });
+
+    if (error) {
+      let msg = error.message;
+      if (msg.includes("Phone provider") || msg.includes("disabled")) {
+        msg = "El servicio de SMS no está habilitado en este proyecto. Puedes ingresar utilizando tu Contraseña.";
+      } else if (msg.includes("rate limit") || msg.includes("too many requests")) {
+        msg = "Has solicitado demasiados códigos SMS. Por favor espera unos minutos antes de reintentar.";
+      }
+      return { error: msg, formattedPhone };
+    }
+
+    return { error: null, formattedPhone };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Error al solicitar código OTP por SMS.";
+    return { error: msg, formattedPhone };
+  }
+}
+
+// Verify Supabase Phone OTP Token
+export async function verifyPhoneOtp(params: {
+  phone: string;
+  token: string;
+  defaultCountryCode?: string;
+}): Promise<{ user: UserProfile | null; error: string | null }> {
+  const supabase = getSupabase();
+  const formattedPhone = normalizePhoneNumber(params.phone.trim(), params.defaultCountryCode || "+56");
+  const token = params.token.trim();
+
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({
+      phone: formattedPhone,
+      token,
+      type: "sms",
+    });
+
+    if (error) {
+      let msg = error.message;
+      if (msg.includes("Token is invalid") || msg.includes("expired") || msg.includes("invalid")) {
+        msg = "El código ingresado es incorrecto o ha expirado. Por favor solicita uno nuevo.";
+      }
+      return { user: null, error: msg };
+    }
+
+    if (data.user) {
+      const profile = mapSupabaseUserToProfile(data.user);
+      return { user: profile, error: null };
+    }
+
+    return { user: null, error: "No se pudo verificar el código SMS." };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Error al verificar código SMS.";
+    return { user: null, error: msg };
+  }
+}
+
 // Supabase Cloud OAuth Sign In
 export async function signInWithSupabaseOAuth(provider: "google" | "github"): Promise<{ error: string | null }> {
   const supabase = getSupabase();
@@ -257,6 +446,7 @@ export async function updateSupabaseUserProfile(params: {
   whatsappUpdates?: boolean;
   preferredInvoiceType?: "boleta" | "factura";
   hasBiometrics?: boolean;
+  avatarUrl?: string | null;
   newPassword?: string;
 }): Promise<{ user: UserProfile | null; error: string | null }> {
   const supabase = getSupabase();
@@ -279,6 +469,11 @@ export async function updateSupabaseUserProfile(params: {
         preferredInvoiceType: params.preferredInvoiceType || "boleta",
       },
     };
+
+    if (params.avatarUrl !== undefined) {
+      updatePayload.data.avatar_url = params.avatarUrl;
+      updatePayload.data.avatarUrl = params.avatarUrl;
+    }
 
     if (params.hasBiometrics !== undefined) {
       updatePayload.data.hasBiometrics = params.hasBiometrics;
@@ -309,6 +504,7 @@ export async function updateSupabaseUserProfile(params: {
           whatsapp_updates: params.whatsappUpdates ?? true,
           preferred_invoice_type: params.preferredInvoiceType || "boleta",
           has_biometrics: params.hasBiometrics ?? false,
+          ...(params.avatarUrl !== undefined ? { avatar_url: params.avatarUrl } : {}),
           updated_at: new Date().toISOString(),
         });
       } catch (profileErr) {

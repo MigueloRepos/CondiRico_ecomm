@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Package,
   Plus,
@@ -18,6 +18,9 @@ import {
   Layers,
   ArrowUpDown,
   Boxes,
+  Upload,
+  Image as ImageIcon,
+  Loader2,
 } from "lucide-react";
 import { Product, Category } from "@/types/database";
 import {
@@ -30,6 +33,7 @@ import {
   CreateProductInput,
 } from "@/services/admin/products";
 import { getAdminCategories } from "@/services/admin/categories";
+import { uploadProductImage } from "@/services";
 import { Button } from "@/components/ui/button";
 
 export interface AdminProductsViewProps {
@@ -77,9 +81,51 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Image Upload state
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [showManualUrlInput, setShowManualUrlInput] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleProcessImageFile = async (file: File) => {
+    setImageUploadError(null);
+    setIsUploadingImage(true);
+    try {
+      const res = await uploadProductImage(file);
+      if (res.error || !res.url) {
+        setImageUploadError(res.error || "No se pudo subir la imagen.");
+      } else {
+        setFormImageUrl(res.url);
+        showToast("Imagen subida y optimizada exitosamente.");
+      }
+    } catch (err) {
+      setImageUploadError(err instanceof Error ? err.message : "Error al subir imagen.");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await handleProcessImageFile(file);
+    }
+    if (e.target) e.target.value = "";
+  };
+
+  const handleImageDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await handleProcessImageFile(file);
+    }
   };
 
   const loadProducts = async () => {
@@ -758,33 +804,142 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
                 </div>
               </div>
 
-              {/* Image URL with live preview */}
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">URL de Imagen</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="url"
-                    value={formImageUrl}
-                    onChange={(e) => setFormImageUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="flex-1 h-10 rounded-xl bg-slate-800 border border-slate-700 px-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
-                  />
-                  {formImageUrl.trim() ? (
-                    <div className="size-10 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0">
-                      <img
-                        src={formImageUrl}
-                        alt="Vista previa"
-                        className="size-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = "none";
-                        }}
-                      />
-                    </div>
-                  ) : null}
+              {/* Product Image Upload & Preview Section */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-300">
+                    Imagen del Producto
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowManualUrlInput(!showManualUrlInput)}
+                    className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+                  >
+                    {showManualUrlInput ? "Ocultar URL manual" : "Ingresar URL manual"}
+                  </button>
                 </div>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Ingresa un enlace directo a la imagen del producto (JPG, PNG o WebP).
-                </p>
+
+                {/* Hidden file input */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageFileChange}
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                />
+
+                {/* Upload drag & drop zone */}
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDraggingOver(true);
+                  }}
+                  onDragLeave={() => setIsDraggingOver(false)}
+                  onDrop={handleImageDrop}
+                  onClick={() => {
+                    if (!isUploadingImage) {
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  className={`relative rounded-2xl border-2 border-dashed p-4 text-center transition-all cursor-pointer ${
+                    isDraggingOver
+                      ? "border-emerald-500 bg-emerald-500/10 scale-[1.01]"
+                      : formImageUrl
+                      ? "border-slate-700/80 bg-slate-800/40 hover:border-slate-600 hover:bg-slate-800/60"
+                      : "border-slate-700 bg-slate-800/30 hover:border-emerald-500/60 hover:bg-emerald-500/5"
+                  }`}
+                >
+                  {isUploadingImage ? (
+                    <div className="py-6 flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="size-8 text-emerald-400 animate-spin" />
+                      <p className="text-xs font-bold text-white">Subiendo y optimizando imagen...</p>
+                      <p className="text-[10px] text-slate-400">Comprimiendo a WebP de alta definición</p>
+                    </div>
+                  ) : formImageUrl ? (
+                    <div className="flex items-center gap-4 text-left">
+                      <div className="relative size-20 rounded-xl overflow-hidden bg-slate-900 border border-slate-700 shrink-0 shadow-md">
+                        <img
+                          src={formImageUrl}
+                          alt="Vista previa"
+                          className="size-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = "none";
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold mb-1">
+                          <Check className="size-3.5" />
+                          <span>Imagen cargada correctamente</span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 truncate font-mono">
+                          {formImageUrl.startsWith("data:") ? "Imagen local optimizada (WebP)" : formImageUrl}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              fileInputRef.current?.click();
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-bold flex items-center gap-1 transition-all"
+                          >
+                            <Upload className="size-3" />
+                            <span>Cambiar foto</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFormImageUrl("");
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[11px] font-bold flex items-center gap-1 transition-all"
+                          >
+                            <Trash2 className="size-3" />
+                            <span>Quitar</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-5 flex flex-col items-center justify-center gap-2">
+                      <div className="size-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 grid place-items-center text-emerald-400">
+                        <Upload className="size-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white">
+                          Haz clic para subir imagen o arrástrala aquí
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Soporta JPG, PNG, WebP o GIF (hasta 10 MB)
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {imageUploadError && (
+                  <p className="text-[11px] font-bold text-rose-400 flex items-center gap-1">
+                    <AlertTriangle className="size-3.5" />
+                    <span>{imageUploadError}</span>
+                  </p>
+                )}
+
+                {/* Optional manual URL input */}
+                {showManualUrlInput && (
+                  <div className="pt-2 animate-in fade-in">
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                      O pega una URL directa de imagen:
+                    </label>
+                    <input
+                      type="url"
+                      value={formImageUrl}
+                      onChange={(e) => setFormImageUrl(e.target.value)}
+                      placeholder="https://images.unsplash.com/photo-..."
+                      className="w-full h-9 rounded-xl bg-slate-800 border border-slate-700 px-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Rating and reviews */}

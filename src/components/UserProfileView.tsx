@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   User,
   Mail,
@@ -36,6 +36,9 @@ import {
   ChevronRight,
   Receipt,
   Heart,
+  Camera,
+  Upload,
+  Trash2,
 } from "lucide-react";
 import { UserProfile } from "@/lib/auth";
 import { updateSupabaseUserProfile, signOutSupabase } from "@/lib/supabase";
@@ -45,6 +48,7 @@ import {
   getCustomerPurchaseStats,
   CustomerPurchaseStats,
 } from "@/services/orders";
+import { uploadUserAvatar, updateProfile } from "@/services";
 import { Order } from "@/types/database";
 
 interface UserProfileViewProps {
@@ -93,11 +97,66 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  // Avatar upload state
+  const [avatarUrl, setAvatarUrl] = useState<string>(currentUser.avatarUrl || "");
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
   // States
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [biometricModalOpen, setBiometricModalOpen] = useState(false);
+
+  // Handle avatar upload
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAvatarError(null);
+    setIsUploadingAvatar(true);
+
+    try {
+      const res = await uploadUserAvatar(currentUser.id, file);
+      if (res.error || !res.url) {
+        setAvatarError(res.error || "No se pudo subir la foto.");
+      } else {
+        setAvatarUrl(res.url);
+        onUpdateUser({
+          ...currentUser,
+          avatarUrl: res.url,
+        });
+        setSaveSuccessMessage("¡Foto de perfil actualizada con éxito!");
+        setTimeout(() => setSaveSuccessMessage(null), 3500);
+      }
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : "Error al subir foto.");
+    } finally {
+      setIsUploadingAvatar(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  // Handle avatar deletion
+  const handleRemoveAvatar = async () => {
+    setIsUploadingAvatar(true);
+    setAvatarError(null);
+    try {
+      await updateProfile(currentUser.id, { avatar_url: null });
+      setAvatarUrl("");
+      onUpdateUser({
+        ...currentUser,
+        avatarUrl: null,
+      });
+      setSaveSuccessMessage("Foto de perfil eliminada.");
+      setTimeout(() => setSaveSuccessMessage(null), 3000);
+    } catch (err) {
+      setAvatarError("No se pudo eliminar la foto.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   // Fetch purchase stats from Supabase
   const loadPurchaseStats = async () => {
@@ -296,15 +355,57 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
 
           {/* Profile Header Badge */}
           <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-white/60">
+            {/* Hidden avatar file input */}
+            <input
+              type="file"
+              ref={avatarInputRef}
+              onChange={handleAvatarFileChange}
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+            />
+
             <div className="flex items-center gap-3.5">
-              <div className="relative">
-                <div className="grid size-14 sm:size-16 place-items-center rounded-2xl bg-gradient-to-tr from-primary to-emerald-400 text-white font-black text-xl shadow-md border-2 border-white">
-                  {userInitials}
+              <div
+                className="relative group cursor-pointer"
+                onClick={() => avatarInputRef.current?.click()}
+                title="Haz clic para subir o cambiar tu foto de perfil"
+              >
+                <div className="grid size-14 sm:size-16 place-items-center rounded-2xl bg-gradient-to-tr from-primary to-emerald-400 text-white font-black text-xl shadow-md border-2 border-white overflow-hidden relative">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={name || "Foto de perfil"}
+                      className="size-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    userInitials
+                  )}
+
+                  {/* Hover Camera Overlay */}
+                  <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity">
+                    <Camera className="size-4" />
+                    <span className="text-[8px] font-black uppercase mt-0.5">Subir</span>
+                  </div>
+
+                  {/* Uploading Spinner */}
+                  {isUploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white">
+                      <Loader2 className="size-5 animate-spin text-emerald-400" />
+                    </div>
+                  )}
                 </div>
-                <span className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full bg-emerald-500 text-white ring-2 ring-white">
-                  <ShieldCheck className="size-3" />
+
+                <span
+                  className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full bg-emerald-600 text-white ring-2 ring-white shadow-xs group-hover:scale-110 transition-transform"
+                  title="Cambiar foto de perfil"
+                >
+                  <Camera className="size-2.5" />
                 </span>
               </div>
+
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl sm:text-2xl font-black text-brand-deep">
@@ -315,10 +416,21 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                     Cliente CondiRico
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                  <Mail className="size-3.5 text-muted-foreground" />
-                  <span>{currentUser.email}</span>
-                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Mail className="size-3.5 text-muted-foreground" />
+                    <span>{currentUser.email}</span>
+                  </p>
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveAvatar}
+                      className="text-[10px] text-rose-600 hover:underline font-bold ml-1 cursor-pointer"
+                    >
+                      (Quitar foto)
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -629,6 +741,68 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
           {/* TAB 2: DATOS PERSONALES Y ENTREGA */}
           {activeTab === "datos" && (
             <form onSubmit={handleSaveChanges} className="mt-6 space-y-6 animate-in fade-in duration-200">
+              {/* SECCIÓN FOTO DE PERFIL */}
+              <div className="p-4 sm:p-5 rounded-3xl bg-white/70 border border-white/90 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="relative size-16 rounded-2xl overflow-hidden bg-gradient-to-tr from-primary to-emerald-400 text-white font-black text-xl grid place-items-center border-2 border-white shadow-sm shrink-0">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt="Foto de perfil"
+                          className="size-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        userInitials
+                      )}
+                      {isUploadingAvatar && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white">
+                          <Loader2 className="size-5 animate-spin text-emerald-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-brand-deep">Foto de Perfil</h4>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Sube una foto clara para personalizar tu cuenta en CondiRico (JPG, PNG, WebP hasta 5 MB).
+                      </p>
+                      {avatarError && (
+                        <p className="text-[10px] font-bold text-rose-600 mt-1 flex items-center gap-1">
+                          <AlertCircle className="size-3" />
+                          <span>{avatarError}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-start sm:self-center">
+                    <button
+                      type="button"
+                      disabled={isUploadingAvatar}
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1.5 shadow-xs hover:bg-primary/90 active:scale-95 transition-all cursor-pointer disabled:opacity-60"
+                    >
+                      <Upload className="size-3.5" />
+                      <span>{avatarUrl ? "Cambiar foto" : "Subir foto"}</span>
+                    </button>
+                    {avatarUrl && (
+                      <button
+                        type="button"
+                        disabled={isUploadingAvatar}
+                        onClick={handleRemoveAvatar}
+                        className="px-3 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-60"
+                      >
+                        <Trash2 className="size-3.5" />
+                        <span>Quitar</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* SECCIÓN 1: DATOS PERSONALES */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">

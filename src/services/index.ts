@@ -6,3 +6,4 @@ export * from "./profiles";
 export * from "./orders";
 export * from "./newsletter";
 export * from "./contact";
+export * from "./storage";

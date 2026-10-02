@@ -18,6 +18,7 @@ export interface UserProfile {
   address?: string;
   hasBiometrics: boolean;
   biometricCredentialId?: string;
+  avatarUrl?: string | null;
   createdAt: string;
   preferences?: UserPreferences;
   role?: "customer" | "user" | "admin" | string;

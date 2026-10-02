@@ -285,6 +285,9 @@ function AppContent() {
         const profile = mapSupabaseUserToProfile(session.user);
         try {
           const dbProfile = await getProfile(session.user.id);
+          if (dbProfile?.avatar_url) {
+            profile.avatarUrl = dbProfile.avatar_url;
+          }
           if (dbProfile?.role) {
             profile.role = dbProfile.role;
           } else {
@@ -315,6 +318,9 @@ function AppContent() {
           const profile = mapSupabaseUserToProfile(session.user);
           try {
             const dbProfile = await getProfile(session.user.id);
+            if (dbProfile?.avatar_url) {
+              profile.avatarUrl = dbProfile.avatar_url;
+            }
             if (dbProfile?.role) {
               profile.role = dbProfile.role;
             } else {
@@ -939,8 +945,12 @@ function AppContent() {
                   className="flex items-center gap-2 rounded-full border border-emerald-300/80 bg-emerald-50/90 pl-1.5 pr-2.5 sm:pr-3 py-1 text-xs font-bold text-emerald-950 shadow-xs backdrop-blur-md transition-all hover:bg-emerald-100/90 active:scale-95"
                   aria-label="Abrir menú de usuario"
                 >
-                  <div className="grid size-7 place-items-center rounded-full bg-emerald-600 text-white font-black text-xs shadow-xs">
-                    {currentUser.name.charAt(0).toUpperCase()}
+                  <div className="grid size-7 place-items-center rounded-full bg-emerald-600 text-white font-black text-xs shadow-xs overflow-hidden shrink-0">
+                    {currentUser.avatarUrl ? (
+                      <img src={currentUser.avatarUrl} alt={currentUser.name} className="size-full object-cover" />
+                    ) : (
+                      currentUser.name.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <span className="hidden sm:inline max-w-[85px] truncate">{currentUser.name}</span>
                   {currentUser.hasBiometrics && (
@@ -1040,8 +1050,14 @@ function AppContent() {
               {/* Account Quick Card */}
               <div className="p-3.5 rounded-2xl liquid-glass-card border border-white/80 flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
-                  <div className="grid size-10 place-items-center rounded-xl bg-emerald-100 text-emerald-800 font-bold text-sm">
-                    {currentUser ? currentUser.name.charAt(0).toUpperCase() : <UserIcon className="size-5" />}
+                  <div className="grid size-10 place-items-center rounded-xl bg-emerald-100 text-emerald-800 font-bold text-sm overflow-hidden shrink-0">
+                    {currentUser?.avatarUrl ? (
+                      <img src={currentUser.avatarUrl} alt={currentUser.name} className="size-full object-cover" />
+                    ) : currentUser ? (
+                      currentUser.name.charAt(0).toUpperCase()
+                    ) : (
+                      <UserIcon className="size-5" />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-black text-foreground truncate max-w-[150px]">

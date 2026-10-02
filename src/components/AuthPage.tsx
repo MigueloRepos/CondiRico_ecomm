@@ -25,16 +25,34 @@ import {
 } from "@/lib/auth";
 import {
   signInWithSupabase,
+  signInWithPhonePassword,
+  signInWithPhoneOtp,
   signUpWithSupabase,
   signInWithSupabaseOAuth,
   getSupabaseConfig,
+  normalizePhoneNumber,
 } from "@/lib/supabase";
 import { BiometricFingerprintModal } from "@/components/BiometricFingerprintModal";
 import { SupabaseConfigModal } from "@/components/SupabaseConfigModal";
 import { EmailConfirmationModal } from "@/components/EmailConfirmationModal";
+import { PhoneOtpModal } from "@/components/PhoneOtpModal";
 import { UserProfileView } from "@/components/UserProfileView";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
 import { getProfile, checkIsAdmin } from "@/services";
+
+const COUNTRY_CODES = [
+  { code: "+56", country: "Chile", flag: "🇨🇱" },
+  { code: "+58", country: "Venezuela", flag: "🇻🇪" },
+  { code: "+57", country: "Colombia", flag: "🇨🇴" },
+  { code: "+51", country: "Perú", flag: "🇵🇪" },
+  { code: "+54", country: "Argentina", flag: "🇦🇷" },
+  { code: "+52", country: "México", flag: "🇲🇽" },
+  { code: "+1", country: "EE.UU. / Canadá", flag: "🇺🇸" },
+  { code: "+34", country: "España", flag: "🇪🇸" },
+  { code: "+593", country: "Ecuador", flag: "🇪🇨" },
+  { code: "+591", country: "Bolivia", flag: "🇧🇴" },
+  { code: "+507", country: "Panamá", flag: "🇵🇦" },
+];
 
 interface AuthPageProps {
   onSuccessAuth: (user: UserProfile) => void;
@@ -56,9 +74,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [tab, setTab] = useState<"login" | "register">("login");
 
   // Login form state
+  const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
   const [loginEmail, setLoginEmail] = useState("");
+  const [loginPhone, setLoginPhone] = useState("");
+  const [loginCountryCode, setLoginCountryCode] = useState("+56");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+
+  // Phone OTP state
+  const [phoneOtpModalOpen, setPhoneOtpModalOpen] = useState(false);
+  const [isSendingPhoneOtp, setIsSendingPhoneOtp] = useState(false);
 
   // Register form state
   const [registerName, setRegisterName] = useState("");
@@ -93,7 +118,37 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const bioKeyInfo = getBiometricKeyInfo();
   const sbConfig = getSupabaseConfig();
 
-  // Submit Login with Supabase Cloud Authentication
+  // Common finalize login flow: fetch profile role, setup biometrics or redirect
+  const finalizeLogin = async (user: UserProfile) => {
+    try {
+      const dbProfile = await getProfile(user.id);
+      if (dbProfile?.role) {
+        user.role = dbProfile.role;
+      } else {
+        const isAdmin = await checkIsAdmin(user.id);
+        if (isAdmin) user.role = "admin";
+        else user.role = "customer";
+      }
+    } catch (err) {
+      console.warn("[AuthPage] Failed to fetch role:", err);
+    }
+
+    setIsSubmitting(false);
+
+    if (!user.hasBiometrics && !deviceHasBiometric) {
+      setPendingUserForBio(user);
+      setBiometricMode("register");
+      setBiometricModalOpen(true);
+    } else {
+      const destName = user.role === "admin" ? "Panel Administrativo (/admin)" : "Catálogo y Perfil de Cliente";
+      setFeedbackSuccess(`¡Bienvenido de vuelta, ${user.name}! Redirigiendo a ${destName}...`);
+      setTimeout(() => {
+        onSuccessAuth(user);
+      }, 600);
+    }
+  };
+
+  // Submit Login with Email & Password
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
@@ -115,33 +170,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       });
 
       if (sbUser) {
-        // Fetch user role from Supabase public.profiles
-        try {
-          const dbProfile = await getProfile(sbUser.id);
-          if (dbProfile?.role) {
-            sbUser.role = dbProfile.role;
-          } else {
-            const isAdmin = await checkIsAdmin(sbUser.id);
-            if (isAdmin) sbUser.role = "admin";
-            else sbUser.role = "customer";
-          }
-        } catch (err) {
-          console.warn("[AuthPage] Failed to fetch role:", err);
-        }
-
-        setIsSubmitting(false);
-
-        if (!sbUser.hasBiometrics && !deviceHasBiometric) {
-          setPendingUserForBio(sbUser);
-          setBiometricMode("register");
-          setBiometricModalOpen(true);
-        } else {
-          const destName = sbUser.role === "admin" ? "Panel Administrativo (/admin)" : "Catálogo y Perfil de Cliente";
-          setFeedbackSuccess(`¡Bienvenido de vuelta, ${sbUser.name}! Redirigiendo a ${destName}...`);
-          setTimeout(() => {
-            onSuccessAuth(sbUser);
-          }, 600);
-        }
+        await finalizeLogin(sbUser);
         return;
       }
 
@@ -164,6 +193,74 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       setIsSubmitting(false);
       setLoginError(err instanceof Error ? err.message : "Error al conectar con Supabase");
     }
+  };
+
+  // Submit Login with Phone & Password
+  const handlePhoneLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError("");
+
+    if (!loginPhone.trim() || !loginPassword.trim()) {
+      setLoginError("Por favor ingresa tu número de teléfono y contraseña.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { user: sbUser, error: sbError } = await signInWithPhonePassword({
+        phone: loginPhone.trim(),
+        password: loginPassword,
+        defaultCountryCode: loginCountryCode,
+      });
+
+      if (sbUser) {
+        await finalizeLogin(sbUser);
+        return;
+      }
+
+      setIsSubmitting(false);
+      setLoginError(sbError || "No se pudo iniciar sesión con este número de teléfono.");
+    } catch (err: unknown) {
+      setIsSubmitting(false);
+      setLoginError(err instanceof Error ? err.message : "Error al iniciar sesión con teléfono.");
+    }
+  };
+
+  // Request Phone SMS OTP verification code
+  const handleRequestPhoneOtp = async () => {
+    setLoginError("");
+    if (!loginPhone.trim()) {
+      setLoginError("Por favor ingresa tu número de teléfono antes de solicitar el código SMS.");
+      return;
+    }
+
+    setIsSendingPhoneOtp(true);
+
+    try {
+      const { error: otpErr } = await signInWithPhoneOtp({
+        phone: loginPhone.trim(),
+        defaultCountryCode: loginCountryCode,
+      });
+
+      setIsSendingPhoneOtp(false);
+
+      if (otpErr) {
+        setLoginError(otpErr);
+        return;
+      }
+
+      setPhoneOtpModalOpen(true);
+    } catch (err: unknown) {
+      setIsSendingPhoneOtp(false);
+      setLoginError(err instanceof Error ? err.message : "Error al solicitar código OTP por SMS.");
+    }
+  };
+
+  // Handle successful Phone OTP verification
+  const handlePhoneOtpSuccess = async (verifiedUser: UserProfile) => {
+    setPhoneOtpModalOpen(false);
+    await finalizeLogin(verifiedUser);
   };
 
   // Submit Register with Supabase Cloud & trigger confirmation link
@@ -439,8 +536,41 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           )}
 
           {tab === "login" ? (
-            /* Login Form */
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div className="space-y-4">
+              {/* Sub-tab: Correo vs Teléfono */}
+              <div className="flex p-1 rounded-2xl bg-muted/50 border border-white/80 gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginMethod("email");
+                    setLoginError("");
+                  }}
+                  className={`flex-1 py-2 text-xs font-black rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    loginMethod === "email"
+                      ? "bg-white text-brand-deep shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Mail className="size-3.5" />
+                  <span>Correo Electrónico</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginMethod("phone");
+                    setLoginError("");
+                  }}
+                  className={`flex-1 py-2 text-xs font-black rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    loginMethod === "phone"
+                      ? "bg-white text-brand-deep shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Phone className="size-3.5 text-primary" />
+                  <span>Número de Teléfono</span>
+                </button>
+              </div>
+
               {loginError && (
                 <div className="rounded-2xl bg-rose-50 border border-rose-300 p-3 text-xs font-bold text-rose-800 flex items-start gap-2 animate-in fade-in">
                   <AlertCircle className="size-4 text-rose-600 shrink-0 mt-0.5" />
@@ -448,64 +578,178 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-black text-foreground mb-1.5">
-                  Correo Electrónico
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                  <input
-                    type="email"
-                    required
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="tu.correo@ejemplo.com"
-                    className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
-                  />
-                </div>
-              </div>
+              {loginMethod === "email" ? (
+                /* Login with Email Form */
+                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-black text-foreground mb-1.5">
+                      Correo Electrónico
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                      <input
+                        type="email"
+                        required
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        placeholder="tu.correo@ejemplo.com"
+                        className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-black text-foreground mb-1.5">
-                  Contraseña
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                  <input
-                    type="password"
-                    required
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
-                  />
-                </div>
-              </div>
+                  <div>
+                    <label className="block text-xs font-black text-foreground mb-1.5">
+                      Contraseña
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                      <input
+                        type="password"
+                        required
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
+                      />
+                    </div>
+                  </div>
 
-              <div className="flex items-center justify-end text-xs pt-1">
-                <span className="text-[11px] text-muted-foreground">
-                  Garantía de compra segura SSL
-                </span>
-              </div>
+                  <div className="flex items-center justify-end text-xs pt-1">
+                    <span className="text-[11px] text-muted-foreground">
+                      Garantía de compra segura SSL
+                    </span>
+                  </div>
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-lg shadow-primary/25 liquid-glass-button active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    <span>Iniciando sesión...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Acceder a mi cuenta</span>
-                    <ArrowRight className="size-4" />
-                  </>
-                )}
-              </button>
-            </form>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-lg shadow-primary/25 liquid-glass-button active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        <span>Iniciando sesión...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Acceder a mi cuenta</span>
+                        <ArrowRight className="size-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              ) : (
+                /* Login with Phone Form */
+                <form onSubmit={handlePhoneLoginSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-black text-foreground mb-1.5">
+                      Número de Teléfono / Celular
+                    </label>
+                    <div className="flex gap-2">
+                      {/* Country code selector */}
+                      <div className="relative w-32 shrink-0">
+                        <select
+                          value={loginCountryCode}
+                          onChange={(e) => setLoginCountryCode(e.target.value)}
+                          className="w-full h-11 px-2.5 rounded-2xl border border-white/80 bg-white/80 text-xs font-bold text-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner cursor-pointer"
+                        >
+                          {COUNTRY_CODES.map((c) => (
+                            <option key={c.code} value={c.code}>
+                              {c.flag} {c.code}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Phone number digits */}
+                      <div className="relative flex-1">
+                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                        <input
+                          type="tel"
+                          required
+                          value={loginPhone}
+                          onChange={(e) => setLoginPhone(e.target.value)}
+                          placeholder="9 1234 5678"
+                          className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
+                        />
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground mt-1 block">
+                      Ingresa tu número con o sin código de país (ej. 987654321)
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-black text-foreground mb-1.5">
+                      Contraseña
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                      <input
+                        type="password"
+                        required
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full h-11 pl-10 pr-3 rounded-2xl border border-white/80 bg-white/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-extrabold text-sm shadow-lg shadow-primary/25 liquid-glass-button active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        <span>Verificando datos...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Iniciar Sesión con Teléfono</span>
+                        <ArrowRight className="size-4" />
+                      </>
+                    )}
+                  </button>
+
+                  {/* SMS OTP alternative button */}
+                  <div className="pt-2">
+                    <div className="relative my-2">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-white/60" />
+                      </div>
+                      <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+                        <span className="bg-white/80 px-2 rounded-full backdrop-blur-xs">
+                          o sin contraseña
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleRequestPhoneOtp}
+                      disabled={isSendingPhoneOtp || !loginPhone.trim()}
+                      className="w-full h-11 rounded-2xl border border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary text-xs font-bold flex items-center justify-center gap-2 active:scale-98 transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      {isSendingPhoneOtp ? (
+                        <>
+                          <Loader2 className="size-3.5 animate-spin" />
+                          <span>Enviando código SMS...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="size-3.5 text-amber-500" />
+                          <span>Recibir código de acceso por SMS / WhatsApp</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           ) : (
             /* Register Form */
             <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
@@ -712,6 +956,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         phone={otpPendingPhone}
         address={otpPendingAddress}
         onSuccess={handleOtpSuccess}
+      />
+
+      {/* Phone SMS OTP Verification Modal */}
+      <PhoneOtpModal
+        isOpen={phoneOtpModalOpen}
+        onClose={() => setPhoneOtpModalOpen(false)}
+        phone={loginPhone}
+        countryCode={loginCountryCode}
+        onSuccess={handlePhoneOtpSuccess}
       />
     </div>
   );

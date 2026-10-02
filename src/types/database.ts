@@ -55,6 +55,7 @@ export interface Profile {
   whatsapp_updates: boolean;
   preferred_invoice_type: PreferredInvoiceType | string;
   has_biometrics: boolean;
+  avatar_url?: string | null;
   role: UserRole | string;
   created_at?: string;
   updated_at?: string;
