@@ -85,7 +85,7 @@ export async function getAdminProducts(options?: {
   }
 }
 
-function generateSlug(text: string): string {
+export function generateSlug(text: string): string {
   return text
     .toLowerCase()
     .normalize("NFD")
@@ -98,65 +98,125 @@ export async function createAdminProduct(
   input: CreateProductInput
 ): Promise<{ success: boolean; product?: Product; error?: string }> {
   try {
-    if (!input.name.trim()) {
+    if (!input.name || !input.name.trim()) {
       return { success: false, error: "El nombre del producto es obligatorio." };
     }
-    if (input.price < 0) {
+    if (input.price === undefined || input.price < 0) {
       return { success: false, error: "El precio no puede ser negativo." };
     }
-    if (input.stock < 0) {
+    if (input.stock === undefined || input.stock < 0) {
       return { success: false, error: "El inventario inicial no puede ser negativo." };
     }
     const rating = input.rating !== undefined ? Math.max(0, Math.min(5, input.rating)) : 5.0;
 
-    const slug = input.slug?.trim() || generateSlug(input.name);
+    // 1. Ensure category exists in public.categories to avoid foreign key restriction
+    let categoryId = input.category_id ? input.category_id.trim() : "alimentos";
+    if (categoryId) {
+      try {
+        const { data: existingCat } = await supabase
+          .from("categories")
+          .select("id")
+          .eq("id", categoryId)
+          .maybeSingle();
 
-    const payload = {
+        if (!existingCat) {
+          // Auto-provision category if not in database yet
+          const catName = categoryId.charAt(0).toUpperCase() + categoryId.slice(1).replace(/-/g, " ");
+          await supabase.from("categories").insert({
+            id: categoryId,
+            name: catName,
+            short_name: catName,
+            is_active: true,
+            sort_order: 10,
+          });
+        }
+      } catch (catCheckErr) {
+        console.warn("[createAdminProduct] Category check notice:", catCheckErr);
+      }
+    }
+
+    // 2. Generate slug safely and handle uniqueness
+    let baseSlug = input.slug?.trim() || generateSlug(input.name);
+    if (!baseSlug) baseSlug = `producto-${Date.now().toString().slice(-6)}`;
+
+    // Prepare payload
+    const buildPayload = (slugToUse: string) => ({
       name: input.name.trim(),
-      slug,
+      slug: slugToUse,
       detail: input.detail?.trim() || "",
       price: Number(input.price),
       old_price: input.old_price ? Number(input.old_price) : null,
-      category_id: input.category_id,
+      category_id: categoryId,
       badge: input.badge?.trim() || null,
-      unit: input.unit.trim() || "unidad",
+      unit: input.unit?.trim() || "unidad",
       rating,
-      reviews: input.reviews !== undefined ? input.reviews : 0,
+      reviews: input.reviews !== undefined ? Number(input.reviews) : 0,
       is_popular: Boolean(input.is_popular),
       is_featured: Boolean(input.is_featured),
       stock: Number(input.stock),
-      is_active: input.is_active !== undefined ? input.is_active : true,
+      is_active: input.is_active !== undefined ? Boolean(input.is_active) : true,
       image_url: input.image_url?.trim() || null,
-    };
+    });
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("products")
-      .insert(payload)
+      .insert(buildPayload(baseSlug))
       .select()
       .single();
 
-    if (error || !data) {
-      console.error("[createAdminProduct] Error:", error);
-      return { success: false, error: error?.message || "Error al crear producto." };
+    // If duplicate slug constraint occurred, retry with unique suffix
+    if (error && (error.code === "23505" || error.message?.includes("unique") || error.message?.includes("slug"))) {
+      const uniqueSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
+      const retryResult = await supabase
+        .from("products")
+        .insert(buildPayload(uniqueSlug))
+        .select()
+        .single();
+
+      data = retryResult.data;
+      error = retryResult.error;
     }
 
-    await logAdminActivity(
-      "PRODUCT_CREATED",
-      "products",
-      data.id,
-      `Producto creado: ${data.name} ($${data.price})`,
-      { stock: data.stock, category: data.category_id }
-    );
+    if (error || !data) {
+      console.error("[createAdminProduct] Supabase Error:", error);
+      let userFriendlyError = error?.message || "Error al registrar producto en Supabase.";
 
+      if (error?.code === "42501" || error?.message?.includes("row-level security")) {
+        userFriendlyError = "Permiso denegado por políticas de Supabase. Concede el rol 'admin' en la tabla public.profiles a tu cuenta.";
+      } else if (error?.code === "23503" || error?.message?.includes("foreign key")) {
+        userFriendlyError = `La categoría "${categoryId}" no existe en la base de datos de Supabase. Por favor selecciónala de la lista o créala primero.`;
+      }
+
+      return { success: false, error: userFriendlyError };
+    }
+
+    // 3. Non-blocking activity log
+    try {
+      await logAdminActivity(
+        "PRODUCT_CREATED",
+        "products",
+        data.id,
+        `Producto creado: ${data.name} ($${data.price})`,
+        { stock: data.stock, category: data.category_id }
+      );
+    } catch (logErr) {
+      console.warn("[createAdminProduct] Activity log notice:", logErr);
+    }
+
+    // 4. Non-blocking stock movement record
     if (data.stock > 0) {
-      await recordStockMovement({
-        product_id: data.id,
-        movement_type: "entrada",
-        quantity: data.stock,
-        previous_stock: 0,
-        new_stock: data.stock,
-        reason: "Inventario inicial al crear producto",
-      });
+      try {
+        await recordStockMovement({
+          product_id: data.id,
+          movement_type: "entrada",
+          quantity: data.stock,
+          previous_stock: 0,
+          new_stock: data.stock,
+          reason: "Inventario inicial al crear producto",
+        });
+      } catch (stockErr) {
+        console.warn("[createAdminProduct] Stock movement notice:", stockErr);
+      }
     }
 
     return { success: true, product: data };

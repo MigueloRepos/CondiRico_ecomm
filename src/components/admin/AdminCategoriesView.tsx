@@ -100,8 +100,9 @@ export const AdminCategoriesView: React.FC = () => {
       return;
     }
 
-    if (!editingCategory && !formId.trim()) {
-      setFormError("El ID identificador (slug) es obligatorio.");
+    const cleanId = formId.trim() || formName.trim().toLowerCase().replace(/[^a-z0-9]/g, "-");
+    if (!editingCategory && !cleanId) {
+      setFormError("El ID identificador (slug) no pudo generarse.");
       return;
     }
 
@@ -125,7 +126,7 @@ export const AdminCategoriesView: React.FC = () => {
         }
       } else {
         const res = await createCategory({
-          id: formId,
+          id: cleanId,
           name: formName,
           short_name: formShortName,
           description: formDescription,

@@ -32,7 +32,7 @@ import {
   updateProductStockQuick,
   CreateProductInput,
 } from "@/services/admin/products";
-import { getAdminCategories } from "@/services/admin/categories";
+import { getAdminCategories, createCategory } from "@/services/admin/categories";
 import { uploadProductImage } from "@/services";
 import { Button } from "@/components/ui/button";
 
@@ -87,10 +87,39 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
   const [showManualUrlInput, setShowManualUrlInput] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isQuickCategoryOpen, setIsQuickCategoryOpen] = useState(false);
+  const [quickCategoryName, setQuickCategoryName] = useState("");
+  const [isCreatingQuickCategory, setIsCreatingQuickCategory] = useState(false);
+  const [quickCategoryError, setQuickCategoryError] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleQuickCreateCategory = async () => {
+    if (!quickCategoryName.trim()) return;
+    setIsCreatingQuickCategory(true);
+    setQuickCategoryError(null);
+    try {
+      const res = await createCategory({
+        name: quickCategoryName.trim(),
+      });
+      if (res.success && res.category) {
+        const updatedCats = await getAdminCategories();
+        setCategories(updatedCats);
+        setFormCategory(res.category.id);
+        setQuickCategoryName("");
+        setIsQuickCategoryOpen(false);
+        showToast(`Categoría "${res.category.name}" creada e integrada.`);
+      } else {
+        setQuickCategoryError(res.error || "No se pudo crear la categoría.");
+      }
+    } catch (err: unknown) {
+      setQuickCategoryError(err instanceof Error ? err.message : "Error inesperado al crear categoría.");
+    } finally {
+      setIsCreatingQuickCategory(false);
+    }
   };
 
   const handleProcessImageFile = async (file: File) => {
@@ -765,18 +794,65 @@ export const AdminProductsView: React.FC<AdminProductsViewProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* Category */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Categoría *</label>
-                  <select
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full h-10 rounded-xl bg-slate-800 border border-slate-700 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-300">Categoría *</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickCategoryOpen(!isQuickCategoryOpen)}
+                      className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
+                    >
+                      <Plus className="size-3" />
+                      {isQuickCategoryOpen ? "Cerrar" : "Nueva"}
+                    </button>
+                  </div>
+
+                  {isQuickCategoryOpen ? (
+                    <div className="space-y-1.5 p-2 rounded-xl bg-slate-800/90 border border-emerald-500/50 shadow-inner">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={quickCategoryName}
+                          onChange={(e) => setQuickCategoryName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleQuickCreateCategory();
+                            }
+                          }}
+                          placeholder="Nombre nueva categoría..."
+                          className="flex-1 h-8 rounded-lg bg-slate-900 border border-slate-700 px-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                        <button
+                          type="button"
+                          disabled={isCreatingQuickCategory || !quickCategoryName.trim()}
+                          onClick={handleQuickCreateCategory}
+                          className="h-8 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-xs font-bold text-white transition-colors flex items-center gap-1"
+                        >
+                          {isCreatingQuickCategory ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : (
+                            <Check className="size-3" />
+                          )}
+                          Crear
+                        </button>
+                      </div>
+                      {quickCategoryError && (
+                        <p className="text-[10px] text-rose-400 font-medium px-1">{quickCategoryError}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <select
+                      value={formCategory}
+                      onChange={(e) => setFormCategory(e.target.value)}
+                      className="w-full h-10 rounded-xl bg-slate-800 border border-slate-700 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                    >
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* Unit */}

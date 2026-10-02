@@ -40,8 +40,19 @@ export async function getAdminCategories(): Promise<AdminCategoryWithCount[]> {
   }
 }
 
+export function formatCategoryId(nameOrId: string): string {
+  return nameOrId
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9_-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 export async function createCategory(input: {
-  id: string;
+  id?: string;
   name: string;
   short_name?: string;
   description?: string;
@@ -49,12 +60,19 @@ export async function createCategory(input: {
   is_active?: boolean;
 }): Promise<{ success: boolean; category?: Category; error?: string }> {
   try {
-    if (!input.id.trim() || !input.name.trim()) {
-      return { success: false, error: "El ID y el Nombre de la categoría son obligatorios." };
+    if (!input.name || !input.name.trim()) {
+      return { success: false, error: "El Nombre de la categoría es obligatorio." };
+    }
+
+    const rawId = input.id && input.id.trim() ? input.id : input.name;
+    const cleanId = formatCategoryId(rawId);
+
+    if (!cleanId) {
+      return { success: false, error: "El identificador (ID) de la categoría no es válido." };
     }
 
     const payload = {
-      id: input.id.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-"),
+      id: cleanId,
       name: input.name.trim(),
       short_name: input.short_name?.trim() || input.name.trim(),
       description: input.description?.trim() || null,
@@ -69,10 +87,24 @@ export async function createCategory(input: {
       .single();
 
     if (error || !data) {
-      return { success: false, error: error?.message || "Error al crear categoría." };
+      console.error("[createCategory] Supabase Error:", error);
+      let userFriendlyError = error?.message || "Error al crear la categoría en Supabase.";
+
+      if (error?.code === "42501" || error?.message?.includes("row-level security")) {
+        userFriendlyError = "Permiso denegado por políticas de Supabase. Concede el rol 'admin' a tu usuario en la tabla public.profiles o inicia sesión como administrador.";
+      } else if (error?.code === "23505" || error?.message?.includes("unique") || error?.message?.includes("already exists")) {
+        userFriendlyError = `Ya existe una categoría registrada con el identificador "${cleanId}". Elige un nombre o ID diferente.`;
+      }
+
+      return { success: false, error: userFriendlyError };
     }
 
-    await logAdminActivity("CATEGORY_CREATED", "categories", data.id, `Categoría creada: ${data.name}`);
+    try {
+      await logAdminActivity("CATEGORY_CREATED", "categories", data.id, `Categoría creada: ${data.name}`);
+    } catch (logErr) {
+      console.warn("[createCategory] Notice logging activity:", logErr);
+    }
+
     return { success: true, category: data };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Error inesperado al crear categoría.";
@@ -109,10 +141,20 @@ export async function updateCategory(
       .single();
 
     if (error || !data) {
-      return { success: false, error: error?.message || "Error al actualizar categoría." };
+      console.error("[updateCategory] Supabase Error:", error);
+      let userFriendlyError = error?.message || "Error al actualizar categoría.";
+      if (error?.code === "42501" || error?.message?.includes("row-level security")) {
+        userFriendlyError = "Permiso denegado por Supabase. Se requiere rol de administrador verificado en public.profiles.";
+      }
+      return { success: false, error: userFriendlyError };
     }
 
-    await logAdminActivity("CATEGORY_UPDATED", "categories", id, `Categoría actualizada: ${data.name}`);
+    try {
+      await logAdminActivity("CATEGORY_UPDATED", "categories", id, `Categoría actualizada: ${data.name}`);
+    } catch (logErr) {
+      console.warn("[updateCategory] Notice logging activity:", logErr);
+    }
+
     return { success: true, category: data };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Error inesperado al actualizar categoría.";
