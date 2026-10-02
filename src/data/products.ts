@@ -29,6 +29,8 @@ export interface ProductItem {
   imageUrl?: string | null;
   stockQuantity?: number;
   stock?: number;
+  salesCount?: number;
+  unitsSold?: number;
 }
 
 export const CATEGORIES: CategoryInfo[] = [

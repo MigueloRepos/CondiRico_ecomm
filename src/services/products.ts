@@ -16,6 +16,10 @@ const SPRITE_POSITIONS: Record<number, string> = {
  * Maps a database Product record to the frontend ProductItem interface
  */
 export function mapProductFromDatabase(dbProduct: Product): ProductItem {
+  const unitsSold = dbProduct.units_sold !== undefined && dbProduct.units_sold !== null
+    ? Number(dbProduct.units_sold)
+    : (dbProduct.sales_count !== undefined && dbProduct.sales_count !== null ? Number(dbProduct.sales_count) : 0);
+
   return {
     id: dbProduct.id,
     name: dbProduct.name,
@@ -35,6 +39,8 @@ export function mapProductFromDatabase(dbProduct: Product): ProductItem {
       ? Number(dbProduct.stock_quantity)
       : (dbProduct.stock !== undefined ? Number(dbProduct.stock) : 12),
     stock: dbProduct.stock !== undefined ? Number(dbProduct.stock) : 12,
+    salesCount: Number(dbProduct.sales_count || unitsSold || 0),
+    unitsSold: unitsSold,
   };
 }
 
@@ -229,4 +235,79 @@ export async function getProductById(id: number): Promise<Product | null> {
     console.error("[getProductById] Unexpected error:", err);
     return null;
   }
+}
+
+/**
+ * Authoritative fetch for top-selling products directly from Supabase product_sales and products table
+ */
+export async function getTopSellingProducts(limit = 5): Promise<Product[]> {
+  try {
+    // 1. Try querying the dedicated Supabase v_top_selling_products view
+    const { data: viewData, error: viewError } = await supabase
+      .from("v_top_selling_products")
+      .select(`
+        *,
+        categories (
+          id,
+          name,
+          short_name
+        )
+      `)
+      .limit(limit);
+
+    if (!viewError && viewData && viewData.length > 0) {
+      return viewData;
+    }
+  } catch (err) {
+    console.warn("[getTopSellingProducts] View query notice:", err);
+  }
+
+  // 2. Direct Supabase query joining products with product_sales table or sales_count
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select(`
+        *,
+        product_sales (
+          units_sold,
+          order_count,
+          total_revenue
+        ),
+        categories (
+          id,
+          name,
+          short_name
+        )
+      `)
+      .eq("is_active", true)
+      .order("sales_count", { ascending: false })
+      .order("rating", { ascending: false })
+      .limit(limit);
+
+    if (!error && data && data.length > 0) {
+      return data.map((p: any) => {
+        const ps = Array.isArray(p.product_sales) ? p.product_sales[0] : p.product_sales;
+        return {
+          ...p,
+          units_sold: ps?.units_sold ?? p.sales_count ?? 0,
+        };
+      });
+    }
+  } catch (err) {
+    console.warn("[getTopSellingProducts] Direct query notice:", err);
+  }
+
+  // 3. Fallback: Query all products and sort by units_sold / sales_count / rating
+  const all = await getProducts();
+  return all
+    .sort((a, b) => (Number(b.units_sold || b.sales_count || 0) - Number(a.units_sold || a.sales_count || 0)) || ((b.reviews || 0) - (a.reviews || 0)))
+    .slice(0, limit);
+}
+
+/**
+ * Fetches top selling products as frontend-compatible ProductItem objects
+ */
+export async function getTopSellingProductItems(limit = 5): Promise<ProductItem[]> {
+  const products = await getTopSellingProducts(limit);
+  return products.map(mapProductFromDatabase);
 }

@@ -28,7 +28,9 @@ export interface Product {
   stock: number;
   stock_quantity?: number | null;
   is_active: boolean;
-  image_url: string | null;
+  image_url?: string | null;
+  sales_count?: number;
+  units_sold?: number;
   created_at?: string;
   updated_at?: string;
   categories?: {

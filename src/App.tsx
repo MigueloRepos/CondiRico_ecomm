@@ -38,6 +38,12 @@ import {
   X,
   Sparkle,
   CreditCard,
+  Flame,
+  Award,
+  HelpCircle,
+  Users,
+  Check,
+  CheckCircle,
 } from "lucide-react";
 import { FormEvent, useMemo, useRef, useState, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
@@ -77,6 +83,7 @@ import {
 } from "@/data/products";
 import {
   getProductItems,
+  getTopSellingProductItems,
   getCategories,
   mapCategoryFromDatabase,
   getCart as getDbCart,
@@ -174,6 +181,7 @@ function AppContent() {
   
   // Real Dynamic Data from Supabase - Zero simulation
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [topSellingProductsDb, setTopSellingProductsDb] = useState<ProductItem[]>([]);
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [productsError, setProductsError] = useState<string | null>(null);
@@ -193,6 +201,7 @@ function AppContent() {
   const [subscribed, setSubscribed] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterNotice, setNewsletterNotice] = useState<string | null>(null);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [contactSubmitted, setContactSubmitted] = useState(false);
   const [contactNotice, setContactNotice] = useState<string | null>(null);
   const [isSendingContact, setIsSendingContact] = useState(false);
@@ -210,17 +219,19 @@ function AppContent() {
   const [isCarouselAutoPlay, setIsCarouselAutoPlay] = useState(true);
   const [isCarouselHovered, setIsCarouselHovered] = useState(false);
 
-  // 1. Fetch real dynamic products & categories directly from Supabase
+  // 1. Fetch real dynamic products, top sellers & categories directly from Supabase
   const fetchCatalogData = async () => {
     setIsLoadingProducts(true);
     setProductsError(null);
     try {
-      const [fetchedProds, fetchedCats] = await Promise.all([
+      const [fetchedProds, fetchedCats, fetchedTop] = await Promise.all([
         getProductItems(),
         getCategories(),
+        getTopSellingProductItems(5),
       ]);
 
       setProducts(fetchedProds || []);
+      setTopSellingProductsDb(fetchedTop || []);
 
       if (fetchedCats && fetchedCats.length > 0) {
         const mappedCats = fetchedCats.map((c) => {
@@ -399,6 +410,22 @@ function AppContent() {
     (sum, product) => sum + product.price * (cart[product.id] ?? 0),
     0
   );
+
+  // 5 Productos más vendidos calculados directamente desde Supabase (tabla product_sales y orders)
+  const topSellingProducts = useMemo(() => {
+    if (topSellingProductsDb.length > 0) {
+      return topSellingProductsDb.slice(0, 5);
+    }
+    const sorted = [...products].sort((a, b) => {
+      const soldA = a.unitsSold ?? a.salesCount ?? 0;
+      const soldB = b.unitsSold ?? b.salesCount ?? 0;
+      if (soldB !== soldA) return soldB - soldA;
+      if (a.isPopular && !b.isPopular) return -1;
+      if (!a.isPopular && b.isPopular) return 1;
+      return (b.reviews || 0) - (a.reviews || 0) || (b.rating || 5) - (a.rating || 5);
+    });
+    return sorted.slice(0, 5);
+  }, [topSellingProductsDb, products]);
 
   const recentProducts = useMemo(() => {
     // 6 productos más recientes desde la tabla en Supabase (public.products)
@@ -696,36 +723,36 @@ function AppContent() {
           <Brand onClick={() => navigateTo("inicio")} />
 
           {/* Desktop Navigation */}
-          <nav className="mx-auto hidden items-center gap-1.5 text-[13px] font-semibold lg:flex p-1 rounded-full border border-border bg-white/60 backdrop-blur-xl shadow-2xs">
+          <nav className="mx-auto hidden items-center gap-1 text-xs font-semibold xl:flex p-1 rounded-full border border-border bg-white/70 backdrop-blur-xl shadow-2xs">
             {/* 1. Inicio */}
             <button
               type="button"
               onClick={() => navigateTo("inicio")}
-              className={`px-3.5 py-1.5 rounded-full transition-all duration-300 active:scale-95 ${
+              className={`px-3 py-1.5 rounded-full transition-all duration-300 active:scale-95 cursor-pointer ${
                 currentPage === "inicio"
-                  ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20 font-bold scale-[1.02]"
-                  : "text-foreground hover:bg-white/70 hover:text-primary"
+                  ? "bg-primary text-primary-foreground shadow-sm font-bold"
+                  : "text-foreground hover:bg-white/80 hover:text-primary"
               }`}
             >
               Inicio
             </button>
 
-            {/* 2. Productos */}
+            {/* 2. Más Vendidos */}
             <button
               type="button"
               onClick={() => {
                 if (currentPage !== "inicio") {
                   navigateTo("inicio");
                   setTimeout(() => {
-                    document.querySelector("#destacados")?.scrollIntoView({ behavior: "smooth" });
+                    document.querySelector("#mas-vendidos")?.scrollIntoView({ behavior: "smooth" });
                   }, 150);
                 } else {
-                  document.querySelector("#destacados")?.scrollIntoView({ behavior: "smooth" });
+                  document.querySelector("#mas-vendidos")?.scrollIntoView({ behavior: "smooth" });
                 }
               }}
-              className="px-3.5 py-1.5 rounded-full text-foreground hover:bg-white/70 hover:text-primary transition-all duration-300 active:scale-95"
+              className="px-3 py-1.5 rounded-full text-foreground hover:bg-white/80 hover:text-primary transition-all duration-300 active:scale-95 cursor-pointer"
             >
-              Productos
+              Más Vendidos
             </button>
 
             {/* 3. Categorías */}
@@ -741,44 +768,116 @@ function AppContent() {
                   document.querySelector("#categorias")?.scrollIntoView({ behavior: "smooth" });
                 }
               }}
-              className="px-3.5 py-1.5 rounded-full text-foreground hover:bg-white/70 hover:text-primary transition-all duration-300 active:scale-95"
+              className="px-3 py-1.5 rounded-full text-foreground hover:bg-white/80 hover:text-primary transition-all duration-300 active:scale-95 cursor-pointer"
             >
               Categorías
             </button>
 
-            {/* 4. Ofertas */}
+            {/* 4. Opiniones */}
             <button
               type="button"
               onClick={() => {
                 if (currentPage !== "inicio") {
                   navigateTo("inicio");
                   setTimeout(() => {
-                    document.querySelector("#ofertas")?.scrollIntoView({ behavior: "smooth" });
+                    document.querySelector("#testimonios")?.scrollIntoView({ behavior: "smooth" });
                   }, 150);
                 } else {
-                  document.querySelector("#ofertas")?.scrollIntoView({ behavior: "smooth" });
+                  document.querySelector("#testimonios")?.scrollIntoView({ behavior: "smooth" });
                 }
               }}
-              className="px-3.5 py-1.5 rounded-full text-foreground hover:bg-white/70 hover:text-primary transition-all duration-300 active:scale-95"
+              className="px-3 py-1.5 rounded-full text-foreground hover:bg-white/80 hover:text-primary transition-all duration-300 active:scale-95 cursor-pointer"
             >
-              Ofertas
+              Opiniones
             </button>
 
-            {/* 5. Tienda */}
+            {/* 5. Por qué elegirnos */}
+            <button
+              type="button"
+              onClick={() => {
+                if (currentPage !== "inicio") {
+                  navigateTo("inicio");
+                  setTimeout(() => {
+                    document.querySelector("#por-que-elegirnos")?.scrollIntoView({ behavior: "smooth" });
+                  }, 150);
+                } else {
+                  document.querySelector("#por-que-elegirnos")?.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
+              className="px-3 py-1.5 rounded-full text-foreground hover:bg-white/80 hover:text-primary transition-all duration-300 active:scale-95 cursor-pointer"
+            >
+              Por Qué Elegirnos
+            </button>
+
+            {/* 6. Recientes */}
+            <button
+              type="button"
+              onClick={() => {
+                if (currentPage !== "inicio") {
+                  navigateTo("inicio");
+                  setTimeout(() => {
+                    document.querySelector("#recientes")?.scrollIntoView({ behavior: "smooth" });
+                  }, 150);
+                } else {
+                  document.querySelector("#recientes")?.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
+              className="px-3 py-1.5 rounded-full text-foreground hover:bg-white/80 hover:text-primary transition-all duration-300 active:scale-95 cursor-pointer"
+            >
+              Novedades
+            </button>
+
+            {/* 7. Nosotros */}
+            <button
+              type="button"
+              onClick={() => {
+                if (currentPage !== "inicio") {
+                  navigateTo("inicio");
+                  setTimeout(() => {
+                    document.querySelector("#nosotros")?.scrollIntoView({ behavior: "smooth" });
+                  }, 150);
+                } else {
+                  document.querySelector("#nosotros")?.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
+              className="px-3 py-1.5 rounded-full text-foreground hover:bg-white/80 hover:text-primary transition-all duration-300 active:scale-95 cursor-pointer"
+            >
+              Nosotros
+            </button>
+
+            {/* 8. Preguntas */}
+            <button
+              type="button"
+              onClick={() => {
+                if (currentPage !== "inicio") {
+                  navigateTo("inicio");
+                  setTimeout(() => {
+                    document.querySelector("#faq")?.scrollIntoView({ behavior: "smooth" });
+                  }, 150);
+                } else {
+                  document.querySelector("#faq")?.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
+              className="px-3 py-1.5 rounded-full text-foreground hover:bg-white/80 hover:text-primary transition-all duration-300 active:scale-95 cursor-pointer"
+            >
+              Preguntas
+            </button>
+
+            {/* 9. Tienda */}
             <button
               type="button"
               onClick={() => navigateTo("tienda")}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-all duration-300 active:scale-95 ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-300 active:scale-95 cursor-pointer ${
                 currentPage === "tienda"
-                  ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20 font-bold scale-[1.02]"
-                  : "text-foreground hover:bg-white/70 hover:text-primary"
+                  ? "bg-primary text-primary-foreground shadow-sm font-bold"
+                  : "text-foreground hover:bg-white/80 hover:text-primary"
               }`}
             >
               <StoreIcon className="size-3.5" />
               <span>Tienda</span>
             </button>
 
-            {/* 6. Contactos */}
+            {/* 10. Contactos */}
             <button
               type="button"
               onClick={() => {
@@ -791,7 +890,7 @@ function AppContent() {
                   document.querySelector("#contactos")?.scrollIntoView({ behavior: "smooth" });
                 }
               }}
-              className="px-3.5 py-1.5 rounded-full text-foreground hover:bg-white/70 hover:text-primary transition-all duration-300 active:scale-95"
+              className="px-3 py-1.5 rounded-full text-foreground hover:bg-white/80 hover:text-primary transition-all duration-300 active:scale-95 cursor-pointer"
             >
               Contactos
             </button>
@@ -981,15 +1080,18 @@ function AppContent() {
 
               <button
                 type="button"
-                onClick={() => navigateTo("inicio")}
-                className={`rounded-2xl px-4 py-3 text-left text-sm font-bold flex items-center justify-between transition-all ${
+                onClick={() => {
+                  setMenuOpen(false);
+                  navigateTo("inicio");
+                }}
+                className={`rounded-2xl px-4 py-2.5 text-left text-xs sm:text-sm font-bold flex items-center justify-between transition-all ${
                   currentPage === "inicio"
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                    ? "bg-primary text-primary-foreground shadow-sm font-bold"
                     : "hover:bg-white/80"
                 }`}
               >
                 <span>Inicio</span>
-                {currentPage === "inicio" && <span className="text-xs">Activo</span>}
+                {currentPage === "inicio" && <span className="text-[10px]">Activo</span>}
               </button>
 
               <button
@@ -999,15 +1101,15 @@ function AppContent() {
                   if (currentPage !== "inicio") {
                     navigateTo("inicio");
                     setTimeout(() => {
-                      document.querySelector("#destacados")?.scrollIntoView({ behavior: "smooth" });
+                      document.querySelector("#mas-vendidos")?.scrollIntoView({ behavior: "smooth" });
                     }, 150);
                   } else {
-                    document.querySelector("#destacados")?.scrollIntoView({ behavior: "smooth" });
+                    document.querySelector("#mas-vendidos")?.scrollIntoView({ behavior: "smooth" });
                   }
                 }}
-                className="rounded-2xl px-4 py-3 text-left text-sm font-bold flex items-center justify-between hover:bg-white/80"
+                className="rounded-2xl px-4 py-2.5 text-left text-xs sm:text-sm font-bold flex items-center justify-between hover:bg-white/80"
               >
-                <span>Productos Destacados</span>
+                <span>Más Vendidos</span>
               </button>
 
               <button
@@ -1023,7 +1125,7 @@ function AppContent() {
                     document.querySelector("#categorias")?.scrollIntoView({ behavior: "smooth" });
                   }
                 }}
-                className="rounded-2xl px-4 py-3 text-left text-sm font-bold flex items-center justify-between hover:bg-white/80"
+                className="rounded-2xl px-4 py-2.5 text-left text-xs sm:text-sm font-bold flex items-center justify-between hover:bg-white/80"
               >
                 <span>Categorías</span>
               </button>
@@ -1035,27 +1137,102 @@ function AppContent() {
                   if (currentPage !== "inicio") {
                     navigateTo("inicio");
                     setTimeout(() => {
-                      document.querySelector("#ofertas")?.scrollIntoView({ behavior: "smooth" });
+                      document.querySelector("#testimonios")?.scrollIntoView({ behavior: "smooth" });
                     }, 150);
                   } else {
-                    document.querySelector("#ofertas")?.scrollIntoView({ behavior: "smooth" });
+                    document.querySelector("#testimonios")?.scrollIntoView({ behavior: "smooth" });
                   }
                 }}
-                className="rounded-2xl px-4 py-3 text-left text-sm font-bold flex items-center justify-between hover:bg-white/80"
+                className="rounded-2xl px-4 py-2.5 text-left text-xs sm:text-sm font-bold flex items-center justify-between hover:bg-white/80"
               >
-                <span>Ofertas de la Semana</span>
+                <span>Opiniones de Clientes</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => navigateTo("tienda")}
-                className={`rounded-2xl px-4 py-3 text-left text-sm font-bold flex items-center justify-between transition-all ${
+                onClick={() => {
+                  setMenuOpen(false);
+                  if (currentPage !== "inicio") {
+                    navigateTo("inicio");
+                    setTimeout(() => {
+                      document.querySelector("#por-que-elegirnos")?.scrollIntoView({ behavior: "smooth" });
+                    }, 150);
+                  } else {
+                    document.querySelector("#por-que-elegirnos")?.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
+                className="rounded-2xl px-4 py-2.5 text-left text-xs sm:text-sm font-bold flex items-center justify-between hover:bg-white/80"
+              >
+                <span>Por Qué Elegirnos</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  if (currentPage !== "inicio") {
+                    navigateTo("inicio");
+                    setTimeout(() => {
+                      document.querySelector("#recientes")?.scrollIntoView({ behavior: "smooth" });
+                    }, 150);
+                  } else {
+                    document.querySelector("#recientes")?.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
+                className="rounded-2xl px-4 py-2.5 text-left text-xs sm:text-sm font-bold flex items-center justify-between hover:bg-white/80"
+              >
+                <span>Productos Más Recientes</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  if (currentPage !== "inicio") {
+                    navigateTo("inicio");
+                    setTimeout(() => {
+                      document.querySelector("#nosotros")?.scrollIntoView({ behavior: "smooth" });
+                    }, 150);
+                  } else {
+                    document.querySelector("#nosotros")?.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
+                className="rounded-2xl px-4 py-2.5 text-left text-xs sm:text-sm font-bold flex items-center justify-between hover:bg-white/80"
+              >
+                <span>Acerca de Nosotros</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  if (currentPage !== "inicio") {
+                    navigateTo("inicio");
+                    setTimeout(() => {
+                      document.querySelector("#faq")?.scrollIntoView({ behavior: "smooth" });
+                    }, 150);
+                  } else {
+                    document.querySelector("#faq")?.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
+                className="rounded-2xl px-4 py-2.5 text-left text-xs sm:text-sm font-bold flex items-center justify-between hover:bg-white/80"
+              >
+                <span>Preguntas Frecuentes</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  navigateTo("tienda");
+                }}
+                className={`rounded-2xl px-4 py-2.5 text-left text-xs sm:text-sm font-bold flex items-center justify-between transition-all ${
                   currentPage === "tienda"
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                    ? "bg-primary text-primary-foreground shadow-md"
                     : "hover:bg-white/80 text-primary"
                 }`}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   <StoreIcon className="size-4" />
                   <span>Tienda Completa</span>
                 </div>
@@ -1077,7 +1254,7 @@ function AppContent() {
                     document.querySelector("#contactos")?.scrollIntoView({ behavior: "smooth" });
                   }
                 }}
-                className="rounded-2xl px-4 py-3 text-left text-sm font-bold flex items-center justify-between hover:bg-white/80"
+                className="rounded-2xl px-4 py-2.5 text-left text-xs sm:text-sm font-bold flex items-center justify-between hover:bg-white/80"
               >
                 <span>Contactos</span>
               </button>
@@ -1249,26 +1426,318 @@ function AppContent() {
               </div>
             </motion.section>
 
-            {/* Category Vectorial Icon Showcase: Dynamic Real Supabase Data */}
-            <CategoryBento
-              onSelectCategory={(categoryId) => navigateTo("tienda", categoryId)}
-              onExploreAll={() => navigateTo("tienda")}
-            />
-
-            {/* Featured Products Bento Grid */}
+            {/* ========================================================================= */}
+            {/* 2. SECCIÓN: PRODUCTOS MÁS VENDIDOS (5 PRODUCTOS)                          */}
+            {/* ========================================================================= */}
             <motion.section
-              id="destacados"
+              id="mas-vendidos"
               initial={{ opacity: 0, y: 25 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="relative py-12 sm:py-16 lg:py-20 overflow-hidden"
+              className="scroll-mt-20 relative py-12 sm:py-16 lg:py-20 overflow-hidden bg-gradient-to-b from-transparent via-amber-500/[0.02] to-transparent"
+            >
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                  <SectionTitle
+                    eyebrow="Los favoritos de todos"
+                    title="Productos más vendidos"
+                    subtitle="Los 5 artículos más elegidos por su calidad superior, rendimiento y frescura garantizada."
+                    align="left"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => navigateTo("tienda")}
+                    className="self-start md:self-end rounded-full bg-white hover:bg-white/90 text-brand-deep border border-border shadow-2xs px-5 py-2.5 text-xs font-bold flex items-center gap-2 hover:border-[#CBD5CE] active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span>Ver catálogo completo</span>
+                    <ArrowRight className="size-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+
+                {/* 5 Top Selling Products Showcase Grid */}
+                {isLoadingProducts && topSellingProducts.length === 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {[...Array(5)].map((_, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-3xl bg-white border border-border p-5 animate-pulse space-y-4 h-[360px]"
+                      >
+                        <div className="h-44 rounded-2xl bg-black/5" />
+                        <div className="h-4 w-3/4 rounded bg-black/5" />
+                        <div className="h-4 w-1/2 rounded bg-black/5" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
+                    {topSellingProducts.slice(0, 5).map((product, idx) => {
+                      const inCart = cart[product.id] ?? 0;
+                      const isFav = favorites.has(product.id);
+                      const rankingLabels = ["Top #1 Ventas", "Top #2 Ventas", "Top #3 Ventas", "Top #4 Ventas", "Top #5 Ventas"];
+                      const rankLabel = rankingLabels[idx] || "Más Vendido";
+
+                      return (
+                        <motion.article
+                          key={product.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          whileHover={{ y: -5 }}
+                          transition={{ duration: 0.3, delay: idx * 0.05 }}
+                          className="group relative overflow-hidden rounded-3xl bg-white border border-border shadow-xs hover:shadow-md p-4 sm:p-5 flex flex-col justify-between transition-all"
+                        >
+                          {/* Top Badges & Favorite */}
+                          <div className="flex items-center justify-between gap-1.5 z-10 mb-3">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-black text-amber-900 shadow-2xs">
+                                <Flame className="size-3 text-amber-600 fill-amber-500" />
+                                <span>{rankLabel}</span>
+                              </span>
+                              {(product.unitsSold !== undefined && product.unitsSold > 0) || (product.salesCount !== undefined && product.salesCount > 0) ? (
+                                <span className="inline-flex items-center rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-800">
+                                  {product.unitsSold ?? product.salesCount} vendidos
+                                </span>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => toggleFavorite(product.id)}
+                              className="grid size-8 place-items-center rounded-full bg-white border border-border shadow-2xs hover:scale-105 active:scale-95 transition-all shrink-0 cursor-pointer"
+                              aria-label="Agregar a favoritos"
+                            >
+                              <Heart className={`size-3.5 ${isFav ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
+                            </button>
+                          </div>
+
+                          {/* Image Pedestal */}
+                          <div
+                            onClick={() => setSelectedProductDetail(product)}
+                            className="relative aspect-square w-full rounded-2xl overflow-hidden bg-muted/30 border border-border/80 shadow-inner group-hover:scale-102 transition-transform duration-300 cursor-pointer"
+                          >
+                            {product.imageUrl ? (
+                              <BlurUpImage
+                                src={product.imageUrl}
+                                alt={product.name}
+                                priority={idx < 2}
+                                className="size-full object-cover"
+                                fallbackIcon={<ShoppingBasket className="size-10 text-primary/70" />}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-emerald-500/10">
+                                <ShoppingBasket className="size-10 text-primary/70" />
+                              </div>
+                            )}
+
+                            {/* Reviews Badge */}
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedProductDetail(product);
+                              }}
+                              className="absolute left-2 bottom-2 inline-flex items-center gap-1 rounded-full bg-white/95 hover:bg-white px-2 py-0.5 text-[10px] font-extrabold text-brand-deep shadow-2xs z-10 cursor-pointer backdrop-blur-md"
+                              title="Ver opiniones y calificaciones"
+                            >
+                              <Star className="size-3 fill-amber-400 text-amber-400" />
+                              <span>{product.rating ? product.rating.toFixed(1) : "5.0"}</span>
+                            </div>
+                          </div>
+
+                          {/* Product Info */}
+                          <div className="my-3 z-10">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-primary block truncate">
+                              {product.category || product.unit}
+                            </span>
+                            <h3
+                              onClick={() => setSelectedProductDetail(product)}
+                              className="font-bold text-sm text-brand-deep line-clamp-1 group-hover:text-primary transition-colors cursor-pointer mt-0.5"
+                            >
+                              {product.name}
+                            </h3>
+                            <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                              {product.detail}
+                            </p>
+                          </div>
+
+                          {/* Price & Action */}
+                          <div className="pt-2 border-t border-border flex items-center justify-between gap-2 z-10">
+                            <div>
+                              <div className="flex items-baseline gap-1.5">
+                                <strong className="text-base font-black text-brand-deep">
+                                  ${product.price.toFixed(2)}
+                                </strong>
+                                {product.oldPrice && (
+                                  <span className="text-[10px] text-muted-foreground line-through">
+                                    ${product.oldPrice.toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-muted-foreground block font-bold">{product.unit}</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => changeCart(product.id, 1)}
+                              className={`grid size-9 place-items-center rounded-full shadow-xs active:scale-90 transition-all hover:scale-105 cursor-pointer ${
+                                inCart > 0 ? "bg-offer text-offer-foreground" : "bg-primary text-primary-foreground"
+                              }`}
+                              aria-label="Agregar al carrito"
+                            >
+                              <Plus className="size-4" />
+                            </button>
+                          </div>
+                        </motion.article>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </motion.section>
+
+            {/* ========================================================================= */}
+            {/* 3. SECCIÓN: CATEGORÍAS DE LOS PRODUCTOS (TODAS LAS DISPONIBLES)           */}
+            {/* ========================================================================= */}
+            <div id="categorias" className="scroll-mt-20">
+              <CategoryBento
+                onSelectCategory={(categoryId) => navigateTo("tienda", categoryId)}
+                onExploreAll={() => navigateTo("tienda")}
+              />
+            </div>
+
+            {/* ========================================================================= */}
+            {/* 4. SECCIÓN: PRUEBA SOCIAL (5 OPINIONES DE LOS CLIENTES)                   */}
+            {/* ========================================================================= */}
+            <section id="testimonios" className="scroll-mt-20 mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 mb-8">
+                <SectionTitle
+                  eyebrow="Prueba Social & Confianza"
+                  title="Lo que dicen de nosotros"
+                  subtitle="La satisfacción de nuestros clientes respalda nuestro compromiso diario con la frescura y la excelencia."
+                  align="left"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="grid size-10 place-items-center rounded-full border border-border bg-white text-foreground shadow-2xs active:scale-90 hover:bg-muted cursor-pointer transition-colors"
+                    onClick={() => scroll(testimonialRail, -1)}
+                    aria-label="Testimonio anterior"
+                  >
+                    <ArrowLeft className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="grid size-10 place-items-center rounded-full border border-border bg-white text-foreground shadow-2xs active:scale-90 hover:bg-muted cursor-pointer transition-colors"
+                    onClick={() => scroll(testimonialRail, 1)}
+                    aria-label="Testimonio siguiente"
+                  >
+                    <ArrowRight className="size-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 5 Customer Opinions Rail */}
+              <div
+                ref={testimonialRail}
+                className="flex snap-x gap-5 overflow-x-auto pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {[
+                  [
+                    "Valeria M.",
+                    "El aceite de oliva virgen extra y las especias llegaron en perfecto estado y con empaque protector. Se nota el cuidado y la frescura en cada detalle para cocinar en casa.",
+                    "VM",
+                  ],
+                  [
+                    "Héctor S.",
+                    "Hice mi pedido semanal en 5 minutos por WhatsApp y la entrega llegó puntual antes de cenar. El detergente biodegradable y los productos de limpieza huelen increíble.",
+                    "HS",
+                  ],
+                  [
+                    "Beatriz C.",
+                    "Los paquetes familiares de arroz, harina y leche vegetal tienen precios insuperables. Con el envío gratis al pasar los $30 ahorramos notablemente en el presupuesto del mes.",
+                    "BC",
+                  ],
+                  [
+                    "Javier E.",
+                    "La experiencia en la tienda web es súper intuitiva y el seguimiento en tiempo real funciona de diez. Me resolvieron una duda sobre fechas de vencimiento en segundos por chat.",
+                    "JE",
+                  ],
+                  [
+                    "Camila N.",
+                    "Excelente surtido de condimentos y abarrotes. La calidad de los granos y el empaque al vacío garantizan que todo llegue fresco y listo para usar en mi negocio gastronómico.",
+                    "CN",
+                  ],
+                ].map(([name, quote, initials], index) => (
+                  <TestimonialCard
+                    key={name}
+                    name={name}
+                    quote={quote}
+                    initials={initials}
+                    index={index}
+                  />
+                ))}
+              </div>
+            </section>
+
+            {/* ========================================================================= */}
+            {/* 5. SECCIÓN: POR QUÉ ELEGIR A CONDIRICO                                    */}
+            {/* ========================================================================= */}
+            <motion.section
+              id="por-que-elegirnos"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.5 }}
+              className="scroll-mt-20 py-12 sm:py-16 lg:py-20 bg-slate-50/60 border-y border-border/60"
+            >
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <SectionTitle
+                  eyebrow="Diferenciales CondiRico"
+                  title="¿Por qué elegir a CondiRico?"
+                  subtitle="Brindamos la mejor experiencia de compra combinando frescura de origen, entregas ágiles y honestidad en cada precio."
+                  align="center"
+                />
+
+                <div className="mt-10 grid grid-cols-2 gap-3.5 sm:gap-5 md:grid-cols-5">
+                  {benefits.map(({ icon: Icon, title, text }, index) => (
+                    <motion.div
+                      key={title}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                      whileHover={{ y: -4 }}
+                      className={`flex flex-col items-center rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 text-center shadow-xs transition-all hover:border-[#CBD5CE] ${
+                        index === 4 ? "col-span-2 md:col-span-1" : ""
+                      }`}
+                    >
+                      <div className="grid size-12 place-items-center rounded-2xl border border-emerald-100 bg-emerald-50 text-primary shadow-2xs">
+                        <Icon className="size-5 sm:size-6" />
+                      </div>
+                      <h3 className="mt-3.5 text-sm font-bold text-foreground">{title}</h3>
+                      <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{text}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.section>
+
+            {/* ========================================================================= */}
+            {/* 6. SECCIÓN: PRODUCTOS MÁS RECIENTES                                       */}
+            {/* ========================================================================= */}
+            <motion.section
+              id="recientes"
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="scroll-mt-20 relative py-12 sm:py-16 lg:py-20 overflow-hidden"
             >
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 {/* Header & Title */}
                 <SectionTitle
                   eyebrow="Últimas novedades"
                   title="Productos más recientes"
+                  subtitle="Descubre los artículos recién ingresados a nuestro catálogo con la frescura del día."
                   align="left"
                 />
 
@@ -1709,203 +2178,178 @@ function AppContent() {
               </div>
             </motion.section>
 
-            {/* Weekly Promo Banner */}
+            {/* ========================================================================= */}
+            {/* 7. SECCIÓN: ACERCA DE NOSOTROS                                            */}
+            {/* ========================================================================= */}
             <motion.section
-              id="ofertas"
-              initial={{ opacity: 0, scale: 0.98 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              id="nosotros"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20"
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="scroll-mt-20 mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20"
             >
-              <div className="relative min-h-[380px] overflow-hidden rounded-3xl sm:rounded-[32px] border border-border shadow-xs">
-                <div className="relative min-h-[380px] rounded-3xl overflow-hidden bg-brand-deep">
-                  <img
-                    src={promoImage}
-                    loading="lazy"
-                    width={1536}
-                    height={768}
-                    alt="Compra semanal con alimentos y productos del hogar"
-                    className="absolute inset-0 h-full w-full object-cover object-[64%_center]"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-brand-deep/95 via-brand-deep/80 to-transparent" />
-                  <div className="relative flex min-h-[380px] max-w-xl flex-col justify-center p-8 text-primary-foreground sm:p-14">
-                    <span className="w-fit rounded-full bg-sun px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-brand-deep shadow-2xs">
-                      Oferta de la semana
-                    </span>
-                    <h2 className="mt-4 text-2xl sm:text-4xl lg:text-5xl font-extrabold leading-tight tracking-tight">
-                      Llena tu carrito.
-                      <br />
-                      <span className="text-sun">Ahorra en grande.</span>
-                    </h2>
-                    <p className="mt-3 max-w-sm text-sm sm:text-base leading-relaxed text-primary-foreground/85">
-                      Hasta 30% de descuento en productos seleccionados de despensa y aseo.
+              <div className="rounded-3xl sm:rounded-[36px] bg-white border border-border p-6 sm:p-10 lg:p-14 shadow-xs overflow-hidden relative">
+                {/* Subtle Background Accent */}
+                <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10 pointer-events-none" />
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+                  <div className="lg:col-span-7 space-y-5">
+                    <SectionTitle
+                      eyebrow="Nuestra Historia & Compromiso"
+                      title="Acerca de CondiRico"
+                      align="left"
+                    />
+
+                    <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+                      En <strong>CondiRico</strong> nacimos con un propósito claro: abastecer a los hogares, familias y emprendimientos con los mejores ingredientes, condimentos y productos de primera necesidad, garantizando la máxima frescura y precios directos sin intermediarios.
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => navigateTo("tienda")}
-                      className="mt-6 w-fit rounded-full bg-offer hover:bg-offer/95 px-7 py-3 font-bold text-offer-foreground text-sm shadow-md active:scale-95 flex items-center gap-2 cursor-pointer transition-all"
-                    >
-                      <span>Ver ofertas en la Tienda</span>
-                      <ArrowRight className="size-4" />
-                    </button>
+
+                    <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+                      Creemos firmemente en el comercio honesto, la atención humana personalizada y la puntualidad en cada entrega. Cada producto de nuestro catálogo es cuidadosamente inspeccionado y empacado para asegurar que llegue en condiciones óptimas a tu mesa o negocio.
+                    </p>
+
+                    {/* Highlights Cards */}
+                    <div className="grid grid-cols-3 gap-3 sm:gap-4 pt-2">
+                      <div className="rounded-2xl bg-slate-50 border border-border p-3.5 sm:p-4 text-center">
+                        <strong className="block text-lg sm:text-2xl font-black text-primary">+10K</strong>
+                        <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground block mt-0.5">Pedidos Entregados</span>
+                      </div>
+                      <div className="rounded-2xl bg-slate-50 border border-border p-3.5 sm:p-4 text-center">
+                        <strong className="block text-lg sm:text-2xl font-black text-primary">100%</strong>
+                        <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground block mt-0.5">Frescura Garantizada</span>
+                      </div>
+                      <div className="rounded-2xl bg-slate-50 border border-border p-3.5 sm:p-4 text-center">
+                        <strong className="block text-lg sm:text-2xl font-black text-primary">7 Días</strong>
+                        <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground block mt-0.5">Atención y Despacho</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-5 relative">
+                    <div className="relative rounded-3xl overflow-hidden bg-brand-deep text-white p-7 sm:p-8 shadow-md">
+                      <div className="size-12 rounded-2xl bg-sun/20 text-sun grid place-items-center mb-4 border border-sun/30">
+                        <Sparkles className="size-6" />
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-extrabold leading-tight">
+                        La confianza que alimenta a tu hogar
+                      </h3>
+                      <p className="mt-2.5 text-xs sm:text-sm text-primary-foreground/80 leading-relaxed">
+                        Desde abarrotes básicos hasta condimentos seleccionados para la alta cocina, en CondiRico hacemos fácil y rápido abastecerte sin moverte de casa.
+                      </p>
+
+                      <div className="mt-6 pt-5 border-t border-white/15 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="size-2 rounded-full bg-emerald-400 animate-ping" />
+                          <span className="text-xs font-bold text-emerald-300">Despachos activos hoy</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setWhatsAppInquiryOpen(true)}
+                          className="text-xs font-bold text-sun hover:underline inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Hablar con un asesor</span>
+                          <ArrowRight className="size-3" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </motion.section>
 
-            {/* Benefits */}
+            {/* ========================================================================= */}
+            {/* 8. SECCIÓN: PREGUNTAS FRECUENTES (FAQ)                                    */}
+            {/* ========================================================================= */}
             <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.5 }}
-              className="py-12 sm:py-16 lg:py-20"
-            >
-              <div className="mx-auto grid max-w-7xl grid-cols-2 gap-3.5 sm:gap-5 px-4 sm:px-6 md:grid-cols-5 lg:px-8">
-                {benefits.map(({ icon: Icon, title, text }, index) => (
-                  <motion.div
-                    key={title}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                    whileHover={{ y: -3 }}
-                    className={`flex flex-col items-center rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 text-center shadow-xs transition-all hover:border-[#CBD5CE] ${
-                      index === 4 ? "col-span-2 md:col-span-1" : ""
-                    }`}
-                  >
-                    <div className="grid size-12 place-items-center rounded-2xl border border-emerald-100 bg-emerald-50 text-primary shadow-2xs">
-                      <Icon className="size-5 sm:size-6" />
-                    </div>
-                    <h3 className="mt-3.5 text-sm font-bold text-foreground">{title}</h3>
-                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{text}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.section>
-
-            {/* Testimonials */}
-            <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 mb-8">
-                <SectionTitle
-                  eyebrow="Clientes felices"
-                  title="Lo que dicen de nosotros"
-                  align="left"
-                />
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className="grid size-10 place-items-center rounded-full border border-border bg-white text-foreground shadow-2xs active:scale-90 hover:bg-muted cursor-pointer transition-colors"
-                    onClick={() => scroll(testimonialRail, -1)}
-                    aria-label="Testimonio anterior"
-                  >
-                    <ArrowLeft className="size-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className="grid size-10 place-items-center rounded-full border border-border bg-white text-foreground shadow-2xs active:scale-90 hover:bg-muted cursor-pointer transition-colors"
-                    onClick={() => scroll(testimonialRail, 1)}
-                    aria-label="Testimonio siguiente"
-                  >
-                    <ArrowRight className="size-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div
-                ref={testimonialRail}
-                className="flex snap-x gap-5 overflow-x-auto pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              >
-                {[
-                  [
-                    "Valeria M.",
-                    "El aceite de oliva virgen extra y las especias llegaron en perfecto estado y con empaque protector. Se nota el cuidado y la frescura en cada detalle para cocinar en casa.",
-                    "VM",
-                  ],
-                  [
-                    "Héctor S.",
-                    "Hice mi pedido semanal en 5 minutos por WhatsApp y la entrega llegó puntual antes de cenar. El detergente biodegradable y los productos de limpieza huelen increíble.",
-                    "HS",
-                  ],
-                  [
-                    "Beatriz C.",
-                    "Los paquetes familiares de arroz, harina y leche vegetal tienen precios insuperables. Con el envío gratis al pasar los $35 ahorramos notablemente en el presupuesto del mes.",
-                    "BC",
-                  ],
-                  [
-                    "Javier E.",
-                    "La experiencia en la tienda web es súper intuitiva y el seguimiento en tiempo real funciona de diez. Me resolvieron una duda sobre fechas de vencimiento en segundos por chat.",
-                    "JE",
-                  ],
-                ].map(([name, quote, initials], index) => (
-                  <TestimonialCard
-                    key={name}
-                    name={name}
-                    quote={quote}
-                    initials={initials}
-                    index={index}
-                  />
-                ))}
-              </div>
-            </section>
-
-            {/* Newsletter */}
-            <motion.section
+              id="faq"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:py-20"
+              className="scroll-mt-20 mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:py-20"
             >
-              <div className="rounded-3xl sm:rounded-[32px] bg-white border border-border p-6 sm:p-12 text-center shadow-xs">
-                <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-amber-50 border border-amber-200 text-offer shadow-2xs">
-                  <Mail className="size-5 sm:size-6" />
-                </span>
-                <h2 className="mt-4 text-2xl sm:text-3xl font-extrabold text-brand-deep tracking-tight">
-                  Ofertas frescas en tu correo
-                </h2>
-                <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-                  Suscríbete y recibe cupones de descuento exclusivos, novedades y ofertas de temporada.
-                </p>
-                {subscribed ? (
-                  <p className="mt-6 font-bold text-primary animate-in fade-in">
-                    ¡Listo! Pronto recibirás nuestras mejores ofertas.
-                  </p>
-                ) : (
-                  <form
-                    className="mx-auto mt-6 flex max-w-md flex-col gap-2.5 sm:flex-row"
-                    onSubmit={(event: FormEvent) => {
-                      event.preventDefault();
-                      setSubscribed(true);
-                    }}
-                  >
-                    <input
-                      required
-                      type="email"
-                      placeholder="Tu correo electrónico"
-                      aria-label="Correo electrónico"
-                      className="h-11 sm:h-12 min-w-0 flex-1 rounded-full border border-border bg-muted/30 px-5 text-sm outline-none transition-all focus:bg-white focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-                    />
-                    <button
-                      type="submit"
-                      className="h-11 sm:h-12 rounded-full bg-primary hover:bg-primary/95 px-7 text-xs font-bold text-primary-foreground shadow-xs active:scale-95 transition-all cursor-pointer"
+              <div className="mb-8">
+                <SectionTitle
+                  eyebrow="Resolvemos tus dudas"
+                  title="Preguntas Frecuentes"
+                  subtitle="Todo lo que necesitas saber sobre cómo hacer tus compras, métodos de pago y tiempos de entrega."
+                  align="center"
+                />
+              </div>
+
+              {/* Accordion List */}
+              <div className="space-y-3.5">
+                {[
+                  {
+                    q: "¿Cómo realizo una compra o pedido en CondiRico?",
+                    a: "Puedes comprar agregando productos al carrito y procesando el pago en línea de forma segura con tarjeta, PayPal o Google Pay. También puedes finalizar tu pedido con un solo clic a través de nuestro canal de WhatsApp para una atención personalizada con un asesor.",
+                  },
+                  {
+                    q: "¿Cuáles son las formas de pago aceptadas?",
+                    a: "Aceptamos pagos con tarjetas de débito y crédito procesadas de forma segura por Stripe, transferencias, cuentas de PayPal, Google Pay y pago en efectivo contra entrega al momento de recibir tu pedido.",
+                  },
+                  {
+                    q: "¿Cuánto tiempo demora la entrega y cuál es el costo de envío?",
+                    a: "Entregamos tu pedido en el mismo día o en un plazo máximo de 24 horas hábiles. El costo de envío estándar es de solo $3.50 y el envío es completamente GRATIS en todos los pedidos mayores a $30.00.",
+                  },
+                  {
+                    q: "¿Los productos cuentan con garantía de frescura y devolución?",
+                    a: "¡Totalmente! Todos nuestros alimentos, especias y enlatados son inspeccionados meticulosamente antes de su despacho. Si algún producto no cumple al 100% tus expectativas de calidad, lo reemplazamos inmediatamente sin costo adicional.",
+                  },
+                  {
+                    q: "¿Ofrecen atención o precios especiales para restaurantes y negocios?",
+                    a: "Sí, disponemos de convenios y precios preferenciales por volumen para panaderías, restaurantes, cafeterías y almacenes. Puedes escribirnos directamente a hola@condirico.com o consultarnos vía WhatsApp.",
+                  },
+                ].map((item, index) => {
+                  const isOpen = openFaqIndex === index;
+                  return (
+                    <div
+                      key={item.q}
+                      className="rounded-2xl sm:rounded-3xl bg-white border border-border shadow-xs overflow-hidden transition-all"
                     >
-                      Suscribirme
-                    </button>
-                  </form>
-                )}
+                      <button
+                        type="button"
+                        onClick={() => setOpenFaqIndex(isOpen ? null : index)}
+                        className="w-full text-left px-5 sm:px-7 py-4 sm:py-5 flex items-center justify-between gap-4 font-bold text-sm sm:text-base text-brand-deep hover:text-primary transition-colors cursor-pointer"
+                        aria-expanded={isOpen}
+                      >
+                        <span className="flex items-center gap-3">
+                          <HelpCircle className="size-4.5 text-primary shrink-0" />
+                          <span>{item.q}</span>
+                        </span>
+                        <div className={`grid size-7 place-items-center rounded-full bg-slate-100 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180 bg-primary/10 text-primary" : "text-muted-foreground"}`}>
+                          <ChevronDown className="size-4" />
+                        </div>
+                      </button>
+
+                      {isOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="px-5 sm:px-7 pb-5 pt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed border-t border-slate-100"
+                        >
+                          {item.a}
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </motion.section>
 
-            {/* Contactos Section */}
+            {/* ========================================================================= */}
+            {/* 9. SECCIÓN: CONTACTOS                                                     */}
+            {/* ========================================================================= */}
             <motion.section
               id="contactos"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="scroll-mt-24 mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20"
+              className="scroll-mt-20 mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20"
             >
               <div className="mb-10">
                 <SectionTitle
@@ -1916,213 +2360,160 @@ function AppContent() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
-                {/* Contact Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 items-stretch">
+                {/* Contact Information Card 1 */}
                 <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                  className="lg:col-span-5 space-y-3.5"
+                  transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+                  className="rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 flex flex-col justify-between shadow-xs hover:border-[#CBD5CE] transition-all"
                 >
-                  <div className="rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 flex items-start gap-4 shadow-xs">
-                    <div className="grid size-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-100 shrink-0 shadow-2xs">
+                  <div>
+                    <div className="grid size-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-100 mb-3.5 shadow-2xs">
                       <Phone className="size-5" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-foreground">Teléfono & WhatsApp</h3>
-                      <p className="mt-0.5 text-xs text-muted-foreground">Atención inmediata con un asesor</p>
-                      <a href="tel:+18002663474" className="mt-1.5 inline-block text-sm font-bold text-primary hover:underline">
-                        +1 800 CONDI RICO (266-3474)
-                      </a>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">Lunes a Domingo: 8:00 AM – 8:00 PM</p>
-                      <button
-                        type="button"
-                        onClick={() => setWhatsAppInquiryOpen(true)}
-                        className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
-                      >
-                        <WhatsAppIcon className="size-3.5" />
-                        <span>Consultar por WhatsApp</span>
-                      </button>
-                    </div>
+                    <h3 className="text-sm font-bold text-foreground">Teléfono & WhatsApp</h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Atención inmediata con un asesor</p>
+                    <a href="tel:+18002663474" className="mt-2 inline-block text-sm font-bold text-primary hover:underline">
+                      +1 800 CONDI RICO (266-3474)
+                    </a>
+                    <p className="text-[11px] text-muted-foreground mt-1">Lunes a Domingo: 8:00 AM – 8:00 PM</p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setWhatsAppInquiryOpen(true)}
+                    className="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    <WhatsAppIcon className="size-3.5" />
+                    <span>Consultar por WhatsApp</span>
+                  </button>
+                </motion.div>
 
-                  <div className="rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 flex items-start gap-4 shadow-xs">
-                    <div className="grid size-11 place-items-center rounded-2xl bg-amber-50 text-amber-700 border border-amber-100 shrink-0 shadow-2xs">
+                {/* Contact Information Card 2 */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                  className="rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 flex flex-col justify-between shadow-xs hover:border-[#CBD5CE] transition-all"
+                >
+                  <div>
+                    <div className="grid size-11 place-items-center rounded-2xl bg-amber-50 text-amber-700 border border-amber-100 mb-3.5 shadow-2xs">
                       <Mail className="size-5" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-foreground">Correo Electrónico</h3>
-                      <p className="mt-0.5 text-xs text-muted-foreground">Escríbenos para soporte, pedidos o facturación</p>
-                      <a href="mailto:hola@condirico.com" className="mt-1.5 inline-block text-sm font-bold text-primary hover:underline">
-                        hola@condirico.com
-                      </a>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">soporte@condirico.com</p>
-                    </div>
+                    <h3 className="text-sm font-bold text-foreground">Correo Electrónico</h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Soporte, pedidos o facturación</p>
+                    <a href="mailto:hola@condirico.com" className="mt-2 inline-block text-sm font-bold text-primary hover:underline">
+                      hola@condirico.com
+                    </a>
+                    <p className="text-[11px] text-muted-foreground mt-1">soporte@condirico.com</p>
                   </div>
+                  <a
+                    href="mailto:hola@condirico.com"
+                    className="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-3.5 py-2 text-xs font-bold shadow-2xs active:scale-95 transition-all"
+                  >
+                    <Mail className="size-3.5" />
+                    <span>Escribir correo</span>
+                  </a>
+                </motion.div>
 
-                  <div className="rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 flex items-start gap-4 shadow-xs">
-                    <div className="grid size-11 place-items-center rounded-2xl bg-teal-50 text-teal-700 border border-teal-100 shrink-0 shadow-2xs">
+                {/* Contact Information Card 3 */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                  className="rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 flex flex-col justify-between shadow-xs hover:border-[#CBD5CE] transition-all"
+                >
+                  <div>
+                    <div className="grid size-11 place-items-center rounded-2xl bg-teal-50 text-teal-700 border border-teal-100 mb-3.5 shadow-2xs">
                       <MapPin className="size-5" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-foreground">Centro de Distribución & Tienda</h3>
-                      <p className="mt-0.5 text-xs text-muted-foreground">Av. Principal Los Jardines #450, Ciudad Central</p>
-                      <p className="mt-1.5 text-xs font-semibold text-teal-700">Envíos directos a todo el municipio en 24h</p>
-                    </div>
+                    <h3 className="text-sm font-bold text-foreground">Centro de Distribución</h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Av. Principal Los Jardines #450</p>
+                    <p className="mt-2 text-xs font-semibold text-teal-700">Envíos directos a todo el municipio en 24h</p>
                   </div>
+                  <div className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200 px-3.5 py-2 text-xs font-bold shadow-2xs">
+                    <Check className="size-3.5 text-teal-600" />
+                    <span>Cobertura total activa</span>
+                  </div>
+                </motion.div>
 
-                  <div className="rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 flex items-start gap-4 shadow-xs">
-                    <div className="grid size-11 place-items-center rounded-2xl bg-orange-50 text-orange-700 border border-orange-100 shrink-0 shadow-2xs">
+                {/* Contact Information Card 4 */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className="rounded-2xl sm:rounded-3xl bg-white border border-border p-5 sm:p-6 flex flex-col justify-between shadow-xs hover:border-[#CBD5CE] transition-all"
+                >
+                  <div>
+                    <div className="grid size-11 place-items-center rounded-2xl bg-orange-50 text-orange-700 border border-orange-100 mb-3.5 shadow-2xs">
                       <Clock className="size-5" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-foreground">Horario de Entregas</h3>
-                      <p className="mt-0.5 text-xs text-muted-foreground">Reparto continuo en turnos mañana y tarde</p>
-                      <p className="mt-1 text-xs font-bold text-foreground">Lunes a Domingo: 7:00 AM – 10:00 PM</p>
-                    </div>
+                    <h3 className="text-sm font-bold text-foreground">Horario de Entregas</h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Reparto continuo mañana y tarde</p>
+                    <p className="mt-2 text-xs font-bold text-foreground">Lunes a Domingo: 7:00 AM – 10:00 PM</p>
+                  </div>
+                  <div className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full bg-orange-50 text-orange-800 border border-orange-200 px-3.5 py-2 text-xs font-bold shadow-2xs">
+                    <Clock className="size-3.5 text-orange-600" />
+                    <span>Despacho 7 días</span>
                   </div>
                 </motion.div>
+              </div>
+            </motion.section>
 
-                {/* Contact Form */}
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-                  className="lg:col-span-7 rounded-2xl sm:rounded-3xl bg-white border border-border p-6 sm:p-8 shadow-xs"
-                >
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <MessageSquare className="size-4 text-offer" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-offer">
-                      Envíanos un mensaje directo
-                    </span>
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-brand-deep tracking-tight">
-                    ¿En qué podemos ayudarte?
-                  </h3>
-                  <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
-                    Completa el formulario y te responderemos a la brevedad posible.
+            {/* ========================================================================= */}
+            {/* 10. SECCIÓN: CTA FINAL                                                    */}
+            {/* ========================================================================= */}
+            <motion.section
+              id="cta-final"
+              initial={{ opacity: 0, scale: 0.98 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="scroll-mt-20 mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20"
+            >
+              <div className="relative min-h-[360px] overflow-hidden rounded-3xl sm:rounded-[36px] bg-brand-deep text-primary-foreground p-8 sm:p-14 shadow-lg flex flex-col justify-center">
+                {/* Visual Background Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-brand-deep via-brand-deep/90 to-primary/40 pointer-events-none" />
+                <div className="absolute -right-16 -bottom-16 size-80 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+
+                <div className="relative z-10 max-w-2xl space-y-4">
+                  <span className="w-fit inline-flex items-center gap-1.5 rounded-full bg-sun px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider text-brand-deep shadow-2xs">
+                    <Sparkles className="size-3.5 text-brand-deep" />
+                    <span>Haz tu compra hoy</span>
+                  </span>
+
+                  <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold leading-tight tracking-tight">
+                    ¿Listo para llenar tu despensa con productos frescos y de calidad?
+                  </h2>
+
+                  <p className="text-sm sm:text-base text-primary-foreground/80 leading-relaxed max-w-xl">
+                    Únete a cientos de familias y comercios que confían en CondiRico. Realiza tu compra en línea o coordina tu entrega directa con un asesor por WhatsApp en menos de 24 horas.
                   </p>
 
-                  {contactSubmitted ? (
-                    <div className="mt-6 rounded-2xl bg-emerald-50/90 border border-emerald-200 p-6 sm:p-8 text-center animate-in fade-in zoom-in-95 duration-300">
-                      <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-emerald-600 text-white shadow-xs">
-                        <CheckCircle2 className="size-7" />
-                      </div>
-                      <h4 className="mt-3.5 text-lg font-bold text-emerald-950">
-                        ¡Mensaje enviado con éxito!
-                      </h4>
-                      <p className="mt-1.5 text-xs sm:text-sm text-emerald-800 max-w-md mx-auto leading-relaxed">
-                        Gracias por escribirnos, <strong>{contactForm.name || "estimado cliente"}</strong>. Un asesor de CondiRico revisará tu consulta y se comunicará contigo al correo en menos de 2 horas.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setContactSubmitted(false);
-                          setContactForm({ name: "", email: "", phone: "", topic: "Consulta sobre un pedido", message: "" });
-                        }}
-                        className="mt-5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white px-6 py-2 text-xs font-bold shadow-xs transition-colors cursor-pointer"
-                      >
-                        Enviar otro mensaje
-                      </button>
-                    </div>
-                  ) : (
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        setContactSubmitted(true);
-                      }}
-                      className="mt-6 space-y-4"
+                  <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
+                    <button
+                      type="button"
+                      onClick={() => setWhatsAppInquiryOpen(true)}
+                      className="min-h-[48px] px-7 rounded-full bg-[#075B3A] hover:bg-emerald-600 text-white text-sm font-bold flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-95 cursor-pointer"
                     >
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-foreground mb-1.5">
-                            Tu Nombre y Apellido
-                          </label>
-                          <input
-                            required
-                            type="text"
-                            placeholder="Ej. María González"
-                            value={contactForm.name}
-                            onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                            className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-sm outline-none transition-all focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-                          />
-                        </div>
+                      <WhatsAppIcon className="size-4.5" />
+                      <span>Pedir por WhatsApp</span>
+                    </button>
 
-                        <div>
-                          <label className="block text-xs font-bold text-foreground mb-1.5">
-                            Correo Electrónico
-                          </label>
-                          <input
-                            required
-                            type="email"
-                            placeholder="correo@ejemplo.com"
-                            value={contactForm.email}
-                            onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                            className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-sm outline-none transition-all focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-foreground mb-1.5">
-                            Teléfono o Celular (Opcional)
-                          </label>
-                          <input
-                            type="tel"
-                            placeholder="+1 (555) 000-0000"
-                            value={contactForm.phone}
-                            onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
-                            className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-sm outline-none transition-all focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-foreground mb-1.5">
-                            Motivo de Contacto
-                          </label>
-                          <select
-                            value={contactForm.topic}
-                            onChange={(e) => setContactForm({ ...contactForm, topic: e.target.value })}
-                            className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none transition-all focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-                          >
-                            <option value="Consulta sobre un pedido">Consulta sobre un pedido</option>
-                            <option value="Duda de entregas o envíos">Duda de entregas o envíos</option>
-                            <option value="Sugerencia de producto">Sugerencia de producto</option>
-                            <option value="Proveedores o negocios">Proveedores o negocios</option>
-                            <option value="Otro motivo">Otro motivo</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-foreground mb-1.5">
-                          Mensaje o Consulta
-                        </label>
-                        <textarea
-                          required
-                          rows={4}
-                          placeholder="Escribe aquí tu duda, sugerencia o detalle de tu compra..."
-                          value={contactForm.message}
-                          onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                          className="w-full rounded-xl border border-border bg-white p-3.5 text-sm outline-none transition-all focus:border-primary/40 focus:ring-4 focus:ring-primary/10 resize-none"
-                        />
-                      </div>
-
-                      <div className="pt-1">
-                        <button
-                          type="submit"
-                          className="w-full sm:w-auto h-11 sm:h-12 rounded-full bg-primary hover:bg-primary/95 px-8 text-xs font-bold text-primary-foreground shadow-xs active:scale-95 flex items-center justify-center gap-2 transition-all cursor-pointer"
-                        >
-                          <Send className="size-4" />
-                          <span>Enviar mensaje</span>
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </motion.div>
+                    <button
+                      type="button"
+                      onClick={() => navigateTo("tienda")}
+                      className="min-h-[48px] px-7 rounded-full bg-white hover:bg-slate-100 text-brand-deep text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 cursor-pointer"
+                    >
+                      <StoreIcon className="size-4 text-primary" />
+                      <span>Ver Catálogo Completo</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </motion.section>
           </div>
@@ -2141,36 +2532,142 @@ function AppContent() {
           </div>
           <div>
             <h3 className="font-bold text-sm">Navegación</h3>
-            <ul className="mt-4 space-y-2.5 text-xs text-primary-foreground/75">
+            <ul className="mt-4 space-y-2 text-xs text-primary-foreground/75">
               <li>
                 <button
                   type="button"
                   onClick={() => navigateTo("inicio")}
                   className="hover:text-sun transition-colors"
                 >
-                  Página de Inicio
+                  Inicio
                 </button>
               </li>
               <li>
                 <button
                   type="button"
-                  onClick={() => navigateTo("tienda")}
-                  className="hover:text-sun transition-colors font-bold text-sun"
+                  onClick={() => {
+                    if (currentPage !== "inicio") {
+                      navigateTo("inicio");
+                      setTimeout(() => {
+                        document.querySelector("#mas-vendidos")?.scrollIntoView({ behavior: "smooth" });
+                      }, 150);
+                    } else {
+                      document.querySelector("#mas-vendidos")?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className="hover:text-sun transition-colors"
                 >
-                  Catálogo de Tienda
+                  Más Vendidos
                 </button>
               </li>
-              {categories.map((c) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    onClick={() => navigateTo("tienda", c.id)}
-                    className="hover:text-sun transition-colors"
-                  >
-                    {c.name}
-                  </button>
-                </li>
-              ))}
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentPage !== "inicio") {
+                      navigateTo("inicio");
+                      setTimeout(() => {
+                        document.querySelector("#categorias")?.scrollIntoView({ behavior: "smooth" });
+                      }, 150);
+                    } else {
+                      document.querySelector("#categorias")?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className="hover:text-sun transition-colors"
+                >
+                  Categorías
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentPage !== "inicio") {
+                      navigateTo("inicio");
+                      setTimeout(() => {
+                        document.querySelector("#testimonios")?.scrollIntoView({ behavior: "smooth" });
+                      }, 150);
+                    } else {
+                      document.querySelector("#testimonios")?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className="hover:text-sun transition-colors"
+                >
+                  Opiniones de Clientes
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentPage !== "inicio") {
+                      navigateTo("inicio");
+                      setTimeout(() => {
+                        document.querySelector("#por-que-elegirnos")?.scrollIntoView({ behavior: "smooth" });
+                      }, 150);
+                    } else {
+                      document.querySelector("#por-que-elegirnos")?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className="hover:text-sun transition-colors"
+                >
+                  Por Qué Elegirnos
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentPage !== "inicio") {
+                      navigateTo("inicio");
+                      setTimeout(() => {
+                        document.querySelector("#recientes")?.scrollIntoView({ behavior: "smooth" });
+                      }, 150);
+                    } else {
+                      document.querySelector("#recientes")?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className="hover:text-sun transition-colors"
+                >
+                  Productos Más Recientes
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentPage !== "inicio") {
+                      navigateTo("inicio");
+                      setTimeout(() => {
+                        document.querySelector("#nosotros")?.scrollIntoView({ behavior: "smooth" });
+                      }, 150);
+                    } else {
+                      document.querySelector("#nosotros")?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className="hover:text-sun transition-colors"
+                >
+                  Acerca de Nosotros
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentPage !== "inicio") {
+                      navigateTo("inicio");
+                      setTimeout(() => {
+                        document.querySelector("#faq")?.scrollIntoView({ behavior: "smooth" });
+                      }, 150);
+                    } else {
+                      document.querySelector("#faq")?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className="hover:text-sun transition-colors"
+                >
+                  Preguntas Frecuentes
+                </button>
+              </li>
               <li>
                 <button
                   type="button"
@@ -2189,14 +2686,40 @@ function AppContent() {
                   Contactos
                 </button>
               </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigateTo("tienda")}
+                  className="hover:text-sun transition-colors font-bold text-sun"
+                >
+                  Catálogo de Tienda
+                </button>
+              </li>
             </ul>
           </div>
           <div>
-            <h3 className="font-bold text-sm">Ayuda</h3>
+            <h3 className="font-bold text-sm">Ayuda & Servicio</h3>
             <ul className="mt-4 space-y-2.5 text-xs text-primary-foreground/75">
-              <li>Preguntas frecuentes</li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentPage !== "inicio") {
+                      navigateTo("inicio");
+                      setTimeout(() => {
+                        document.querySelector("#faq")?.scrollIntoView({ behavior: "smooth" });
+                      }, 150);
+                    } else {
+                      document.querySelector("#faq")?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className="hover:text-sun transition-colors"
+                >
+                  Preguntas frecuentes
+                </button>
+              </li>
               <li>Envíos y entregas en 24h</li>
-              <li>Garantía y devoluciones</li>
+              <li>Garantía de frescura y devoluciones</li>
               <li>Términos y condiciones</li>
             </ul>
           </div>
