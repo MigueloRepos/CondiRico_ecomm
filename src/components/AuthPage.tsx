@@ -32,14 +32,8 @@ import {
 import { BiometricFingerprintModal } from "@/components/BiometricFingerprintModal";
 import { SupabaseConfigModal } from "@/components/SupabaseConfigModal";
 import { EmailConfirmationModal } from "@/components/EmailConfirmationModal";
-import { SecurityIpBlockModal } from "@/components/SecurityIpBlockModal";
 import { UserProfileView } from "@/components/UserProfileView";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
-import {
-  getUserClientIP,
-  recordUserSecurityIP,
-  verifyUserSecurityIP,
-} from "@/lib/userSecurity";
 import { getProfile, checkIsAdmin } from "@/services";
 
 interface AuthPageProps {
@@ -87,22 +81,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [otpPendingAddress, setOtpPendingAddress] = useState("");
   const [otpPendingEnableBio, setOtpPendingEnableBio] = useState(true);
 
-  // IP Security & Anti-Intruder (User_Sec) state
-  const [detectedClientIp, setDetectedClientIp] = useState("");
-  const [securityBlockModalOpen, setSecurityBlockModalOpen] = useState(false);
-  const [securityBlockedEmail, setSecurityBlockedEmail] = useState("");
-  const [securityCurrentIp, setSecurityCurrentIp] = useState("");
-  const [securityRegisteredIp, setSecurityRegisteredIp] = useState("");
-  const [isSimulatingIntruder, setIsSimulatingIntruder] = useState(false);
-  const [simulatedIntruderIp, setSimulatedIntruderIp] = useState("198.51.100.88");
-
-  // Load client IP on mount
-  useEffect(() => {
-    getUserClientIP().then((ip) => {
-      setDetectedClientIp(ip);
-    });
-  }, []);
-
   // Biometrics modal state
   const [biometricModalOpen, setBiometricModalOpen] = useState(false);
   const [biometricMode, setBiometricMode] = useState<"register" | "verify">("verify");
@@ -115,7 +93,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const bioKeyInfo = getBiometricKeyInfo();
   const sbConfig = getSupabaseConfig();
 
-  // Submit Login with Supabase Cloud & User_Sec IP Security Verification
+  // Submit Login with Supabase Cloud Authentication
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
@@ -130,32 +108,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setIsSubmitting(true);
 
     try {
-      // 1. IP Security Check against Supabase User_Sec table
-      const activeIp = isSimulatingIntruder ? simulatedIntruderIp : undefined;
-      const secCheck = await verifyUserSecurityIP(targetEmail, activeIp);
-
-      if (!secCheck.allowed) {
-        setIsSubmitting(false);
-        setSecurityBlockedEmail(targetEmail);
-        setSecurityCurrentIp(secCheck.currentIp);
-        setSecurityRegisteredIp(secCheck.registeredIp || "Desconocida");
-        setSecurityBlockModalOpen(true);
-        setLoginError(
-          `Acceso bloqueado por seguridad: IP no autorizada (${secCheck.currentIp}). Tu cuenta está vinculada a la red (${secCheck.registeredIp}).`
-        );
-        return;
-      }
-
-      // 2. Authenticate with Supabase Cloud
+      // Authenticate with Supabase Cloud
       const { user: sbUser, error: sbError } = await signInWithSupabase({
         email: targetEmail,
         password: loginPassword,
       });
 
       if (sbUser) {
-        // Record or refresh security IP in Supabase User_Sec
-        recordUserSecurityIP(sbUser.email, secCheck.currentIp).catch(console.warn);
-
         // Fetch user role from Supabase public.profiles
         try {
           const dbProfile = await getProfile(sbUser.id);
@@ -207,7 +166,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
   };
 
-  // Submit Register with Supabase Cloud & trigger confirmation link & User_Sec registration
+  // Submit Register with Supabase Cloud & trigger confirmation link
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegisterError("");
@@ -240,12 +199,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         return;
       }
 
-      // 2. Pre-record IP security association in Supabase User_Sec
-      const activeIp = isSimulatingIntruder ? simulatedIntruderIp : detectedClientIp;
-      if (activeIp) {
-        await recordUserSecurityIP(registerEmail.trim(), activeIp);
-      }
-
       setIsSubmitting(false);
 
       // Open Confirmation Link Modal
@@ -267,13 +220,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const handleOtpSuccess = async (verifiedUser: UserProfile) => {
     setOtpModalOpen(false);
 
-    // Record user & IP into Supabase User_Sec
-    const activeIp = isSimulatingIntruder ? simulatedIntruderIp : detectedClientIp;
-    if (activeIp) {
-      await recordUserSecurityIP(verifiedUser.email, activeIp);
-    }
-
-    setFeedbackSuccess(`¡Correo verificado y red asegurada en User_Sec! Bienvenido, ${verifiedUser.name}.`);
+    setFeedbackSuccess(`¡Correo verificado con éxito! Bienvenido, ${verifiedUser.name}.`);
 
     if (otpPendingEnableBio && !deviceHasBiometric) {
       setPendingUserForBio(verifiedUser);
@@ -286,25 +233,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
   };
 
-  // Initiate Biometric Fingerprint Login with IP security check
+  // Initiate Biometric Fingerprint Login
   const handleStartBiometricLogin = async () => {
     const targetEmail = bioKeyInfo?.email;
     if (!targetEmail) {
       setLoginError("No hay huella registrada en este dispositivo. Inicia sesión con contraseña para activarla.");
-      return;
-    }
-
-    const activeIp = isSimulatingIntruder ? simulatedIntruderIp : undefined;
-    const secCheck = await verifyUserSecurityIP(targetEmail, activeIp);
-
-    if (!secCheck.allowed) {
-      setSecurityBlockedEmail(targetEmail);
-      setSecurityCurrentIp(secCheck.currentIp);
-      setSecurityRegisteredIp(secCheck.registeredIp || "Desconocida");
-      setSecurityBlockModalOpen(true);
-      setLoginError(
-        `Acceso biométrico bloqueado por seguridad: IP no autorizada (${secCheck.currentIp}).`
-      );
       return;
     }
 
@@ -779,19 +712,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         phone={otpPendingPhone}
         address={otpPendingAddress}
         onSuccess={handleOtpSuccess}
-      />
-
-      {/* IP Security Anti-Intruder Alert Modal */}
-      <SecurityIpBlockModal
-        isOpen={securityBlockModalOpen}
-        onClose={() => setSecurityBlockModalOpen(false)}
-        userEmail={securityBlockedEmail}
-        currentIp={securityCurrentIp}
-        registeredIp={securityRegisteredIp}
-        onAuthorizeCurrentIp={() => {
-          setLoginError("");
-          setFeedbackSuccess("¡Dirección IP autorizada! Ahora puedes iniciar sesión.");
-        }}
       />
     </div>
   );

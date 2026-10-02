@@ -42,11 +42,6 @@ import { updateSupabaseUserProfile, signOutSupabase } from "@/lib/supabase";
 import { CondiRicoLogo } from "@/components/CondiRicoLogo";
 import { BiometricFingerprintModal } from "@/components/BiometricFingerprintModal";
 import {
-  getUserClientIP,
-  recordUserSecurityIP,
-  verifyUserSecurityIP,
-} from "@/lib/userSecurity";
-import {
   getCustomerPurchaseStats,
   CustomerPurchaseStats,
 } from "@/services/orders";
@@ -104,11 +99,6 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [biometricModalOpen, setBiometricModalOpen] = useState(false);
 
-  // User_Sec IP state
-  const [userRegisteredIp, setUserRegisteredIp] = useState<string>("Cargando...");
-  const [currentNetworkIp, setCurrentNetworkIp] = useState<string>("Cargando...");
-  const [isUpdatingIp, setIsUpdatingIp] = useState(false);
-
   // Fetch purchase stats from Supabase
   const loadPurchaseStats = async () => {
     setIsLoadingStats(true);
@@ -125,31 +115,6 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   useEffect(() => {
     loadPurchaseStats();
   }, [currentUser.id, currentUser.email]);
-
-  useEffect(() => {
-    getUserClientIP().then((ip) => {
-      setCurrentNetworkIp(ip);
-      verifyUserSecurityIP(currentUser.email, ip).then((res) => {
-        if (res.registeredIp) {
-          setUserRegisteredIp(res.registeredIp);
-        } else {
-          setUserRegisteredIp(ip);
-          recordUserSecurityIP(currentUser.email, ip).catch(console.warn);
-        }
-      });
-    });
-  }, [currentUser.email]);
-
-  const handleUpdateAuthorizedIp = async () => {
-    setIsUpdatingIp(true);
-    const res = await recordUserSecurityIP(currentUser.email, currentNetworkIp);
-    setIsUpdatingIp(false);
-    if (res.success) {
-      setUserRegisteredIp(res.registeredIp);
-      setSaveSuccessMessage("¡Dirección IP autorizada actualizada con éxito en Supabase User_Sec!");
-      setTimeout(() => setSaveSuccessMessage(null), 3500);
-    }
-  };
 
   // Handle save changes to Supabase
   const handleSaveChanges = async (e: React.FormEvent) => {
@@ -948,63 +913,6 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 >
                   {currentUser.hasBiometrics ? "Re-vincular" : "Activar"}
                 </button>
-              </div>
-
-              {/* IP Security Shield (User_Sec) Card */}
-              <div className="p-4 rounded-2xl bg-stone-900 text-stone-200 border border-white/10 space-y-3 shadow-md">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="grid size-9 place-items-center rounded-xl bg-red-500/20 text-red-400 border border-red-500/30">
-                      <ShieldCheck className="size-5 text-emerald-400" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="text-xs font-black text-white">
-                          Escudo Anti-Intrusos (Supabase User_Sec)
-                        </h4>
-                        <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-black px-2 py-0.5 rounded-full border border-emerald-500/30">
-                          Activo
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-stone-400 mt-0.5">
-                        Tu cuenta bloquea automáticamente cualquier intento de inicio de sesión desde una dirección IP no autorizada.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-black/40 p-3 rounded-xl border border-white/5">
-                  <div>
-                    <span className="text-stone-400 text-[10px] block uppercase font-bold">IP Autorizada en User_Sec</span>
-                    <span className="font-mono font-bold text-emerald-400 text-xs">{userRegisteredIp}</span>
-                  </div>
-                  <div>
-                    <span className="text-stone-400 text-[10px] block uppercase font-bold">IP Actual de tu Red</span>
-                    <span className="font-mono font-bold text-white text-xs">{currentNetworkIp}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-[10px] text-stone-400">¿Cambiaste de red wifi o ubicación?</span>
-                  <button
-                    type="button"
-                    onClick={handleUpdateAuthorizedIp}
-                    disabled={isUpdatingIp}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 rounded-full transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-                  >
-                    {isUpdatingIp ? (
-                      <>
-                        <Loader2 className="size-3 animate-spin" />
-                        <span>Actualizando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Server className="size-3" />
-                        <span>Autorizar mi IP actual</span>
-                      </>
-                    )}
-                  </button>
-                </div>
               </div>
 
               {/* Password change */}
