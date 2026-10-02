@@ -128,3 +128,21 @@ export interface ContactMessage {
   status: ContactMessageStatus | string;
   created_at?: string;
 }
+
+export interface ProductReview {
+  id: string;
+  product_id: number;
+  user_id: string;
+  user_name: string;
+  user_email?: string | null;
+  rating: number;
+  comment: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ProductReviewStats {
+  averageRating: number;
+  totalReviews: number;
+  ratingDistribution: Record<1 | 2 | 3 | 4 | 5, number>;
+}

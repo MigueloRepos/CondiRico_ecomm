@@ -59,6 +59,7 @@ import { CheckoutModal } from "@/components/checkout/CheckoutModal";
 import { ToastProvider, useToast } from "@/components/ui/ToastContext";
 import { BlurUpImage } from "@/components/BlurUpImage";
 import { CategoryBento } from "@/components/CategoryBento";
+import { ProductDetailModal } from "@/components/ProductDetailModal";
 import { UserProfile } from "@/lib/auth";
 import { supabase, mapSupabaseUserToProfile } from "@/lib/supabase";
 import {
@@ -185,6 +186,7 @@ function AppContent() {
   const [whatsAppInquiryOpen, setWhatsAppInquiryOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [selectedProductDetail, setSelectedProductDetail] = useState<ProductItem | null>(null);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [intendedAuthNotice, setIntendedAuthNotice] = useState<string>("");
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -1134,6 +1136,7 @@ function AppContent() {
             isLoading={isLoadingProducts}
             error={productsError}
             onRefresh={fetchCatalogData}
+            onSelectProduct={(prod) => setSelectedProductDetail(prod)}
           />
         ) : (
           <div>
@@ -1361,7 +1364,10 @@ function AppContent() {
                                 <span className="text-xs font-black uppercase text-primary tracking-wider">
                                   {product.unit} • Selección Fresca
                                 </span>
-                                <h3 className="text-xl sm:text-3xl font-black text-brand-deep mt-1 leading-tight group-hover:text-primary transition-colors">
+                                <h3 
+                                  onClick={() => setSelectedProductDetail(product)}
+                                  className="text-xl sm:text-3xl font-black text-brand-deep mt-1 leading-tight group-hover:text-primary transition-colors cursor-pointer"
+                                >
                                   {product.name}
                                 </h3>
                                 <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 sm:mt-2 line-clamp-2">
@@ -1380,7 +1386,10 @@ function AppContent() {
                                 </div>
                               </div>
 
-                              <div className="relative aspect-square w-full max-w-[170px] sm:max-w-[220px] mx-auto rounded-2xl sm:rounded-3xl overflow-hidden bg-white/80 border border-white/90 shadow-lg group-hover:scale-105 transition-transform duration-500">
+                              <div 
+                                onClick={() => setSelectedProductDetail(product)}
+                                className="relative aspect-square w-full max-w-[170px] sm:max-w-[220px] mx-auto rounded-2xl sm:rounded-3xl overflow-hidden bg-white/80 border border-white/90 shadow-lg group-hover:scale-105 transition-transform duration-500 cursor-pointer"
+                              >
                                 {product.imageUrl ? (
                                   <BlurUpImage
                                     src={product.imageUrl}
@@ -1394,7 +1403,14 @@ function AppContent() {
                                     <ShoppingBasket className="size-16 text-primary/70" />
                                   </div>
                                 )}
-                                <div className="absolute left-2.5 bottom-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-black text-brand-deep shadow-xs backdrop-blur-md z-10">
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedProductDetail(product);
+                                  }}
+                                  className="absolute left-2.5 bottom-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 hover:bg-white px-2.5 py-1 text-xs font-black text-brand-deep shadow-xs backdrop-blur-md z-10 cursor-pointer"
+                                  title="Ver calificaciones y reseñas"
+                                >
                                   <Star className="size-3.5 fill-amber-400 text-amber-400" />
                                   <span>{product.rating}</span>
                                 </div>
@@ -1451,7 +1467,10 @@ function AppContent() {
                               </div>
                             </div>
 
-                            <div className="relative aspect-square w-full my-auto rounded-xl overflow-hidden bg-muted/40 border border-border shadow-2xs group-hover:scale-102 transition-transform duration-300 z-10">
+                            <div 
+                              onClick={() => setSelectedProductDetail(product)}
+                              className="relative aspect-square w-full my-auto rounded-xl overflow-hidden bg-muted/40 border border-border shadow-2xs group-hover:scale-102 transition-transform duration-300 z-10 cursor-pointer"
+                            >
                               {product.imageUrl ? (
                                 <BlurUpImage
                                   src={product.imageUrl}
@@ -1465,14 +1484,24 @@ function AppContent() {
                                   <ShoppingBasket className="size-12 text-primary/70" />
                                 </div>
                               )}
-                              <span className="absolute left-2.5 bottom-2.5 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold text-brand-deep shadow-2xs z-10">
+                              <span 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedProductDetail(product);
+                                }}
+                                className="absolute left-2.5 bottom-2.5 inline-flex items-center gap-1 rounded-full bg-white/95 hover:bg-white px-2 py-0.5 text-[10px] font-bold text-brand-deep shadow-2xs z-10 cursor-pointer"
+                                title="Ver reseñas"
+                              >
                                 <Star className="size-3 fill-amber-400 text-amber-400" />
                                 <span>{product.rating}</span>
                               </span>
                             </div>
 
                             <div className="z-10">
-                              <h3 className="font-bold text-base text-brand-deep line-clamp-1 group-hover:text-primary transition-colors">
+                              <h3 
+                                onClick={() => setSelectedProductDetail(product)}
+                                className="font-bold text-base text-brand-deep line-clamp-1 group-hover:text-primary transition-colors cursor-pointer"
+                              >
                                 {product.name}
                               </h3>
                               <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{product.detail}</p>
@@ -1508,7 +1537,10 @@ function AppContent() {
                             className={`group relative ${gridSpanClass} overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-border shadow-xs hover:shadow-md p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 transition-all`}
                           >
                             <div className="flex items-center gap-3.5 sm:gap-4 z-10 w-full sm:w-auto">
-                              <div className="relative size-16 sm:size-18 rounded-xl overflow-hidden bg-muted/40 border border-border shadow-2xs shrink-0 group-hover:scale-102 transition-transform duration-300">
+                              <div 
+                                onClick={() => setSelectedProductDetail(product)}
+                                className="relative size-16 sm:size-18 rounded-xl overflow-hidden bg-muted/40 border border-border shadow-2xs shrink-0 group-hover:scale-102 transition-transform duration-300 cursor-pointer"
+                              >
                                 {product.imageUrl ? (
                                   <BlurUpImage
                                     src={product.imageUrl}
@@ -1530,7 +1562,10 @@ function AppContent() {
                                   </span>
                                   <StockBadge stockQuantity={product.stockQuantity} stock={product.stock} />
                                 </div>
-                                <h3 className="font-bold text-base sm:text-lg text-brand-deep group-hover:text-primary transition-colors mt-0.5">
+                                <h3 
+                                  onClick={() => setSelectedProductDetail(product)}
+                                  className="font-bold text-base sm:text-lg text-brand-deep group-hover:text-primary transition-colors mt-0.5 cursor-pointer"
+                                >
                                   {product.name}
                                 </h3>
                                 <p className="text-xs text-muted-foreground line-clamp-1">{product.detail}</p>
@@ -1569,7 +1604,10 @@ function AppContent() {
                           className={`group relative ${gridSpanClass} overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-border shadow-xs hover:shadow-md p-4 sm:p-5 flex flex-col justify-between transition-all`}
                         >
                           <div className="flex items-start justify-between gap-2.5 z-10">
-                            <div className="relative size-16 rounded-xl overflow-hidden bg-muted/40 border border-border shadow-2xs shrink-0 group-hover:scale-102 transition-transform duration-300">
+                            <div 
+                              onClick={() => setSelectedProductDetail(product)}
+                              className="relative size-16 rounded-xl overflow-hidden bg-muted/40 border border-border shadow-2xs shrink-0 group-hover:scale-102 transition-transform duration-300 cursor-pointer"
+                            >
                               {product.imageUrl ? (
                                 <BlurUpImage
                                   src={product.imageUrl}
@@ -1599,7 +1637,10 @@ function AppContent() {
                           </div>
 
                           <div className="my-2 z-10">
-                            <h3 className="font-bold text-sm text-brand-deep line-clamp-1 group-hover:text-primary transition-colors">
+                            <h3 
+                              onClick={() => setSelectedProductDetail(product)}
+                              className="font-bold text-sm text-brand-deep line-clamp-1 group-hover:text-primary transition-colors cursor-pointer"
+                            >
                               {product.name}
                             </h3>
                             <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{product.detail}</p>
@@ -2214,6 +2255,26 @@ function AppContent() {
       {/* Floating WhatsApp Button (Inquiries and Questions Only) */}
       <FloatingWhatsAppButton
         onClick={() => setWhatsAppInquiryOpen(true)}
+      />
+
+      {/* Product Detail & Reviews Modal */}
+      <ProductDetailModal
+        product={selectedProductDetail}
+        isOpen={Boolean(selectedProductDetail)}
+        onClose={() => setSelectedProductDetail(null)}
+        onAddToCart={(id, qty) => changeCart(id, qty)}
+        isFavorite={selectedProductDetail ? favorites.has(selectedProductDetail.id) : false}
+        onToggleFavorite={toggleFavorite}
+        onOpenWhatsApp={(productName) => {
+          setSelectedProductDetail(null);
+          setWhatsAppInquiryOpen(true);
+        }}
+        currentUser={currentUser}
+        onRequireLogin={() => {
+          setSelectedProductDetail(null);
+          setIntendedAuthNotice("Para calificar productos y dejar reseñas debes iniciar sesión con tu cuenta.");
+          navigateTo("auth");
+        }}
       />
 
       {/* WhatsApp Inquiry Modal for Customer Inquiries and Questions */}

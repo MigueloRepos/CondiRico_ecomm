@@ -53,6 +53,7 @@ interface StorePageProps {
   isLoading?: boolean;
   error?: string | null;
   onRefresh?: () => void;
+  onSelectProduct?: (product: ProductItem) => void;
 }
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -75,6 +76,7 @@ export const StorePage: React.FC<StorePageProps> = ({
   isLoading = false,
   error = null,
   onRefresh,
+  onSelectProduct,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<CategoryId | "todas">(
@@ -653,7 +655,10 @@ export const StorePage: React.FC<StorePageProps> = ({
                         className="group relative flex flex-col justify-between overflow-hidden rounded-[26px] liquid-glass-card liquid-reflection p-3 sm:p-4"
                       >
                         {/* Image Showcase Pedestal */}
-                        <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-white/60 border border-white/80 shadow-inner">
+                        <div 
+                          onClick={() => onSelectProduct?.(product)}
+                          className="relative aspect-square w-full overflow-hidden rounded-2xl bg-white/60 border border-white/80 shadow-inner cursor-pointer"
+                        >
                           {product.pos ? (
                             <div
                               className={`absolute inset-0 bg-cover transition-transform duration-700 ease-out group-hover:scale-108 ${product.pos}`}
@@ -687,7 +692,10 @@ export const StorePage: React.FC<StorePageProps> = ({
                           {/* Heart favorite button */}
                           <button
                             type="button"
-                            onClick={() => onToggleFavorite(product.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleFavorite(product.id);
+                            }}
                             className={`absolute right-2.5 top-2.5 grid size-8 place-items-center rounded-full bg-white/85 border border-white/90 shadow-sm backdrop-blur-md transition-all duration-300 active:scale-90 hover:scale-110 ${
                               isFav
                                 ? "text-destructive"
@@ -710,13 +718,21 @@ export const StorePage: React.FC<StorePageProps> = ({
                           <div>
                             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                               <span>{product.detail}</span>
-                              <div className="flex items-center gap-1 font-bold text-amber-500">
+                              <button
+                                type="button"
+                                onClick={() => onSelectProduct?.(product)}
+                                className="flex items-center gap-1 font-bold text-amber-500 hover:text-amber-600 transition-colors cursor-pointer"
+                                title="Ver reseñas"
+                              >
                                 <Star className="size-3 fill-current" />
                                 <span>{product.rating}</span>
-                              </div>
+                              </button>
                             </div>
 
-                            <h3 className="mt-1.5 text-sm sm:text-base font-extrabold leading-snug text-foreground line-clamp-2 min-h-[2.6rem]">
+                            <h3 
+                              onClick={() => onSelectProduct?.(product)}
+                              className="mt-1.5 text-sm sm:text-base font-extrabold leading-snug text-foreground line-clamp-2 min-h-[2.6rem] cursor-pointer hover:text-primary transition-colors"
+                            >
                               {product.name}
                             </h3>
 
